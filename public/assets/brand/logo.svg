@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 120" role="img" aria-labelledby="t">
+  <title id="t">StreamOrg</title>
+  <!--
+    Split down the middle at x=56.
+    Left  — a clock, drawn as an open half circle so its flat side becomes
+            the seam instead of an extra line.
+    Right — a clapperboard, landscape as a real one is, sharing that seam.
+    Stroked in currentColor and nothing else: no fills to recolour, no
+    gradients, no text. Scales to any size and inherits the colour of
+    whatever it sits in.
+  -->
+  <defs>
+    <clipPath id="so-band">
+      <rect x="59.5" y="37.5" width="63" height="11"/>
+    </clipPath>
+  </defs>
+
+  <g fill="none" stroke="currentColor" stroke-width="7"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M56 22 A38 38 0 0 0 56 98"/>   <!-- clock face -->
+    <path d="M56 60 L44 35"/>               <!-- minute hand -->
+    <path d="M56 60 L36 67"/>               <!-- hour hand -->
+    <path d="M56 34 H126 V88 H56 Z"/>       <!-- slate -->
+    <path d="M56 52 H126"/>                 <!-- hinge line -->
+  </g>
+
+  <!-- clapper stripes, clipped so they end flush with the band -->
+  <g clip-path="url(#so-band)" stroke="currentColor" stroke-width="6" stroke-linecap="butt">
+    <path d="M62 34 L54 52"/>
+    <path d="M78 34 L70 52"/>
+    <path d="M94 34 L86 52"/>
+    <path d="M110 34 L102 52"/>
+    <path d="M126 34 L118 52"/>
+  </g>
+
+  <circle cx="56" cy="60" r="3.5" fill="currentColor"/>  <!-- hand pivot -->
+</svg>

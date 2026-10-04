@@ -1,0 +1,31 @@
+# --- Secrets and local configuration -------------------------------------
+# Real settings never enter git: locally config/config.php, in production
+# the platform's environment variables (see config/config.example.php).
+config/config.php
+.env
+.env.*
+
+# --- Installed dependencies (composer install / npm install) -------------
+/vendor/
+/node_modules/
+
+# --- Local data ------------------------------------------------------------
+# Sessions, test caches, database dumps, downloaded artwork.
+/tmp/
+/public/media/
+*.dump
+*.sql.gz
+*.log
+lang/*.bak
+.phpunit.result.cache
+
+# --- Personal, one-off import scripts ---------------------------------------
+/bin/import_*.php
+
+# --- Private server notes (secrets procedures, not for the repository) -------
+/SERVER-SETUP.md
+
+# --- Editors and OS ------------------------------------------------------------
+.idea/
+.vscode/
+.DS_Store

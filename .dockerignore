@@ -1,0 +1,38 @@
+# Kept out of the image: secrets, local data, tooling, and custom imports.
+
+.git
+.gitignore
+.idea
+.vscode
+*.log
+
+# Secrets and local configuration — the container is configured by env vars.
+config/config.php
+.env
+.env.*
+
+# Local data: mounted as volumes in production.
+tmp/
+public/media/
+
+# Built inside the image / not needed at runtime.
+vendor/
+node_modules/
+package.json
+package-lock.json
+scripts/
+
+# Tests and docs.
+tests/
+phpunit.xml
+README.md
+SERVER-SETUP.md
+lang/*.bak
+
+# Personal, one-off import scripts (also kept out of git).
+bin/import_*.php
+
+# The image definition itself.
+Dockerfile
+docker-compose.yml
+.dockerignore

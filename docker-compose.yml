@@ -1,0 +1,43 @@
+# Try the production image locally (not used by Coolify, which builds the
+# Dockerfile and provides its own PostgreSQL):
+#
+#   APP_KEY=$(openssl rand -base64 32) docker compose up --build
+#   docker compose exec app php bin/create_user.php admin --admin
+#
+# then open http://localhost:8080
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      DATABASE_URL: postgres://streamorg:streamorg@db:5432/streamorg
+      APP_KEY: ${APP_KEY:?set APP_KEY, e.g. APP_KEY=$(openssl rand -base64 32)}
+      APP_ENV: production
+      APP_BASE_URL: http://localhost:8080
+      CONTACT_EMAIL: streamorg@outlook.com
+    volumes:
+      - media:/var/www/html/public/media
+      - sessions:/var/www/html/tmp
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: streamorg
+      POSTGRES_USER: streamorg
+      POSTGRES_PASSWORD: streamorg
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamorg -d streamorg"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  media:
+  sessions:
+  pgdata:

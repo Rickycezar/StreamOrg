@@ -1,0 +1,6 @@
+{
+  "@hotwired/turbo": "8.0.23",
+  "tom-select": "2.6.2",
+  "fullcalendar": "6.1.21",
+  "@fullcalendar/core": "6.1.21"
+}

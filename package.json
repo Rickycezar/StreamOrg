@@ -1,0 +1,17 @@
+{
+  "name": "streamorg",
+  "private": true,
+  "description": "Browser libraries for StreamOrg. Only fetched and copied, never bundled: see scripts/vendor.mjs.",
+  "type": "module",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "postinstall": "node scripts/vendor.mjs"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.21",
+    "@hotwired/turbo": "^8.0.0",
+    "fullcalendar": "^6.1.21",
+    "tom-select": "^2.4.0"
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
+}
