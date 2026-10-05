@@ -48,6 +48,9 @@ private preview. Preview access: streamorg@outlook.com.
 - **Title helper**: choosing a game, sponsor or collab adds the right
   hashtags and credits to the title, which stays freely editable.
 - Register a missing game (from Steam) or key without leaving the form.
+- **Any Twitch category**: content can have its own category — Just
+  Chatting, Special Events, Marbles On Stream… — used before its games when
+  sending to Twitch and when live tracking matches a category.
 - **Your stream schedule** (days and usual hours, under *Profile → Defaults*)
   gives content dropped on a day its start time and shades your off-hours on
   the calendar.
@@ -73,6 +76,27 @@ private preview. Preview access: streamorg@outlook.com.
   activity list.
 - Look up streamers on Twitch to plan **collabs** and credit guests.
 
+### Giveaways
+- **Named giveaways** with a short keyword for the chat, rules, an entry
+  window, and an optional surprise mode that hides them until opened.
+  Several can run at once — a month-long one and a quick surprise.
+- **Prizes from the vault**: keys marked "for giveaway" are copied into the
+  giveaway and stay linked to the original, which is marked given away when
+  the prize is claimed.
+- **Winners by Twitch account**: drawn from chat entries, typed in after an
+  external game such as Marbles, or picked by hand. Either the winner picks a
+  key from the giveaway, or a key is assigned to them.
+- **Claim links only the winner can open**: the link works for that Twitch
+  account only, signed in, until it expires (30 days by default).
+
+### Viewers
+- Winners sign in **as viewers, with Twitch only**, and see **My prizes**:
+  every key they won, by streamer. Viewers have no access to anything else.
+- A creator who connects the same Twitch account sees their prizes in their
+  own account. Viewers can delete their profile themselves.
+- A **privacy policy** page describes everything kept about creators and
+  viewers.
+
 ### Embargoes and coverage
 - Per-game embargoes (optionally per platform), release-date embargoes set
   automatically, and a coverage pipeline that advances as content is planned
@@ -81,6 +105,9 @@ private preview. Preview access: streamorg@outlook.com.
 ### Account and security
 - Profile tabs for personal data, password, appearance, defaults (stream
   schedule) and security.
+- **Two ways in**: creators sign in with username and password — never with
+  Twitch, since the password also opens a private vault; viewers sign in with
+  Twitch only.
 - **Seven themes, each with a light and a dark version**, and a light / dark /
   auto switch that can follow the device — also in the account menu.
 - **Profile picture**: upload one, or copy it from your Twitch channel.
@@ -226,6 +253,15 @@ the repository.
   before they are stored; nothing uploaded is served as sent.
 - **Webhooks**: Twitch live-tracking messages are accepted only with a valid
   HMAC-SHA256 signature, less than ten minutes old and never twice.
+- **Giveaways**: prize codes are copied into a lock per giveaway (a random
+  key wrapped with `APP_KEY`), so winners can redeem without the streamer's
+  password. Claim links carry a random token of which only the SHA-256 is
+  looked up; claiming needs the winner's own Twitch account, and the prize and
+  vault key are updated in one locked transaction so a key is never given
+  twice.
+- **Viewers**: a separate session from creators — a viewer is never a signed
+  in user — and a Twitch sign-in with no scope whose token is revoked as soon
+  as the identity is read.
 - **Errors**: never shown in production; users see generic messages, details
   go to the log.
 
@@ -322,6 +358,28 @@ session that never started. Each action goes to `twitch_live_log`.
 </details>
 
 <details>
+<summary>Giveaways, claim links and viewers</summary>
+
+`Giveaways` holds the logic. Adding a key to a giveaway needs the vault
+open: the code is decrypted and sealed again with the giveaway's lock
+(AES-256-GCM bound to the giveaway and prize ids). The lock key itself is
+random per giveaway and stored encrypted with `APP_KEY`, so prizes can be
+added for as long as the giveaway runs and a winner can choose among them.
+
+A winner is a Twitch user id (resolved from the name, so renames do not
+matter) with a claim link. The token's SHA-256 is used to find the winner,
+and an encrypted copy lets the streamer copy the link again. Claiming locks
+the winner and prize rows, checks the account, the expiry and any embargo
+on the game, then marks the prize claimed and the vault key `given_away`.
+Chat entries (`giveaway_entries`) are deleted when a giveaway is closed.
+
+`Viewers` signs people in with Twitch through the same redirect address as
+channel connections, told apart by the OAuth state, under its own session
+key. A user whose connected Twitch account matches a viewer profile absorbs
+it (`viewers.user_id`).
+</details>
+
+<details>
 <summary>Stream schedule and the dashboard</summary>
 
 `user_stream_schedule` holds a start and optional end time per weekday in the
@@ -380,11 +438,12 @@ config/                 config.example.php (config.php is git-ignored)
 ## Status
 
 Working: dashboard, key vault, content planner and calendar with a stream
-schedule, catalogue with artwork, Twitch connection and live tracking, collabs
-and streamers, embargoes, sessions and account security, themes and profile
-pictures, administration (users, languages, testimonials), landing page.
-Planned: negotiations with publishers (the page is a placeholder) and
-giveaways.
+schedule and Twitch categories, catalogue with artwork, Twitch connection and
+live tracking, giveaways with claim links, viewer profiles, collabs and
+streamers, embargoes, sessions and account security, themes and profile
+pictures, administration (users, languages, testimonials), landing page and
+privacy policy. Planned: a chat bot (giveaway entries, commands, statistics)
+and negotiations with publishers (the page is a placeholder).
 
 ## License
 

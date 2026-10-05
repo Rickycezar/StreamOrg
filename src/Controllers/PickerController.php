@@ -51,6 +51,14 @@ final class PickerController
         ], $stmt->fetchAll())]);
     }
 
+    /** GET /pickers/twitch-categories?q=…  Twitch categories, games and non-game ones alike. */
+    public static function twitchCategories(): void
+    {
+        Auth::requireLogin();
+
+        json_response(['ok' => true, 'items' => Twitch::searchCategories((string) ($_GET['q'] ?? ''))]);
+    }
+
     /** GET /pickers/companies?type=publishers|developers&q=… */
     public static function companies(): void
     {

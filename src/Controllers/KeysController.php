@@ -48,6 +48,23 @@ final class KeysController
     }
 
     /**
+     * A key waiting as a prize in a giveaway keeps the "for giveaway"
+     * status until it is claimed or taken out of the giveaway.
+     */
+    private static function guardGiveawayPrize(int $keyId, string $status): void
+    {
+        if ($status === 'for_giveaway') {
+            return;
+        }
+
+        $giveaway = Giveaways::prizeOf((int) Auth::id(), $keyId);
+
+        if ($giveaway !== null) {
+            json_response(['ok' => false, 'error' => sprintf(__('ui.message.key_in_giveaway'), $giveaway)], 409);
+        }
+    }
+
+    /**
      * The binding embargo for a game on a redemption platform: the latest
      * one that either names that platform or names none at all.
      *
@@ -287,6 +304,8 @@ final class KeysController
 
         $pdo = Database::connection();
 
+        self::guardGiveawayPrize($id, $status);
+
         if (($block = self::embargoBlock($pdo, $id, $status)) !== null) {
             self::embargoConfirmResponse($block);
         }
@@ -501,6 +520,8 @@ final class KeysController
             $targetPlatform = ($found = $lookup->fetchColumn()) === false ? null : (int) $found;
         }
 
+        self::guardGiveawayPrize($id, $status);
+
         if (($block = self::embargoBlock($pdo, $id, $status, $targetGame, $targetPlatform)) !== null) {
             self::embargoConfirmResponse($block);
         }
@@ -583,6 +604,10 @@ final class KeysController
 
         if ($stmt->rowCount() === 0) {
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
+        }
+
+        if ($newCode !== '') {
+            Giveaways::refreshKey((int) Auth::id(), $id, $newCode);
         }
 
         json_response([
@@ -716,9 +741,10 @@ final class KeysController
         $usedIn = $stmt->fetchAll();
 
         $stmt = $pdo->prepare(
-            'SELECT gv.title, gp.winner_handle, gp.won_at, gp.delivered_at
+            'SELECT gv.title, w.twitch_login AS winner_handle, w.created_at AS won_at, gp.claimed_at AS delivered_at
                FROM giveaway_prizes gp
                JOIN giveaways gv ON gv.id = gp.giveaway_id
+          LEFT JOIN giveaway_winners w ON w.id = gp.winner_id
               WHERE gp.game_key_id = ? AND gv.user_id = ?'
         );
         $stmt->execute([$id, Auth::id()]);

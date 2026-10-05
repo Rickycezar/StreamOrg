@@ -65,6 +65,39 @@ final class Database
      * Quote an SQL identifier (table, role, database name). Needed for
      * DDL, where placeholders are not allowed.
      */
+    /**
+     * Runs $work in a transaction and returns its result. Inside an
+     * outer transaction it uses a savepoint, so the work still rolls back
+     * as a unit on an exception without ending the outer one.
+     *
+     * @template T
+     * @param callable(PDO): T $work
+     * @return T
+     */
+    public static function transaction(callable $work): mixed
+    {
+        $pdo    = self::connection();
+        $nested = $pdo->inTransaction();
+        $point  = 'sp_' . bin2hex(random_bytes(4));
+
+        $nested ? $pdo->exec("SAVEPOINT {$point}") : $pdo->beginTransaction();
+
+        try {
+            $result = $work($pdo);
+            $nested ? $pdo->exec("RELEASE SAVEPOINT {$point}") : $pdo->commit();
+
+            return $result;
+        } catch (Throwable $e) {
+            if ($nested) {
+                $pdo->exec("ROLLBACK TO SAVEPOINT {$point}");
+            } elseif ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
     public static function quoteIdentifier(string $name): string
     {
         return '"' . str_replace('"', '""', $name) . '"';

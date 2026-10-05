@@ -177,6 +177,47 @@ final class Twitch
         return ['ok' => true, 'note' => 'Authenticated and reachable.'];
     }
 
+    /** Categories commonly used for content that is not a single game. */
+    public const COMMON_CATEGORIES = ['Just Chatting', 'Special Events', 'Games + Demos', 'Talk Shows & Podcasts', 'Marbles On Stream', 'IRL'];
+
+    /**
+     * Twitch categories (games and non-game ones) for a search term; with
+     * no term, the common non-game categories.
+     *
+     * @return list<array{id:string, name:string, cover:?string}>
+     */
+    public static function searchCategories(string $term): array
+    {
+        if (!self::isConfigured()) {
+            return [];
+        }
+
+        $term = trim($term);
+        $data = $term === ''
+            ? self::get('games', ['name' => self::COMMON_CATEGORIES])
+            : self::get('search/categories', ['query' => mb_substr($term, 0, 80), 'first' => 20]);
+
+        return array_values(array_map(static fn (array $row): array => [
+            'id'    => (string) $row['id'],
+            'name'  => (string) $row['name'],
+            'cover' => isset($row['box_art_url'])
+                ? str_replace(['{width}', '{height}'], ['52', '72'], (string) $row['box_art_url'])
+                : null,
+        ], array_filter((array) ($data['data'] ?? []), static fn ($row): bool => is_array($row) && isset($row['id'], $row['name']))));
+    }
+
+    /** @return array{id:string, name:string}|null a category by its Twitch id */
+    public static function category(string $id): ?array
+    {
+        if (!ctype_digit($id) || !self::isConfigured()) {
+            return null;
+        }
+
+        $row = self::get('games', ['id' => $id])['data'][0] ?? null;
+
+        return is_array($row) && isset($row['id']) ? ['id' => (string) $row['id'], 'name' => (string) $row['name']] : null;
+    }
+
     /**
      * One Helix call with the app token, for endpoints that need no user
      * (EventSub subscriptions). Returns the raw response.
@@ -191,7 +232,7 @@ final class Twitch
             return ['status' => 0, 'body' => '', 'error' => self::$lastError ?? 'No app token.'];
         }
 
-        $url     = 'https://api.twitch.tv/helix/' . $path . ($query === [] ? '' : '?' . http_build_query($query));
+        $url     = 'https://api.twitch.tv/helix/' . $path . ($query === [] ? '' : '?' . self::query($query));
         $headers = [
             'Client-Id'     => self::clientId(),
             'Authorization' => 'Bearer ' . $token,
@@ -221,7 +262,7 @@ final class Twitch
         }
 
         $response = Http::get(
-            'https://api.twitch.tv/helix/' . $path . '?' . http_build_query($query),
+            'https://api.twitch.tv/helix/' . $path . '?' . self::query($query),
             [
                 'Client-Id'     => self::clientId(),
                 'Authorization' => 'Bearer ' . $token,
@@ -263,6 +304,20 @@ final class Twitch
         }
 
         return "Twitch returned {$response['status']} on {$where}.";
+    }
+
+    /** Query string with list values repeated (name=a&name=b), as Helix expects. */
+    private static function query(array $query): string
+    {
+        $parts = [];
+
+        foreach ($query as $key => $value) {
+            foreach ((array) $value as $item) {
+                $parts[] = rawurlencode((string) $key) . '=' . rawurlencode((string) $item);
+            }
+        }
+
+        return implode('&', $parts);
     }
 
     /** App access token, cached in the session for its stated lifetime. */

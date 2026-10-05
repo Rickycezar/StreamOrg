@@ -138,6 +138,18 @@ final class LiveTrackerTest extends DatabaseTestCase
         self::assertSame('live', $this->stateOf($id)['status']);
     }
 
+    public function testContentCategoryMatchesBeforeGames(): void
+    {
+        $marbles = $this->content('Marbles night', 'planned', '+20 hours');
+        $this->pdo->prepare("UPDATE streams SET category_id = '509511', category_name = 'Marbles On Stream' WHERE id = ?")->execute([$marbles]);
+        $chat = $this->content('Plain chat', 'planned', '+19 hours');
+
+        LiveTracker::online($this->user, $this->at('+20 hours'), '509511', 'Marbles On Stream');
+
+        self::assertSame('live', $this->stateOf($marbles)['status']);
+        self::assertSame('planned', $this->stateOf($chat)['status']);
+    }
+
     public function testOfflineFinishesLiveAndReturnsMissedPlansToTheBacklog(): void
     {
         $a = $this->game('Game A', '1');

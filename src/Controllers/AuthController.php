@@ -11,6 +11,9 @@ final class AuthController
 
         View::render('login', [
             'username' => (string) ($_SESSION['login_username'] ?? ''),
+            'as'       => ($_GET['as'] ?? '') === 'viewer' ? 'viewer' : 'creator',
+            'viewer'   => Viewers::current(),
+            'twitch'   => Twitch::isConfigured(),
         ], __('ui.action.login'));
     }
 

@@ -44,7 +44,9 @@ final class TwitchPush
 
         $category = ['state' => 'keep', 'id' => null, 'name' => $channel['game_name'], 'candidates' => [], 'save' => false];
 
-        if ($stream['game_id'] !== null && $pickedCategory !== 'keep') {
+        if ($stream['stream_category_id'] !== null && $pickedCategory !== 'keep') {
+            $category = ['state' => 'set', 'id' => $stream['stream_category_id'], 'name' => $stream['stream_category_name'], 'candidates' => [], 'save' => false];
+        } elseif ($stream['game_id'] !== null && $pickedCategory !== 'keep') {
             if ($pickedCategory !== null && $pickedCategory !== '') {
                 $picked = TwitchUser::category($userId, $pickedCategory);
 
@@ -171,6 +173,7 @@ final class TwitchPush
     {
         $stmt = Database::connection()->prepare(
             'SELECT s.id, s.title, sp.code AS platform_code,
+                    s.category_id AS stream_category_id, s.category_name AS stream_category_name,
                     g.id AS game_id, g.title AS game_title,
                     g.twitch_category_id, g.twitch_category_name,
                     uc.category_id AS user_category_id, uc.category_name AS user_category_name

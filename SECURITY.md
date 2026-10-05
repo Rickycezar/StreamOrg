@@ -18,12 +18,14 @@ fix if you would like it.
 ## Scope
 
 In scope: the code in this repository and the hosted service at
-streamorg.com / streamorg.com.br. Please test only against your own account
+streamorg.com / streamorg.com.br — including the key vault, giveaway claim
+links and viewer sign-in, where a report is especially welcome. Please test only against your own account
 or a local installation, never other people's data, and do not run
 automated scans or load tests against the hosted service.
 
 ## How data is protected
 
 A summary of the protections is in the *Security model* section of the
-[README](README.md#security-model), and the in-app page *How your keys are
-protected* explains the key vault in plain words.
+[README](README.md#security-model), the in-app page *How your keys are
+protected* explains the key vault and giveaways in plain words, and the
+privacy policy at `/privacy` lists what is kept about creators and viewers.

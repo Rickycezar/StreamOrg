@@ -36,6 +36,7 @@ $I = [
     'user'     => 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6',
     'plus'     => 'M12 5v14M5 12h14',
     'cursor'   => 'M5 3l14 8-6 2-2 6z',
+    'gift'     => 'M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7c-2-4-6-4-6-1.5S9 7 12 7zM12 7c2-4 6-4 6-1.5S15 7 12 7z',
 ];
 
 $features = [
@@ -44,7 +45,7 @@ $features = [
     ['catalog', 'gamepad',  'green'],
     ['twitch',  'twitch',   'twitch'],
     ['embargo', 'alert',    'orange'],
-    ['collabs', 'users',    'pink'],
+    ['collabs', 'gift',     'pink'],
 ];
 
 $today   = new DateTimeImmutable('today');
@@ -122,6 +123,12 @@ $initials = static function (string $name): string {
                 <p class="lp-note">
                     <?= $icon($I['mail'], 'lp-note-icon') ?>
                     <span><?= e($noteBefore) ?><a href="<?= e($mailto) ?>"><?= e($email) ?></a><?= e($noteAfter) ?></span>
+                </p>
+            <?php endif; ?>
+            <?php if (!$signedIn): ?>
+                <p class="lp-note">
+                    <?= $icon($I['gift'], 'lp-note-icon') ?>
+                    <span><?= e(__('ui.landing.won_a_key')) ?> <a href="<?= e(url('/login?as=viewer')) ?>" data-turbo="false"><?= e(__('ui.landing.claim_it')) ?></a></span>
                 </p>
             <?php endif; ?>
         </div>
@@ -229,9 +236,12 @@ $initials = static function (string $name): string {
                             <span><b><?= e(__('ui.landing.mini_embargo')) ?></b><i></i><i class="short"></i></span>
                         </span>
                     <?php else: ?>
-                        <span class="lp-avatar"><?= $icon($I['user']) ?></span>
-                        <span class="lp-avatar"><?= $icon($I['user']) ?></span>
-                        <span class="lp-avatar add"><?= $icon($I['plus'], '', 2) ?></span>
+                        <span class="lp-mini-tile"><?= $icon($I['gift']) ?></span>
+                        <span class="lp-mini-claim">
+                            <b><?= e(__('ui.landing.mini_claim')) ?></b>
+                            <span><i></i><?= $icon($I['twitch'], '', 2) ?></span>
+                        </span>
+                        <span class="lp-avatar add"><?= $icon($I['users'], '', 2) ?></span>
                     <?php endif; ?>
                 </div>
             </article>
@@ -310,7 +320,7 @@ $initials = static function (string $name): string {
         <?php require __DIR__ . '/partials/logo.php'; ?>
         <span class="brand-word">Stream<b>Org</b></span>
     </a>
-    <span>© <?= date('Y') ?> StreamOrg</span>
+    <span>© <?= date('Y') ?> StreamOrg · <a href="<?= e(url('/privacy')) ?>" data-turbo="false"><?= e(__('ui.privacy.title')) ?></a></span>
     <?php if ($email !== ''): ?>
         <a class="lp-footer-mail" href="mailto:<?= e($email) ?>"><?= $icon($I['mail']) ?><?= e($email) ?></a>
     <?php else: ?>

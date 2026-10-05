@@ -28,6 +28,29 @@ final class UserAdminTest extends DatabaseTestCase
         self::assertFalse(self::isLastAdmin($this->user($admin)));
     }
 
+    public function testAUserWithGiveawayPrizesCanBeDeleted(): void
+    {
+        $user = $this->createUser('phpunit_giver');
+        $game = (int) $this->pdo->query("INSERT INTO games (title, slug) VALUES ('X', 'phpunit-x-" . bin2hex(random_bytes(3)) . "') RETURNING id")->fetchColumn();
+        $key  = (int) $this->pdo->query(
+            "INSERT INTO game_keys (user_id, game_id, key_platform_id, game_platform_id, key_code, key_hash, status)
+             VALUES ({$user}, {$game}, (SELECT id FROM key_platforms LIMIT 1), (SELECT id FROM game_platforms LIMIT 1), 'c', 'h', 'for_giveaway') RETURNING id"
+        )->fetchColumn();
+        $g = (int) $this->pdo->query("INSERT INTO giveaways (user_id, title) VALUES ({$user}, 'G') RETURNING id")->fetchColumn();
+        $this->pdo->exec("INSERT INTO giveaway_prizes (giveaway_id, game_key_id) VALUES ({$g}, {$key})");
+
+        $source = (string) file_get_contents((new ReflectionClass(UserAdminController::class))->getFileName());
+
+        self::assertStringContainsString('DELETE FROM giveaway_prizes', $source);
+
+        Database::transaction(static function (PDO $pdo) use ($user): void {
+            $pdo->prepare('DELETE FROM giveaway_prizes p USING giveaways g WHERE g.id = p.giveaway_id AND g.user_id = ?')->execute([$user]);
+            $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$user]);
+        });
+
+        self::assertFalse($this->pdo->query("SELECT 1 FROM users WHERE id = {$user}")->fetchColumn());
+    }
+
     public function testRegularAndInactiveUsersAreNeverTheLastAdmin(): void
     {
         $this->pdo->exec("UPDATE users SET is_active = false WHERE role = 'admin'");

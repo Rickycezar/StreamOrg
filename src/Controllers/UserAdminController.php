@@ -270,7 +270,10 @@ final class UserAdminController
             error_log('StreamOrg user delete, Twitch cleanup: ' . $e->getMessage());
         }
 
-        Database::connection()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+        Database::transaction(static function (PDO $pdo) use ($id): void {
+            $pdo->prepare('DELETE FROM giveaway_prizes p USING giveaways g WHERE g.id = p.giveaway_id AND g.user_id = ?')->execute([$id]);
+            $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+        });
         Avatars::forget($target['avatar_path'] ?? null);
 
         flash('success', sprintf(__('ui.message.user_deleted'), $target['username']));

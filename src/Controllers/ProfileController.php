@@ -432,7 +432,8 @@ final class ProfileController
         Auth::requireLogin();
         Csrf::verify();
 
-        $back = ($_POST['back'] ?? '') === '/profile/security' ? '/profile/security' : '/keys';
+        $back = (string) ($_POST['back'] ?? '');
+        $back = $back === '/profile/security' || preg_match('#^/giveaways/show\?id=\d+$#', $back) ? $back : '/keys';
 
         self::confirmPassword('vault', (string) ($_POST['password'] ?? ''), $back);
 
@@ -454,9 +455,17 @@ final class ProfileController
         exit;
     }
 
-    /** Where Twitch sends the user back, with a code or with an error. */
+    /**
+     * Where Twitch sends the user back, with a code or with an error. The
+     * same address serves viewer sign-ins (told apart by their state), so
+     * the Twitch console needs no extra redirect URL.
+     */
     public static function twitchCallback(): void
     {
+        if (Viewers::isViewerCallback((string) ($_GET['state'] ?? ''))) {
+            ViewerController::callback((string) ($_GET['code'] ?? ''));
+        }
+
         Auth::requireLogin();
 
         $code  = (string) ($_GET['code'] ?? '');
@@ -485,6 +494,8 @@ final class ProfileController
                   WHERE id = ?"
             )->execute([$result['login'], Auth::id()]);
         }
+
+        Viewers::linkMatchingUser((string) (TwitchUser::connection((int) Auth::id())['twitch_user_id'] ?? ''));
 
         if (TwitchEventSub::isAvailable() && !TwitchEventSub::subscribe((int) Auth::id())) {
             error_log('StreamOrg EventSub subscribe: ' . TwitchEventSub::lastError());

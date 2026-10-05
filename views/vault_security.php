@@ -108,6 +108,16 @@ $references = [
         </div>
     </section>
 
+    <section>
+        <h2><?= e($t('giveaways_title')) ?></h2>
+        <p class="muted"><?= e($t('giveaways_intro')) ?></p>
+        <ul class="sec-list">
+            <?php foreach (['giveaway_lock', 'giveaway_link', 'giveaway_viewers', 'giveaway_creators'] as $point): ?>
+                <li><?= e($t($point)) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+
     <section class="sec-honest">
         <h2><?= e($t('limits_title')) ?></h2>
         <ul>

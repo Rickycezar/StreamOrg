@@ -66,6 +66,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 'label'    => __('ui.nav.sponsorships'),
                 'children' => [
                     '/keys'         => __('ui.nav.vault'),
+                    '/giveaways'    => __('ui.nav.giveaways'),
                     '/negotiations' => __('ui.nav.negotiations'),
                 ],
             ],
@@ -191,6 +192,15 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 </span>
                 <?= e(__('ui.label.profile_appearance')) ?>
             </a>
+
+            <?php if (TwitchUser::connection((int) $user['id']) !== null || Viewers::forUser((int) $user['id']) !== null): ?>
+                <a class="usermenu-row" href="<?= e(url('/prizes')) ?>">
+                    <span class="usermenu-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7c-2-4-6-4-6-1.5S9 7 12 7zM12 7c2-4 6-4 6-1.5S15 7 12 7z"/></svg>
+                    </span>
+                    <?= e(__('ui.viewer.prizes_title')) ?>
+                </a>
+            <?php endif; ?>
 
             <form method="post" action="<?= e(url('/logout')) ?>" data-turbo="false" class="usermenu-logout">
                 <?= Csrf::field() ?>

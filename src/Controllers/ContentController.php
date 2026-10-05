@@ -115,6 +115,7 @@ final class ContentController
         $backlog = $stmt->fetchAll();
 
         $sql = "SELECT s.id, s.title, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
+                       s.category_id, s.category_name,
                        sp.code AS platform_code,
                        count(sg.game_id)                                     AS game_count,
                        count(sg.game_key_id)                                 AS keyed_count,
@@ -231,6 +232,7 @@ final class ContentController
             'embargoByGame' => $embargoByGame,
             'backlog'     => $backlog,
             'schedule'    => StreamSchedule::forUser((int) $userId),
+            'twitchCategories' => Twitch::isConfigured(),
             'content'     => $content,
             'filters'     => $filters,
             'statuses'    => self::STATUSES,
@@ -284,13 +286,20 @@ final class ContentController
             $deadline = (new DateTimeImmutable('+30 days'))->format('Y-m-d H:i:sP');
         }
 
+        $category = self::postedCategory();
+
+        if ($category === false) {
+            flash('error', __('ui.message.invalid_input'));
+            redirect('/content');
+        }
+
         $pdo->beginTransaction();
 
         try {
             $stmt = $pdo->prepare(
                 'INSERT INTO streams (user_id, streaming_platform_id, title, status,
-                                      scheduled_start, deadline, notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
+                                      scheduled_start, deadline, notes, category_id, category_name)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
             );
             $stmt->execute([
                 Auth::id(),
@@ -300,6 +309,8 @@ final class ContentController
                 $scheduled !== '' ? $scheduled : null,
                 $deadline,
                 trim((string) ($_POST['notes'] ?? '')) ?: null,
+                $category[0],
+                $category[1],
             ]);
 
             $streamId = (int) $stmt->fetchColumn();
@@ -367,6 +378,25 @@ final class ContentController
     }
 
     /** Collapses newlines and runs of whitespace into single spaces. */
+    /**
+     * The Twitch category chosen in a content form: [id, name], [null, null]
+     * for none, or false when the id is not a Twitch category.
+     *
+     * @return array{0:?string, 1:?string}|false
+     */
+    private static function postedCategory(): array|false
+    {
+        $id = trim((string) ($_POST['category_id'] ?? ''));
+
+        if ($id === '') {
+            return [null, null];
+        }
+
+        $category = Twitch::category($id);
+
+        return $category === null ? false : [$category['id'], $category['name']];
+    }
+
     private static function oneLine(string $value): string
     {
         return trim((string) preg_replace('/\s+/u', ' ', $value));
@@ -620,6 +650,17 @@ final class ContentController
 
         if ($stmt->rowCount() === 0) {
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
+        }
+
+        if (array_key_exists('category_id', $_POST)) {
+            $category = self::postedCategory();
+
+            if ($category === false) {
+                json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
+            }
+
+            $pdo->prepare('UPDATE streams SET category_id = ?, category_name = ? WHERE id = ? AND user_id = ?')
+                ->execute([$category[0], $category[1], $id, Auth::id()]);
         }
 
         if (array_key_exists('embargo_until', $_POST)) {

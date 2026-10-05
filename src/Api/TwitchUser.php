@@ -156,6 +156,41 @@ final class TwitchUser
         return ['login' => (string) $who['login']];
     }
 
+    /**
+     * A viewer's Twitch sign-in: exchanges the code, reads who it is, and
+     * revokes the token at once — StreamOrg keeps no access to viewers'
+     * accounts, only their identity.
+     *
+     * @return array{user_id:string, login:string}|null
+     */
+    public static function identify(string $code): ?array
+    {
+        $tokens = self::tokenRequest([
+            'grant_type'   => 'authorization_code',
+            'code'         => $code,
+            'redirect_uri' => self::redirectUri(),
+        ]);
+
+        if ($tokens === null) {
+            return null;
+        }
+
+        $who = Http::json(Http::get('https://id.twitch.tv/oauth2/validate', [
+            'Authorization' => 'OAuth ' . $tokens['access_token'],
+        ]));
+
+        Http::post('https://id.twitch.tv/oauth2/revoke', http_build_query([
+            'client_id' => Twitch::clientId(),
+            'token'     => $tokens['access_token'],
+        ]), ['Content-Type' => 'application/x-www-form-urlencoded']);
+
+        if ($who === null || empty($who['user_id']) || empty($who['login'])) {
+            return null;
+        }
+
+        return ['user_id' => (string) $who['user_id'], 'login' => (string) $who['login']];
+    }
+
     /** @return array{twitch_user_id:string, twitch_login:string, connected_at:string}|null */
     public static function connection(int $userId): ?array
     {

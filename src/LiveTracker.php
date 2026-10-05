@@ -192,7 +192,7 @@ final class LiveTracker
         $stillLive = false;
 
         foreach (self::liveStreams($userId) as $stream) {
-            if (self::match(self::games($userId, (int) $stream['id']), $categoryId, $categoryName) !== null) {
+            if (self::matchStream($userId, $stream, $categoryId, $categoryName) !== null) {
                 $stillLive = true;
                 continue;
             }
@@ -207,7 +207,7 @@ final class LiveTracker
         [$from, $to] = self::window($userId, $since, $at);
 
         $stmt = Database::connection()->prepare(
-            "SELECT id, title FROM streams
+            "SELECT id, title, category_id FROM streams
               WHERE user_id = ? AND status = 'planned'
                 AND scheduled_start >= ? AND scheduled_start < ?
            ORDER BY abs(extract(epoch FROM scheduled_start - ?::timestamptz)), scheduled_start"
@@ -215,7 +215,7 @@ final class LiveTracker
         $stmt->execute([$userId, $from->format(DATE_ATOM), $to->format(DATE_ATOM), $at->format(DATE_ATOM)]);
 
         foreach ($stmt->fetchAll() as $stream) {
-            $match = self::match(self::games($userId, (int) $stream['id']), $categoryId, $categoryName);
+            $match = self::matchStream($userId, $stream, $categoryId, $categoryName);
 
             if ($match === null) {
                 continue;
@@ -262,11 +262,33 @@ final class LiveTracker
     private static function liveStreams(int $userId): array
     {
         $stmt = Database::connection()->prepare(
-            "SELECT id, title FROM streams WHERE user_id = ? AND status = 'live' ORDER BY actual_start NULLS LAST, id"
+            "SELECT id, title, category_id FROM streams WHERE user_id = ? AND status = 'live' ORDER BY actual_start NULLS LAST, id"
         );
         $stmt->execute([$userId]);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Whether a category is this content's: its own Twitch category when it
+     * has one, otherwise (or also) one of its games.
+     *
+     * @param array{id:int|string, category_id:?string} $stream
+     * @return array{id:int, by:string}|null
+     */
+    private static function matchStream(int $userId, array $stream, string $categoryId, string $categoryName): ?array
+    {
+        if (($stream['category_id'] ?? null) !== null && $stream['category_id'] === $categoryId) {
+            return ['id' => 0, 'by' => 'category'];
+        }
+
+        $games = self::games($userId, (int) $stream['id']);
+
+        if ($games === [] && ($stream['category_id'] ?? null) !== null) {
+            return null;
+        }
+
+        return self::match($games, $categoryId, $categoryName);
     }
 
     /** @return list<array{id:int, title:string, category_id:?string}> */

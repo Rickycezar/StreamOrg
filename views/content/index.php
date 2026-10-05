@@ -2,7 +2,7 @@
 /** @var array $counts @var int $missingKeys @var int $thisWeek @var array $backlog
  *  @var array $content @var array $filters @var array $statuses @var array $platforms
  *  @var array $keys @var array $keySources @var array $gamePlatforms
- *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule */
+ *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories */
 ?>
 <h1><?= e(__('ui.nav.content')) ?></h1>
 
@@ -227,6 +227,15 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                     <option value=""><?= e(__('ui.label.no_game')) ?></option>
                 </select>
             </label>
+
+            <?php if ($twitchCategories): ?>
+                <label class="grow">
+                    <span><?= e(__('ui.field.twitch_category')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                    <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.category_from_game')) ?>">
+                        <option value=""><?= e(__('ui.label.category_from_game')) ?></option>
+                    </select>
+                </label>
+            <?php endif; ?>
 
             <label class="grow">
                 <span><?= e(__('ui.field.key')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
@@ -476,6 +485,17 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                                         <span><?= e(__('ui.field.embargo')) ?> <small class="muted"><?= e(__('ui.label.per_game')) ?></small></span>
                                         <input type="datetime-local" name="embargo_until"
                                                value="<?= e($row['embargo_until'] ? substr(str_replace(' ', 'T', $row['embargo_until']), 0, 16) : '') ?>">
+                                    </label>
+                                <?php endif; ?>
+                                <?php if ($twitchCategories): ?>
+                                    <label class="grow">
+                                        <span><?= e(__('ui.field.twitch_category')) ?></span>
+                                        <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.category_from_game')) ?>">
+                                            <option value=""><?= e(__('ui.label.category_from_game')) ?></option>
+                                            <?php if ($row['category_id']): ?>
+                                                <option value="<?= e($row['category_id']) ?>" selected><?= e((string) $row['category_name']) ?></option>
+                                            <?php endif; ?>
+                                        </select>
                                     </label>
                                 <?php endif; ?>
                                 <label class="grow">

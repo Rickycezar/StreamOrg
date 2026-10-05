@@ -49,6 +49,7 @@
         games:      { endpoint: '/pickers/games', label: 'title' },
         publishers: { endpoint: '/pickers/companies?type=publishers', label: 'name' },
         developers: { endpoint: '/pickers/companies?type=developers', label: 'name' },
+        categories: { endpoint: '/pickers/twitch-categories', label: 'name' },
     };
 
     /** Lets the content form's title helper tag a game the picker loaded. */
@@ -75,6 +76,13 @@
                 + (item.year ? ' <span class="picker-year">' + escape(String(item.year)) + '</span>' : '')
                 + (studios ? '<small class="picker-sub">' + escape(studios) + '</small>' : '')
                 + '</span></div>';
+        }
+
+        if (kind === 'categories') {
+            return '<div class="picker-option">'
+                + (item.cover ? '<img class="picker-cover boxart" src="' + escape(item.cover) + '" alt="">'
+                              : '<span class="picker-cover boxart"></span>')
+                + '<span class="picker-text"><span class="picker-title">' + escape(item.name) + '</span></span></div>';
         }
 
         return '<div class="picker-option"><span class="picker-text"><span class="picker-title">'
@@ -129,8 +137,8 @@
                 item: function (item, escape) {
                     const label = escape(item[conf.label] || item.text || '');
 
-                    return kind === 'games' && item.cover
-                        ? '<div class="picker-item"><img class="picker-cover" src="' + escape(item.cover) + '" alt="">' + label + '</div>'
+                    return (kind === 'games' || kind === 'categories') && item.cover
+                        ? '<div class="picker-item"><img class="picker-cover' + (kind === 'categories' ? ' boxart' : '') + '" src="' + escape(item.cover) + '" alt="">' + label + '</div>'
                         : '<div>' + label + '</div>';
                 },
                 no_results: function (data, escape) {
@@ -1304,6 +1312,30 @@
             event.preventDefault();
             popup.focus();
         }
+    });
+
+    /** Copy buttons: data-copy names the field whose value goes to the clipboard. */
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-copy]');
+        if (!button) return;
+
+        const field = document.querySelector(button.dataset.copy);
+        if (!field) return;
+
+        const done = function () {
+            if (!button.dataset.label) button.dataset.label = button.textContent;
+            button.textContent = '✓';
+            clearTimeout(button._restore);
+            button._restore = setTimeout(function () { button.textContent = button.dataset.label; }, 1400);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(field.value).then(done, function () {});
+            return;
+        }
+
+        field.select();
+        try { document.execCommand('copy'); done(); } catch (e) { }
     });
 
     /** A link ending in #new (the dashboard shortcuts) opens the page's add form. */
