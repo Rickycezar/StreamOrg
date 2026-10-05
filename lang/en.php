@@ -541,7 +541,7 @@ return [
             'giveaways_title' => 'Giveaways',
             'giveaways_text' => "When you win, the streamer records your Twitch name so that only your account can claim the prize.\nWhen you enter a giveaway from the chat, your Twitch name and the time are kept only until the giveaway is finished, then deleted.",
             'bot_title' => 'The chat bot',
-            'bot_text' => "The StreamOrg bot only joins the Twitch chats of streamers who add it, and only answers commands.\n- It reads the chat to notice commands, but keeps no chat messages and no record of who used a command.\n- Its activity log, seen by the streamer and the administrator, says which command was answered in which channel, without viewer names, and is deleted after 14 days.\nIf the bot ever collects more, this page will say what and why before it starts.",
+            'bot_text' => "The StreamOrg bot only joins the Twitch chats of streamers who add it (or have an administrator add it, which they can undo on their profile), and only answers commands.\n- It reads the chat to notice commands, but keeps no chat messages and no record of who used a command.\n- Its activity log, seen by the streamer and the administrator, says which command was answered in which channel, without viewer names, and is deleted after 14 days.\nIf the bot ever collects more, this page will say what and why before it starts.",
             'twitch_title' => 'Twitch and hosting',
             'twitch_text' => "Data is exchanged with Twitch only to provide these features, under Twitch's own terms. Nothing is sold or shared with anyone else.\nStreamOrg runs on a server rented from Hetzner, in the European Union.",
             'cookies_title' => 'Cookies',
@@ -604,6 +604,8 @@ return [
         ],
 
         'action' => [
+            'bot_add_channel' => 'Add the bot',
+            'bot_remove_channel' => 'Remove the bot',
             'bot_connect' => 'Connect the bot account',
             'bot_reconnect' => 'Connect again',
             'disconnect' => 'Disconnect',
@@ -1045,13 +1047,17 @@ return [
         ],
 
         'message' => [
+            'bot_channels_hint' => 'Everyone with a connected Twitch account. Streamers add the bot from their profile, or an admin adds it here; they can remove it at any time. A blocked channel stays without the bot until unblocked.',
+            'bot_user_needs_twitch' => 'This user has not connected a Twitch channel.',
+            'bot_added_admin' => 'The bot is joining that channel.',
+            'bot_removed_admin' => 'The bot left that channel.',
             'bot_intro' => 'The StreamOrg bot joins the chat of streamers who add it and answers commands. It runs as a separate service (bot/ in the repository) and reports here.',
             'bot_never_seen' => 'The bot service has not reported yet. Deploy it as its own app, with the same database and APP_KEY.',
             'bot_no_account' => 'No account yet.',
             'bot_connect_hint' => 'Sign in to Twitch as the bot account (for example "streamorg") before connecting: the bot speaks as whoever approves.',
             'bot_disconnect_confirm' => 'The bot leaves every chat until an account is connected again.',
             'bot_defaults_hint' => 'Every channel uses these until its streamer makes their own version.',
-            'bot_no_channels' => 'No streamer has added the bot yet.',
+            'bot_no_channels' => 'No one has connected a Twitch channel yet.',
             'bot_no_activity' => 'Nothing yet.',
             'bot_profile_intro' => '%s can join your Twitch chat and answer commands. Every command can be made your own: its name, its reply, who can use it and how often.',
             'bot_needs_twitch' => 'Connect your Twitch channel first.',

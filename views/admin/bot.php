@@ -94,8 +94,9 @@ $tone  = match ($state) {
 
 <section class="card">
     <div class="card-head">
-        <h2><?= e(__('ui.label.bot_channels')) ?> (<?= count($channels) ?>)</h2>
+        <h2><?= e(__('ui.label.bot_channels')) ?> (<?= count(array_filter($channels, static fn (array $c): bool => (bool) $c['is_enabled'])) ?>)</h2>
     </div>
+    <p class="muted small"><?= e(__('ui.message.bot_channels_hint')) ?></p>
     <?php if ($channels === []): ?>
         <p class="empty"><?= e(__('ui.message.bot_no_channels')) ?></p>
     <?php else: ?>
@@ -114,6 +115,7 @@ $tone  = match ($state) {
                 <?php foreach ($channels as $channel):
                     $status = match (true) {
                         (bool) $channel['is_blocked']        => ['warn', 'ui.label.bot_blocked'],
+                        !$channel['added']                   => ['off', 'ui.label.bot_not_added'],
                         !$channel['is_enabled']              => ['off', 'ui.label.bot_removed'],
                         $channel['twitch_login'] === null    => ['warn', 'ui.label.bot_no_twitch'],
                         $channel['joined_at'] === null       => ['warn', 'ui.label.bot_waiting'],
@@ -128,12 +130,22 @@ $tone  = match ($state) {
                         </td>
                         <td><?= $channel['joined_at'] ? e(fmt_datetime($channel['joined_at'])) : '—' ?></td>
                         <td class="rowactions">
+                            <?php if ($channel['is_enabled'] || $channel['twitch_login'] !== null): ?>
+                                <form method="post" action="<?= e(url('/admin/bot/add')) ?>">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="user_id" value="<?= (int) $channel['user_id'] ?>">
+                                    <input type="hidden" name="enabled" value="<?= $channel['is_enabled'] ? '0' : '1' ?>">
+                                    <button type="submit" class="btn small<?= $channel['is_enabled'] ? '' : ' primary' ?>"<?= $channel['is_blocked'] && !$channel['is_enabled'] ? ' disabled' : '' ?>><?= e(__($channel['is_enabled'] ? 'ui.action.bot_remove_channel' : 'ui.action.bot_add_channel')) ?></button>
+                                </form>
+                            <?php endif; ?>
+                            <?php if ($channel['added']): ?>
                             <form method="post" action="<?= e(url('/admin/bot/channel')) ?>">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="user_id" value="<?= (int) $channel['user_id'] ?>">
                                 <input type="hidden" name="blocked" value="<?= $channel['is_blocked'] ? '0' : '1' ?>">
                                 <button type="submit" class="btn small<?= $channel['is_blocked'] ? '' : ' danger-btn' ?>"><?= e(__($channel['is_blocked'] ? 'ui.action.unblock' : 'ui.action.block')) ?></button>
                             </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

@@ -173,15 +173,15 @@ final class ChatBot
         return $row === false ? null : $row;
     }
 
-    /** A streamer adds the bot to their channel, or removes it. */
-    public static function setChannel(int $userId, bool $enabled): void
+    /** Adds the bot to a streamer's channel, or removes it: by the streamer, or by an admin. */
+    public static function setChannel(int $userId, bool $enabled, bool $byAdmin = false): void
     {
         Database::connection()->prepare(
             'INSERT INTO bot_channels (user_id, is_enabled) VALUES (?, ?)
              ON CONFLICT (user_id) DO UPDATE SET is_enabled = EXCLUDED.is_enabled, last_error = NULL'
         )->execute([$userId, $enabled ? 'true' : 'false']);
 
-        self::log($userId, 'info', $enabled ? 'Added to the channel' : 'Removed from the channel');
+        self::log($userId, 'info', ($enabled ? 'Added to the channel' : 'Removed from the channel') . ($byAdmin ? ' by an admin' : ''));
         self::notify();
     }
 
@@ -195,16 +195,25 @@ final class ChatBot
         self::notify();
     }
 
-    /** @return list<array<string,mixed>> every channel that added the bot, for the admin */
+    /**
+     * Every channel the bot could be in, for the admin: users who added it
+     * (or had it added) and active users with a connected Twitch account,
+     * the ones with the bot first. 'added' tells them apart.
+     *
+     * @return list<array<string,mixed>>
+     */
     public static function channels(): array
     {
         return Database::connection()->query(
-            'SELECT b.user_id, b.is_enabled, b.is_blocked, b.joined_at, b.last_error, b.created_at,
-                    u.username, u.display_name, t.twitch_login
-               FROM bot_channels b
-               JOIN users u ON u.id = b.user_id
-          LEFT JOIN twitch_connections t ON t.user_id = b.user_id
-           ORDER BY lower(coalesce(t.twitch_login, u.username))'
+            'SELECT u.id AS user_id, u.username, u.display_name, t.twitch_login,
+                    b.user_id IS NOT NULL AS added,
+                    coalesce(b.is_enabled, false) AS is_enabled, coalesce(b.is_blocked, false) AS is_blocked,
+                    b.joined_at, b.last_error, b.created_at
+               FROM users u
+          LEFT JOIN bot_channels b       ON b.user_id = u.id
+          LEFT JOIN twitch_connections t ON t.user_id = u.id
+              WHERE b.user_id IS NOT NULL OR (t.user_id IS NOT NULL AND u.is_active)
+           ORDER BY coalesce(b.is_enabled, false) DESC, lower(coalesce(t.twitch_login, u.username))'
         )->fetchAll();
     }
 

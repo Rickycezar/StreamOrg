@@ -174,6 +174,7 @@ $routes = [
         '/admin/bot/settings' => [BotController::class, 'settings'],
         '/admin/bot/command' => [BotController::class, 'defaultCommand'],
         '/admin/bot/channel' => [BotController::class, 'block'],
+        '/admin/bot/add'     => [BotController::class, 'adminChannel'],
         '/admin/bot/disconnect' => [BotController::class, 'disconnect'],
         '/profile/sessions/revoke'        => [ProfileController::class, 'revokeSession'],
         '/profile/sessions/revoke-others' => [ProfileController::class, 'revokeOtherSessions'],

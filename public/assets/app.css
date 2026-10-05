@@ -1342,6 +1342,8 @@ dl.detail dd { margin: 0; font-size: .875rem; overflow-wrap: anywhere; }
 
 td.rowactions { white-space: nowrap; text-align: right; }
 td.rowactions .btn + .btn { margin-left: .3rem; }
+td.rowactions form { display: inline-block; }
+td.rowactions form + form { margin-left: .3rem; }
 
 tr.editrow > td { background: var(--surface-2); padding: 1rem 1.1rem; border-bottom: 2px solid var(--border); }
 tr.editrow:hover > td { background: var(--surface-2); }

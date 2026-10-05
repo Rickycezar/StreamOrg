@@ -540,7 +540,7 @@ return [
             'giveaways_title' => 'Sorteios',
             'giveaways_text' => "Quando você ganha, o streamer registra seu nome da Twitch para que só a sua conta consiga resgatar o prêmio.\nQuando você participa de um sorteio pelo chat, seu nome da Twitch e o horário ficam guardados só até o sorteio ser concluído, e então são apagados.",
             'bot_title' => 'O bot do chat',
-            'bot_text' => "O bot do StreamOrg só entra no chat da Twitch dos streamers que o adicionam, e só responde comandos.\n- Ele lê o chat para perceber comandos, mas não guarda mensagens nem registro de quem usou um comando.\n- O registro de atividade, visto pelo streamer e pelo administrador, diz qual comando foi respondido em qual canal, sem nomes de espectadores, e é apagado depois de 14 dias.\nSe o bot passar a coletar mais, esta página vai dizer o quê e por quê antes de começar.",
+            'bot_text' => "O bot do StreamOrg só entra no chat da Twitch dos streamers que o adicionam (ou pedem a um administrador para adicionar, o que podem desfazer no perfil), e só responde comandos.\n- Ele lê o chat para perceber comandos, mas não guarda mensagens nem registro de quem usou um comando.\n- O registro de atividade, visto pelo streamer e pelo administrador, diz qual comando foi respondido em qual canal, sem nomes de espectadores, e é apagado depois de 14 dias.\nSe o bot passar a coletar mais, esta página vai dizer o quê e por quê antes de começar.",
             'twitch_title' => 'Twitch e hospedagem',
             'twitch_text' => "Dados são trocados com a Twitch só para oferecer esses recursos, sob os termos da própria Twitch. Nada é vendido nem compartilhado com mais ninguém.\nO StreamOrg roda em um servidor alugado da Hetzner, na União Europeia.",
             'cookies_title' => 'Cookies',
@@ -603,6 +603,8 @@ return [
         ],
 
         'action' => [
+            'bot_add_channel' => 'Adicionar o bot',
+            'bot_remove_channel' => 'Tirar o bot',
             'bot_connect' => 'Conectar a conta do bot',
             'bot_reconnect' => 'Conectar de novo',
             'disconnect' => 'Desconectar',
@@ -1044,13 +1046,17 @@ return [
         ],
 
         'message' => [
+            'bot_channels_hint' => 'Todos com uma conta da Twitch conectada. O streamer adiciona o bot pelo próprio perfil, ou um administrador adiciona aqui; o streamer pode tirá-lo quando quiser. Um canal bloqueado fica sem o bot até ser desbloqueado.',
+            'bot_user_needs_twitch' => 'Este usuário não conectou um canal da Twitch.',
+            'bot_added_admin' => 'O bot está entrando naquele canal.',
+            'bot_removed_admin' => 'O bot saiu daquele canal.',
             'bot_intro' => 'O bot do StreamOrg entra no chat dos streamers que o adicionam e responde comandos. Ele roda como um serviço separado (bot/ no repositório) e informa seu estado aqui.',
             'bot_never_seen' => 'O serviço do bot ainda não deu sinal. Publique-o como um app próprio, com o mesmo banco de dados e APP_KEY.',
             'bot_no_account' => 'Nenhuma conta ainda.',
             'bot_connect_hint' => 'Entre na Twitch como a conta do bot (por exemplo "streamorg") antes de conectar: o bot fala como quem aprovar.',
             'bot_disconnect_confirm' => 'O bot sai de todos os chats até uma conta ser conectada de novo.',
             'bot_defaults_hint' => 'Todo canal usa estes até o streamer criar a própria versão.',
-            'bot_no_channels' => 'Nenhum streamer adicionou o bot ainda.',
+            'bot_no_channels' => 'Ninguém conectou um canal da Twitch ainda.',
             'bot_no_activity' => 'Nada ainda.',
             'bot_profile_intro' => '%s pode entrar no chat da sua Twitch e responder comandos. Cada comando pode ser do seu jeito: o nome, a resposta, quem pode usar e com que frequência.',
             'bot_needs_twitch' => 'Conecte seu canal da Twitch primeiro.',

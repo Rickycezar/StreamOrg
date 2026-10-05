@@ -72,6 +72,24 @@ final class ChatBotTest extends DatabaseTestCase
         self::assertNotEmpty(ChatBot::recentLog($user));
     }
 
+    public function testAdminsSeeEveryTwitchChannelAndCanAddTheBot(): void
+    {
+        $user = $this->createUser('phpunit_bot_admin_add');
+        $this->pdo->prepare(
+            "INSERT INTO twitch_connections (user_id, twitch_user_id, twitch_login, access_token, refresh_token, expires_at, scopes)
+             VALUES (?, 'tw-phpunit', 'phpunit_channel', 'x', 'x', now(), '')"
+        )->execute([$user]);
+
+        $row = array_values(array_filter(ChatBot::channels(), static fn (array $c): bool => (int) $c['user_id'] === $user))[0] ?? null;
+        self::assertNotNull($row);
+        self::assertFalse((bool) $row['added']);
+
+        ChatBot::setChannel($user, true, true);
+
+        self::assertTrue((bool) ChatBot::channel($user)['is_enabled']);
+        self::assertSame('Added to the channel by an admin', ChatBot::recentLog($user)[0]['message']);
+    }
+
     public function testPrefixMustBeASymbol(): void
     {
         $this->expectException(UserError::class);

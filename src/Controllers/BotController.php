@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 /**
  * The chat bot from both sides: Administration → Chat bot (the account it
- * speaks as, on/off, prefix, default commands, channels, activity) and the
+ * speaks as, on/off, prefix, default commands, adding it to channels or
+ * blocking them, activity) and the
  * streamer's Profile → Chat bot tab (adding it to their channel and
  * personalising its commands). See ChatBot.
  */
@@ -109,6 +110,26 @@ final class BotController
         ChatBot::setBlocked($userId, ($_POST['blocked'] ?? '') === '1');
 
         flash('success', __('ui.message.saved'));
+        redirect('/admin/bot');
+    }
+
+    /** POST /admin/bot/add — an admin adds the bot to a streamer's channel, or removes it. */
+    public static function adminChannel(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $userId = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT) ?: 0;
+        $on     = ($_POST['enabled'] ?? '') === '1';
+
+        if ($on && TwitchUser::connection($userId) === null) {
+            flash('error', __('ui.message.bot_user_needs_twitch'));
+            redirect('/admin/bot');
+        }
+
+        ChatBot::setChannel($userId, $on, true);
+
+        flash('success', __($on ? 'ui.message.bot_added_admin' : 'ui.message.bot_removed_admin'));
         redirect('/admin/bot');
     }
 
