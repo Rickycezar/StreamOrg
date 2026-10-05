@@ -14,6 +14,15 @@ private preview. Preview access: streamorg@outlook.com.
 
 ## Features
 
+### Dashboard
+- **Shortcuts** to plan content, add keys, start a collab or an embargo, and
+  find a game.
+- **What is for today**: cards for the content planned for the day, with the
+  game's artwork, the expected time range, a live countdown and a *Send to
+  Twitch* button. On a day off, a picker schedules undated content for today
+  at your usual start time.
+- The next seven days at a glance, and the loose ends that need a decision.
+
 ### Key vault
 - **Every key code is encrypted** (AES-256-GCM, a random data key per user).
   Codes are never rendered into pages; they are fetched one row at a time,
@@ -21,7 +30,10 @@ private preview. Preview access: streamorg@outlook.com.
 - **Optional private vault**: lock your data key with your password alone, so
   nobody else — administrators included — can ever read your codes.
 - **Safe on stream**: codes are masked by default. Hold *peek* to see one,
-  copy without revealing, or flip a global "show keys" switch.
+  copy without revealing, or flip the global "show keys" switch in the account
+  menu — a badge on your avatar turns red while keys are visible.
+- A plain-language **"How your keys are protected"** page, opened from the
+  vault and the security settings, with links to the technical references.
 - Paste many codes at once (one per line); duplicates are skipped.
 - Status tracking (available, reserved, for giveaway, used, given away,
   expired, revoked), key type (common / review), DLC vs base game, redemption
@@ -36,6 +48,9 @@ private preview. Preview access: streamorg@outlook.com.
 - **Title helper**: choosing a game, sponsor or collab adds the right
   hashtags and credits to the title, which stays freely editable.
 - Register a missing game (from Steam) or key without leaving the form.
+- **Your stream schedule** (days and usual hours, under *Profile → Defaults*)
+  gives content dropped on a day its start time and shades your off-hours on
+  the calendar.
 
 ### Catalogue
 - **Import games from providers** — Steam out of the box; IGDB, RAWG and OMDb
@@ -49,8 +64,13 @@ private preview. Preview access: streamorg@outlook.com.
 
 ### Twitch
 - **Connect your channel** (OAuth) and **send a stream's title, category and
-  sponsor tags** to Twitch from its row, after a preview of exactly what will
-  change.
+  sponsor tags** to Twitch, after a preview of exactly what will change.
+  Sending marks the planned content as live.
+- **Live tracking** (Twitch EventSub): when the channel goes live, changes
+  category or goes offline, StreamOrg follows along — finishing the live
+  content, starting today's plan for the new game, and returning plans that
+  never happened to the undated backlog. Every step is shown in a recent
+  activity list.
 - Look up streamers on Twitch to plan **collabs** and credit guests.
 
 ### Embargoes and coverage
@@ -59,8 +79,11 @@ private preview. Preview access: streamorg@outlook.com.
   and streamed.
 
 ### Account and security
-- Profile tabs for personal data, password, appearance (twelve themes) and
-  security.
+- Profile tabs for personal data, password, appearance, defaults (stream
+  schedule) and security.
+- **Seven themes, each with a light and a dark version**, and a light / dark /
+  auto switch that can follow the device — also in the account menu.
+- **Profile picture**: upload one, or copy it from your Twitch channel.
 - **See and end your sessions**: every sign-in is listed with its browser,
   address and last activity; sign any of them out, or all the others.
 - Password changes sign out every other session; sessions expire after a
@@ -69,9 +92,17 @@ private preview. Preview access: streamorg@outlook.com.
   encrypted credentials and per-user data isolation throughout.
 
 ### Administration
+- **Users**: add accounts (with a generated password shown once), edit them,
+  deactivate them, reset passwords and delete them, with guard rails for your
+  own account and the last administrator.
 - Shared catalogue management (games, publishers, developers, key sites),
-  provider credentials with a connection test, the language files, and
-  application settings such as session lifetime.
+  provider credentials with a connection test, and application settings such
+  as session lifetime.
+- **Languages**: the interface strings, and labels per language for key
+  sites, platforms and genres added at runtime.
+- **Testimonials** for the landing page, managed as a JSON file that can be
+  uploaded, edited or downloaded, with a switch per testimonial and for the
+  whole section.
 - A public landing page with a preview-access contact.
 
 ---
@@ -82,7 +113,7 @@ private preview. Preview access: streamorg@outlook.com.
 |---|---|
 | Server | PHP 8.2 (`pdo_pgsql`, `curl`, `gd`, `mbstring`, `openssl`), no framework |
 | Database | PostgreSQL 15+ (uses the `citext` extension) |
-| Front end | Server-rendered views, [Turbo Drive](https://turbo.hotwired.dev/) navigation, [Tom Select](https://tom-select.js.org/) pickers, [FullCalendar](https://fullcalendar.io/) — vendored, no build step |
+| Front end | Server-rendered views, [Turbo Drive](https://turbo.hotwired.dev/) navigation, [Tom Select](https://tom-select.js.org/) pickers, [FullCalendar](https://fullcalendar.io/), Plus Jakarta Sans on the landing page — vendored, no build step |
 | Tooling | Composer (autoloader, PHPUnit), npm (only to fetch the browser libraries) |
 | Deployment | Docker image, built and run by [Coolify](https://coolify.io/) on every `git push` |
 
@@ -120,8 +151,8 @@ variables, which is how the container is configured:
 | Variable | Meaning |
 |---|---|
 | `DATABASE_URL` | `postgres://user:password@host:5432/dbname?sslmode=…` (or `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`) |
-| `APP_KEY` | Base64 of 32 random bytes (`openssl rand -base64 32`). Encrypts provider credentials, Twitch tokens and recoverable key vaults. **Back it up; never change it.** |
-| `APP_BASE_URL` | Public address, e.g. `https://streamorg.example.com` (also builds the Twitch redirect URL) |
+| `APP_KEY` | Base64 of 32 random bytes (`openssl rand -base64 32`). Encrypts provider credentials, Twitch tokens and recoverable key vaults, and signs Twitch live-tracking messages. **Back it up; never change it.** |
+| `APP_BASE_URL` | Public address, e.g. `https://streamorg.example.com` (also builds the Twitch redirect URL and the live-tracking address, which must be public HTTPS) |
 | `APP_ENV` | `production` (default) or `development` |
 | `APP_DEBUG` | `1` to display errors — honoured only when `APP_ENV=development` |
 | `TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of the reverse proxy in front of the app, whose `X-Forwarded-*` headers are believed (loopback is always trusted) |
@@ -161,8 +192,12 @@ What the image does:
   database settings, waits for the database and **applies pending
   migrations** — a deploy needs no manual step.
 - A health check at `/healthz` (200 when the database answers).
-- Two persistent volumes: `/var/www/html/public/media` (artwork) and
-  `/var/www/html/tmp` (sessions).
+- Two persistent volumes: `/var/www/html/public/media` (game artwork and
+  profile pictures) and `/var/www/html/tmp` (sessions).
+- Data managed from the administration (testimonials, labels for runtime
+  codes) lives in the database, so it survives deploys and is in the backups.
+  Edits to the language files made on a deployed server do not survive the
+  next deploy: change them in the project.
 
 Personal one-off import scripts (`bin/import_*.php`) are kept out of both git
 and the image. `docker-compose.yml` runs the same image with PostgreSQL for a
@@ -187,8 +222,15 @@ the repository.
 - **Browser**: CSRF tokens on every state change, a Content-Security-Policy
   with no inline script, `frame-ancestors 'none'`, `nosniff`, HSTS over HTTPS,
   and only `http(s)` links ever rendered from stored data.
+- **Uploads**: profile pictures are decoded and re-encoded (256×256 WebP)
+  before they are stored; nothing uploaded is served as sent.
+- **Webhooks**: Twitch live-tracking messages are accepted only with a valid
+  HMAC-SHA256 signature, less than ten minutes old and never twice.
 - **Errors**: never shown in production; users see generic messages, details
   go to the log.
+
+Found a vulnerability? Please report it privately, as described in
+[SECURITY.md](SECURITY.md).
 
 ---
 
@@ -228,6 +270,10 @@ Changing your password re-wraps the key; codes are never re-encrypted.
   type. A key's edit form is fetched from `/keys/edit` on first use.
 - Assets are versioned by modification time and tracked by Turbo, so an
   updated `app.js` makes open tabs reload fully on their next visit.
+- **Themes** are families with a light and a dark variant (`Themes`). The
+  server renders the variant for the chosen mode; for *auto*, `theme.js`
+  (loaded blocking in `<head>`) switches to the dark variant before the first
+  paint when the device prefers it, and follows later changes.
 </details>
 
 <details>
@@ -237,7 +283,9 @@ The calendar (FullCalendar, loaded only on `/content`) works in wall-clock
 time in the user's profile time zone: events are sent as local times without
 an offset and come back the same way, so the browser's own zone never shifts
 anything. Only `planned` content moves. Dropping on a day of the month view
-schedules it at 20:00 and opens that day.
+schedules it at that weekday's start time from the user's stream schedule
+(20:00 when there is none) and opens that day; hours outside the schedule are
+shaded.
 </details>
 
 <details>
@@ -261,14 +309,35 @@ sponsor hashtags naming a key site; other channel tags are kept. The redirect
 URL to register in the Twitch console is shown on *Admin → API settings*.
 Only Twitch is offered as a streaming platform for now
 (`streaming_platforms.is_enabled`).
+
+**Live tracking** subscribes, with the app token, to `stream.online`,
+`stream.offline` and `channel.update` for the user's channel, delivered to
+`/twitch/eventsub` (so only on a public HTTPS address). New connections are
+subscribed automatically; existing ones turn it on in *Profile*. `LiveTracker`
+applies the rules: a category change finishes live content whose games do not
+include it and starts the plan for the session that matches it (by the
+remembered category id, else by a close-enough title — "Hades II" is not
+"Hades"); going offline finishes live content and unschedules plans for that
+session that never started. Each action goes to `twitch_live_log`.
+</details>
+
+<details>
+<summary>Stream schedule and the dashboard</summary>
+
+`user_stream_schedule` holds a start and optional end time per weekday in the
+user's time zone. The planner uses it for drops on a day and to shade
+off-hours; the dashboard uses it for the expected end of today's content and
+the start time offered when picking content for today.
 </details>
 
 <details>
 <summary>Localization</summary>
 
-Nothing translated is stored in the database: values are stable codes and
-`lang/<locale>.php` maps them to labels (`Lang::t()`, `Lang::code()`). A
-missing key falls back to English, then to the key itself. Run
+Values in the database are stable codes, and `lang/<locale>.php` maps them
+to labels (`Lang::t()`, `Lang::code()`). Codes added at runtime to the lookup
+tables (key sites, platforms, genres) can be given labels from the
+administration, stored in `code_labels` and used only where a file has none.
+A missing label falls back to English, then to the key itself. Run
 `bin/check_lang.php` after touching a lang file.
 
 The language of a request is, most specific first: the signed-in user's own
@@ -294,7 +363,8 @@ the schema.
 
 ```
 public/index.php        front controller and routes; the only PHP file served
-public/assets/          app.css, app.js, theme.js and vendor/ (browser libraries)
+public/assets/          app.css, app.js, theme.js, the landing page and pop-up assets,
+                        and vendor/ (browser libraries and the landing font)
 src/                    Config, Database, Auth, sessions, vault, catalogue, helpers
 src/Api/                catalogue providers, Twitch, HTTP client
 src/Controllers/        one class per area
@@ -309,10 +379,12 @@ config/                 config.example.php (config.php is git-ignored)
 
 ## Status
 
-Working: key vault, content planner and calendar, catalogue with artwork,
-Twitch connection, collabs and streamers, embargoes, sessions and account
-security, administration, landing page. Planned: negotiations with publishers
-(the page is a placeholder) and giveaways.
+Working: dashboard, key vault, content planner and calendar with a stream
+schedule, catalogue with artwork, Twitch connection and live tracking, collabs
+and streamers, embargoes, sessions and account security, themes and profile
+pictures, administration (users, languages, testimonials), landing page.
+Planned: negotiations with publishers (the page is a placeholder) and
+giveaways.
 
 ## License
 
@@ -330,6 +402,7 @@ Contributions are welcome under the Contributor License Agreement in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Bundled browser libraries keep their own licenses: Turbo and FullCalendar
-(MIT), Tom Select (Apache 2.0).
+(MIT), Tom Select (Apache 2.0), and the Plus Jakarta Sans font (SIL Open Font
+License 1.1).
 
 Required Notice: Copyright 2026 Henrique Barros (https://streamorg.com)
