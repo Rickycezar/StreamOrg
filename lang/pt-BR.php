@@ -267,6 +267,7 @@ return [
     ],
 
     'session_end' => [
+        'deactivated' => 'Conta desativada por um administrador',
         'logout' => 'Saiu',
         'revoked' => 'Encerrada a partir de outra sessão',
         'password_changed' => 'Senha alterada',
@@ -478,6 +479,8 @@ return [
         ],
 
         'action' => [
+            'reset_password' => 'Redefinir senha',
+            'delete_forever' => 'Excluir para sempre',
             'add_user' => 'Adicionar usuário',
             'download_json' => 'Baixar .json',
             'view_landing' => 'Ver página inicial',
@@ -533,6 +536,9 @@ return [
         ],
 
         'field' => [
+            'user_active' => 'Ativo: pode entrar',
+            'user_reset_accept' => 'Entendo que os códigos deste cofre privado serão perdidos para sempre',
+            'user_delete_type' => 'Digite %s para confirmar',
             'testimonials_upload' => 'Enviar um arquivo .json (substitui o editor abaixo)',
             'testimonials_json' => 'Ou edite o JSON',
             'starts_at' => 'Início',
@@ -614,6 +620,10 @@ return [
         ],
 
         'label' => [
+            'edit_user' => 'Editar %s',
+            'reset_password_for' => 'Redefinir a senha de %s',
+            'delete_user' => 'Excluir %s',
+            'inactive' => 'inativo',
             'n_users' => '%d usuários',
             'username_rules' => 'De 3 a 32 letras, números, pontos, hífens ou sublinhados. Não pode ser alterado depois.',
             'user_password_blank' => 'Deixe em branco para gerar uma senha forte, exibida uma única vez após salvar. Caso contrário, no mínimo 10 caracteres.',
@@ -772,6 +782,20 @@ return [
         ],
 
         'message' => [
+            'user_not_yourself' => 'Você não pode remover o seu próprio acesso de administrador, desativar ou excluir a sua própria conta.',
+            'user_last_admin' => 'Este é o último administrador ativo. Torne outra pessoa administradora primeiro.',
+            'user_updated' => 'Usuário %s atualizado.',
+            'user_reset_private_confirm' => 'Este usuário tem um cofre privado: confirme que os códigos dele serão perdidos.',
+            'user_password_reset' => 'Senha de %s redefinida.',
+            'user_delete_confirm' => 'Digite o nome de usuário exatamente para confirmar a exclusão.',
+            'user_deleted' => 'O usuário %s e todos os dados dele foram excluídos.',
+            'user_sessions_ended' => '%d sessão(ões) encerrada(s).',
+            'user_edit_self' => 'Esta é a sua própria conta: o seu papel e o status de ativo só podem ser alterados por outro administrador.',
+            'user_active_hint' => 'Desligar isso desconecta o usuário de todos os dispositivos e bloqueia a entrada, mantendo todos os dados. Dá para religar a qualquer momento.',
+            'user_reset_explain' => 'O usuário é desconectado de todos os dispositivos e precisa usar a nova senha. Deixe em branco para gerar uma, exibida uma única vez após salvar.',
+            'user_reset_private_warning' => 'Este usuário mantém um cofre privado: só a própria senha dele o abre. Uma nova senha começa um cofre vazio, e todos os códigos guardados até agora ficam ilegíveis, para sempre.',
+            'user_delete_warning' => 'Isso exclui permanentemente a conta e tudo o que há nela: chaves, conteúdos, collabs, embargos, negociações, configurações e sessões. Não dá para desfazer.',
+            'user_delete_alternative' => 'Para apenas bloquear o acesso e manter os dados, edite o usuário e desligue Ativo.',
             'user_bad_username' => 'O nome de usuário precisa ter de 3 a 32 letras, números, pontos, hífens ou sublinhados.',
             'user_bad_email' => 'Informe um e-mail válido.',
             'user_username_taken' => 'Esse nome de usuário já está em uso.',

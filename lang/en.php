@@ -268,6 +268,7 @@ return [
     ],
 
     'session_end' => [
+        'deactivated' => 'Account deactivated by an administrator',
         'logout' => 'Signed out',
         'revoked' => 'Signed out from another session',
         'password_changed' => 'Password changed',
@@ -479,6 +480,8 @@ return [
         ],
 
         'action' => [
+            'reset_password' => 'Reset password',
+            'delete_forever' => 'Delete forever',
             'add_user' => 'Add user',
             'download_json' => 'Download .json',
             'view_landing' => 'View landing page',
@@ -534,6 +537,9 @@ return [
         ],
 
         'field' => [
+            'user_active' => 'Active: can sign in',
+            'user_reset_accept' => 'I understand that the codes in this private vault will be lost for good',
+            'user_delete_type' => 'Type %s to confirm',
             'testimonials_upload' => 'Upload a .json file (replaces the editor below)',
             'testimonials_json' => 'Or edit the JSON',
             'starts_at' => 'Starts',
@@ -615,6 +621,10 @@ return [
         ],
 
         'label' => [
+            'edit_user' => 'Edit %s',
+            'reset_password_for' => 'Reset the password of %s',
+            'delete_user' => 'Delete %s',
+            'inactive' => 'inactive',
             'n_users' => '%d users',
             'username_rules' => '3 to 32 letters, digits, dots, dashes or underscores. Cannot be changed later.',
             'user_password_blank' => 'Leave blank to generate a strong password, shown once after saving. At least 10 characters otherwise.',
@@ -773,6 +783,20 @@ return [
         ],
 
         'message' => [
+            'user_not_yourself' => 'You cannot remove your own administrator access, deactivate or delete your own account.',
+            'user_last_admin' => 'This is the last active administrator. Make someone else an administrator first.',
+            'user_updated' => 'User %s updated.',
+            'user_reset_private_confirm' => 'This user has a private vault: confirm that its codes will be lost.',
+            'user_password_reset' => 'Password of %s reset.',
+            'user_delete_confirm' => 'Type the username exactly to confirm the deletion.',
+            'user_deleted' => 'User %s and all their data were deleted.',
+            'user_sessions_ended' => '%d session(s) signed out.',
+            'user_edit_self' => 'This is your own account: your role and active status can only be changed by another administrator.',
+            'user_active_hint' => 'Turning this off signs the user out everywhere and blocks sign-in, keeping all their data. Turn it back on any time.',
+            'user_reset_explain' => 'The user is signed out of every device and must use the new password. Leave it blank to generate one, shown once after saving.',
+            'user_reset_private_warning' => 'This user keeps a private vault: only their own password can open it. A new password starts an empty vault, and every code stored so far becomes unreadable, permanently.',
+            'user_delete_warning' => 'This permanently deletes the account and everything in it: keys, content, collabs, embargoes, negotiations, settings and sessions. It cannot be undone.',
+            'user_delete_alternative' => 'To only block access and keep the data, edit the user and turn off Active instead.',
             'user_bad_username' => 'The username must be 3 to 32 letters, digits, dots, dashes or underscores.',
             'user_bad_email' => 'Enter a valid e-mail address.',
             'user_username_taken' => 'That username is already in use.',

@@ -1961,3 +1961,7 @@ body.sec-page { background: var(--bg); }
     .sec-modes thead th:first-child { width: 31%; }
     .sec-modes th, .sec-modes td { padding: .5rem .45rem; }
 }
+
+tr.user-inactive td { color: var(--muted); }
+tr.user-inactive td strong { text-decoration: line-through; text-decoration-color: var(--border-strong); }
+label > span code.confirm-name { text-transform: none; letter-spacing: 0; font-size: .85rem; padding: 0 .3rem; border-radius: 3px; background: var(--danger-bg); color: var(--danger-ink); }
