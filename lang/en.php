@@ -388,6 +388,7 @@ return [
         ],
 
         'nav' => [
+            'users' => 'Users',
             'testimonials' => 'Testimonials',
             'sponsorships' => 'Sponsorships',
             'profile' => 'My account',
@@ -416,6 +417,7 @@ return [
         ],
 
         'action' => [
+            'add_user' => 'Add user',
             'download_json' => 'Download .json',
             'view_landing' => 'View landing page',
             'tracking_enable' => 'Turn on live tracking',
@@ -551,6 +553,12 @@ return [
         ],
 
         'label' => [
+            'n_users' => '%d users',
+            'username_rules' => '3 to 32 letters, digits, dots, dashes or underscores. Cannot be changed later.',
+            'user_password_blank' => 'Leave blank to generate a strong password, shown once after saving. At least 10 characters otherwise.',
+            'user_password_for' => 'Password for %s',
+            'you' => 'you',
+            'never' => 'never',
             'testimonials_file' => 'testimonials.json',
             'n_testimonials' => '%d on the landing page',
             'testimonials_hidden' => 'hidden: the list is empty',
@@ -703,6 +711,12 @@ return [
         ],
 
         'message' => [
+            'user_bad_username' => 'The username must be 3 to 32 letters, digits, dots, dashes or underscores.',
+            'user_bad_email' => 'Enter a valid e-mail address.',
+            'user_username_taken' => 'That username is already in use.',
+            'user_email_taken' => 'That e-mail address already belongs to another user.',
+            'user_created' => 'User %s created.',
+            'user_password_once' => 'Copy it now and send it to the user privately: it is not stored anywhere readable and will not be shown again. They can change it under My account → Password.',
             'testimonials_explain' => 'The testimonials shown on the landing page, as a JSON list. Upload a file or edit it here; an empty list ([]) hides the section.',
             'testimonials_format' => 'Each item needs a name and a quote. quote and detail take a plain string or one string per language (en, pt-BR); detail, avatar (an image URL), url (the channel) and rating (1 to 5, default 5) are optional.',
             'testimonials_bad_json' => 'That is not valid JSON: %s.',

@@ -77,6 +77,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 'label'    => __('ui.nav.admin'),
                 'children' => [
                     '/admin'            => __('ui.label.overview'),
+                    '/admin/users'      => __('ui.nav.users'),
                     '/admin/games'      => __('ui.nav.games'),
                     '/admin/publishers' => __('ui.nav.publishers'),
                     '/admin/developers' => __('ui.nav.developers'),

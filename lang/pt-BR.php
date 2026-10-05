@@ -387,6 +387,7 @@ return [
         ],
 
         'nav' => [
+            'users' => 'Usuários',
             'testimonials' => 'Depoimentos',
             'sponsorships' => 'Patrocínios',
             'profile' => 'Minha conta',
@@ -415,6 +416,7 @@ return [
         ],
 
         'action' => [
+            'add_user' => 'Adicionar usuário',
             'download_json' => 'Baixar .json',
             'view_landing' => 'Ver página inicial',
             'tracking_enable' => 'Ligar acompanhamento ao vivo',
@@ -550,6 +552,12 @@ return [
         ],
 
         'label' => [
+            'n_users' => '%d usuários',
+            'username_rules' => 'De 3 a 32 letras, números, pontos, hífens ou sublinhados. Não pode ser alterado depois.',
+            'user_password_blank' => 'Deixe em branco para gerar uma senha forte, exibida uma única vez após salvar. Caso contrário, no mínimo 10 caracteres.',
+            'user_password_for' => 'Senha de %s',
+            'you' => 'você',
+            'never' => 'nunca',
             'testimonials_file' => 'testimonials.json',
             'n_testimonials' => '%d na página inicial',
             'testimonials_hidden' => 'oculto: a lista está vazia',
@@ -702,6 +710,12 @@ return [
         ],
 
         'message' => [
+            'user_bad_username' => 'O nome de usuário precisa ter de 3 a 32 letras, números, pontos, hífens ou sublinhados.',
+            'user_bad_email' => 'Informe um e-mail válido.',
+            'user_username_taken' => 'Esse nome de usuário já está em uso.',
+            'user_email_taken' => 'Esse e-mail já pertence a outro usuário.',
+            'user_created' => 'Usuário %s criado.',
+            'user_password_once' => 'Copie agora e envie ao usuário de forma privada: ela não fica guardada de forma legível e não será exibida de novo. Ele pode trocá-la em Minha conta → Senha.',
             'testimonials_explain' => 'Os depoimentos exibidos na página inicial, como uma lista JSON. Envie um arquivo ou edite aqui; uma lista vazia ([]) oculta a seção.',
             'testimonials_format' => 'Cada item precisa de name e quote. quote e detail aceitam um texto simples ou um texto por idioma (en, pt-BR); detail, avatar (URL de uma imagem), url (o canal) e rating (de 1 a 5, padrão 5) são opcionais.',
             'testimonials_bad_json' => 'Isso não é um JSON válido: %s.',
