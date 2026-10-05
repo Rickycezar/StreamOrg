@@ -14,11 +14,26 @@ final class ViewerController
         $token = (string) ($_GET['t'] ?? '');
         $claim = Giveaways::claimByToken($token);
 
-        View::render('viewer/claim', [
-            'token'    => $token,
-            'claim'    => $claim,
-            'viewer'   => self::viewer(),
-            'revealed' => self::takeRevealed($token),
+        if ($claim !== null) {
+            $private = Giveaways::needsCopies((int) $claim['giveaway']['user_id']);
+
+            $claim['reserved'] = Giveaways::reservedPrize($claim['giveaway'], $claim['winner']);
+            $claim['locked']   = $private && array_filter($claim['prizes'], static fn (array $p): bool => !$p['ready']) !== [];
+            $claim['why']      = $claim['giveaway']['copies_taken_back_at'] !== null ? 'protected' : 'preparing';
+        }
+
+        $viewer = self::viewer();
+
+        if ($claim !== null && $claim['winner']['claimed_at'] !== null && $viewer !== null
+            && (string) $viewer['twitch_user_id'] === (string) $claim['winner']['twitch_user_id']) {
+            $claim['claimed'] = Giveaways::claimedPrize($claim['winner']);
+        }
+
+        View::publicPage('viewer/claim', [
+            'token'      => $token,
+            'claim'      => $claim,
+            'viewer'     => $viewer,
+            'celebrate'  => self::takeCelebration($token),
         ], __('ui.viewer.claim_title'));
     }
 
@@ -42,9 +57,13 @@ final class ViewerController
             redirect($back);
         }
 
-        $_SESSION['claim_revealed'] = ['token' => hash('sha256', $token), 'code' => $code];
+        if ($code === null) {
+            flash('success', __('ui.viewer.reserved_flash'));
+            redirect($back);
+        }
 
-        flash('success', __('ui.viewer.claimed'));
+        $_SESSION['claim_celebrate'] = hash('sha256', $token);
+
         redirect($back);
     }
 
@@ -95,7 +114,7 @@ final class ViewerController
             redirect('/login?as=viewer');
         }
 
-        View::render('viewer/prizes', [
+        View::publicPage('viewer/prizes', [
             'viewer'  => $viewer,
             'prizes'  => Giveaways::prizesOf($viewer),
             'pending' => Giveaways::pendingFor($viewer),
@@ -123,7 +142,7 @@ final class ViewerController
     /** GET /privacy */
     public static function privacy(): void
     {
-        View::render('privacy', ['email' => (string) Config::get('app.contact_email', '')], __('ui.privacy.title'));
+        View::publicPage('privacy', ['email' => (string) Config::get('app.contact_email', '')], __('ui.privacy.title'));
     }
 
     /**
@@ -141,13 +160,12 @@ final class ViewerController
         return $viewer;
     }
 
-    /** The code just claimed, shown once on the claim page after the redirect. */
-    private static function takeRevealed(string $token): ?string
+    /** Whether the prize behind this token was claimed just now: the page celebrates once. */
+    private static function takeCelebration(string $token): bool
     {
-        $revealed = $_SESSION['claim_revealed'] ?? null;
-        unset($_SESSION['claim_revealed']);
+        $just = $_SESSION['claim_celebrate'] ?? null;
+        unset($_SESSION['claim_celebrate']);
 
-        return is_array($revealed) && hash_equals((string) $revealed['token'], hash('sha256', $token))
-            ? (string) $revealed['code'] : null;
+        return is_string($just) && hash_equals($just, hash('sha256', $token));
     }
 }

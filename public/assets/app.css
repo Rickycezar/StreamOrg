@@ -2278,51 +2278,10 @@ td.user-cell .avatar-initials { font-size: .66rem; }
 }
 .btn.twitch-signin:hover { background: #7c3aed; border-color: #7c3aed; color: #fff; box-shadow: 0 3px 10px rgba(145, 70, 255, .35); }
 
-main.centered:has(.viewer-page) { display: block; min-height: 0; }
-.viewer-page { width: min(760px, 100%); margin: 0 auto; }
-.viewer-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .25rem 0 1.5rem; }
-.viewer-who { display: inline-flex; align-items: center; gap: .55rem; font-size: .88rem; }
-.viewer-who img { width: 28px; height: 28px; border-radius: 50%; }
-.viewer-who form { margin: 0; }
-.viewer-foot { text-align: center; margin-top: 1.5rem; }
 
-.claim-card { padding: 1.75rem 1.75rem 1.5rem; }
-.claim-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }
-.claim-head h1 { margin: .1rem 0 0; font-size: 1.4rem; }
-.claim-head p { margin: 0; }
-.claim-streamer { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--border); }
-.claim-prizes { display: grid; gap: .55rem; margin: .5rem 0 1.2rem; }
-.claim-prize {
-    display: flex; align-items: center; gap: .8rem; margin: 0; padding: .6rem .75rem; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
-    transition: border-color .15s, background .15s;
-}
-.claim-prize:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-.claim-prize input { width: auto; margin: 0; }
-.claim-prize img, .claim-art-empty { width: 42px; aspect-ratio: 2 / 3; border-radius: 4px; object-fit: cover; flex: none; background: var(--surface-2); }
-.claim-prize > span { display: flex; flex-direction: column; text-transform: none; letter-spacing: 0; font-size: .92rem; color: var(--text); margin: 0; }
-.claim-reveal { padding: 1rem 1.1rem; border-radius: 10px; background: var(--ok-bg); border: 1px solid var(--ok-border); }
-.claim-reveal p { margin: 0 0 .5rem; }
-.claim-code { display: flex; gap: .5rem; align-items: center; }
-.copy-field.code { font-family: "Cascadia Mono", ui-monospace, Consolas, monospace; font-size: 1rem; letter-spacing: .04em; }
-.claim-rules { margin-top: 1.2rem; font-size: .88rem; }
-.claim-rules summary { cursor: pointer; color: var(--muted); }
-.big-btn { padding: .65rem 1.4rem; font-size: .95rem; }
 
-.prize-list, .pending-list, .winner-list, .entry-list { list-style: none; margin: 0; padding: 0; }
-.prize-list li, .pending-list li {
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-    padding: .7rem 0; border-bottom: 1px solid var(--border-soft);
-}
-.prize-list li:last-child, .pending-list li:last-child { border-bottom: 0; }
-.prize-list li > div { display: flex; flex-direction: column; min-width: 0; }
-.prize-code summary { cursor: pointer; font-size: .85rem; color: var(--accent); }
-.prize-code[open] summary { margin-bottom: .4rem; }
-.danger-card { border-color: var(--danger-border); }
+.winner-list, .entry-list { list-style: none; margin: 0; padding: 0; }
 
-.privacy .card h2 { font-size: 1rem; }
-.privacy .card p, .privacy .card li { line-height: 1.6; font-size: .92rem; color: var(--text-2); }
-.privacy-lead { line-height: 1.6; }
 
 .page-actions { margin: 0; }
 .page-actions form { margin: 0; }
@@ -2333,7 +2292,7 @@ main.centered:has(.viewer-page) { display: block; min-height: 0; }
 .giveaway-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
 .giveaway-card-head strong { font-size: 1rem; }
 .giveaway-counts { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .84rem; color: var(--text-2); }
-.giveaway-card.status-closed, .giveaway-card.status-cancelled { opacity: .7; }
+.giveaway-card.status-finished, .giveaway-card.status-cancelled { opacity: .7; }
 .badge.giveaway-status-open { border-color: var(--ok-border); background: var(--ok-bg); color: var(--ok); }
 .badge.giveaway-status-planned { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
 .badge.giveaway-status-cancelled { color: var(--muted); }
@@ -2371,3 +2330,30 @@ main.centered:has(.viewer-page) { display: block; min-height: 0; }
     .winner-list li { grid-template-columns: 1fr; }
 }
 .sec-list { margin: 0; padding-left: 1.2rem; display: grid; gap: .55rem; font-size: .9rem; line-height: 1.55; color: var(--text-2); }
+
+.prize-safety {
+    display: flex; gap: .75rem; align-items: flex-start; margin: 0 0 1rem; padding: .75rem .9rem;
+    border-radius: 10px; background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok-ink); font-size: .88rem;
+}
+.prize-safety > svg { flex: none; margin-top: .1rem; color: var(--ok); }
+.prize-safety p { margin: 0; line-height: 1.5; }
+.prize-safety .card-actions { margin-top: .6rem; }
+.prize-safety .card-actions form { margin: 0; }
+.prize-safety.pending { background: var(--accent-soft); border-color: var(--accent-border); color: var(--text-2); }
+.prize-safety.pending > svg { color: var(--accent); }
+.prize-safety .flash { margin: .6rem 0 0; }
+.finish-hint { margin-top: 1rem; }
+.badge.giveaway-status-finished { color: var(--muted); }
+
+.nudge {
+    display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.25rem; padding: 1.1rem 1.25rem;
+    border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--accent-border);
+    animation: rise-in .35s var(--ease-out) both;
+}
+.nudge.nudge-warn { background: var(--warn-bg); border-color: var(--warn-border); }
+.nudge-icon { font-size: 1.9rem; line-height: 1; flex: none; margin-top: .1rem; }
+.nudge h2 { margin: 0 0 .3rem; font-size: 1rem; }
+.nudge p { margin: 0; font-size: .9rem; line-height: 1.55; color: var(--text-2); }
+.nudge .card-actions { margin-top: .8rem; }
+.nudge .card-actions form { margin: 0; }
+.nudge .flash { margin: .8rem 0 0; }

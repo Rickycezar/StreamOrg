@@ -3,13 +3,17 @@
  * One giveaway: its rules, prizes, winners and chat entries.
  *
  * @var array $giveaway @var array $prizes @var array $available @var array $winners
- * @var array $entries @var array $content @var bool $vaultLocked @var bool $twitchReady
+ * @var array $entries @var array $content @var bool $vaultLocked @var bool $twitchReady @var bool $needsCopies
+ * @var array{waiting:int, locked:int} $waitingWinners @var bool $nudge @var bool $takeBackWarn
  */
 $g       = $giveaway;
 $id      = (int) $g['id'];
-$open    = !in_array($g['status'], ['closed', 'cancelled'], true);
+$open    = !in_array($g['status'], Giveaways::ENDED, true);
+$unclaimed = array_values(array_filter($prizes, static fn (array $p): bool => $p['claimed_at'] === null));
+$ready     = count(array_filter($unclaimed, static fn (array $p): bool => (bool) $p['ready']));
+$pendingWinners = count(array_filter($winners, static fn (array $w): bool => $w['state'] === 'waiting'));
 $waiting = array_values(array_filter($prizes, static fn (array $p): bool => $p['claimed_at'] === null && $p['winner_id'] === null));
-$next    = ['planned' => ['open', 'cancelled'], 'open' => ['closed', 'cancelled'], 'closed' => ['open'], 'cancelled' => ['planned']][$g['status']] ?? [];
+$next    = GiveawayController::NEXT[$g['status']] ?? [];
 ?>
 <p class="muted small"><a href="<?= e(url('/giveaways')) ?>">← <?= e(__('ui.nav.giveaways')) ?></a></p>
 
@@ -25,8 +29,8 @@ $next    = ['planned' => ['open', 'cancelled'], 'open' => ['closed', 'cancelled'
                 <?= Csrf::field() ?>
                 <input type="hidden" name="id" value="<?= $id ?>">
                 <input type="hidden" name="status" value="<?= e($status) ?>">
-                <button type="submit" class="btn<?= $status === 'open' ? ' primary' : '' ?><?= $status === 'cancelled' ? ' ghost' : '' ?>"
-                    <?= in_array($status, ['closed', 'cancelled'], true) ? 'data-confirm="' . e(__('ui.message.giveaway_close_confirm')) . '"' : '' ?>>
+                <button type="submit" class="btn<?= in_array($status, ['open', 'finished'], true) ? ' primary' : '' ?><?= $status === 'cancelled' ? ' ghost' : '' ?>"
+                    <?= in_array($status, Giveaways::ENDED, true) ? 'data-confirm="' . e(__('ui.message.giveaway_finish_confirm')) . '"' : '' ?>>
                     <?= e(__('ui.action.giveaway_' . $status)) ?>
                 </button>
             </form>
@@ -36,6 +40,54 @@ $next    = ['planned' => ['open', 'cancelled'], 'open' => ['closed', 'cancelled'
 </div>
 
 <?php $formId = 'edit-giveaway'; require __DIR__ . '/form.php'; ?>
+
+<?php if ($takeBackWarn): ?>
+    <section class="nudge nudge-warn">
+        <span class="nudge-icon" aria-hidden="true">🎁</span>
+        <div>
+            <h2><?= e(__('ui.message.takeback_warn_title')) ?></h2>
+            <p><?= e(sprintf(__('ui.message.takeback_warn_text'), $waitingWinners['waiting'])) ?></p>
+            <div class="card-actions">
+                <form method="post" action="<?= e(url('/giveaways/keep-open')) ?>">
+                    <?= Csrf::field() ?>
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <button type="submit" class="btn primary"><?= e(__('ui.action.takeback_wait')) ?></button>
+                </form>
+                <form method="post" action="<?= e(url('/giveaways/take-back')) ?>">
+                    <?= Csrf::field() ?>
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <input type="hidden" name="confirm" value="1">
+                    <button type="submit" class="btn ghost"><?= e(__('ui.action.takeback_anyway')) ?></button>
+                </form>
+            </div>
+        </div>
+    </section>
+<?php elseif ($nudge && $open): ?>
+    <section class="nudge">
+        <span class="nudge-icon" aria-hidden="true">🚪</span>
+        <div>
+            <h2><?= e(__('ui.message.nudge_title')) ?></h2>
+            <p><?= e(sprintf(__('ui.message.nudge_text'), $waitingWinners['locked'])) ?></p>
+            <?php if ($vaultLocked): ?>
+                <?php $back = '/giveaways/show?id=' . $id; require dirname(__DIR__) . '/partials/vault_unlock.php'; ?>
+            <?php endif; ?>
+            <div class="card-actions">
+                <?php if (!$vaultLocked): ?>
+                    <form method="post" action="<?= e(url('/giveaways/claimable')) ?>">
+                        <?= Csrf::field() ?>
+                        <input type="hidden" name="id" value="<?= $id ?>">
+                        <button type="submit" class="btn primary"><?= e(__('ui.action.nudge_open')) ?></button>
+                    </form>
+                <?php endif; ?>
+                <form method="post" action="<?= e(url('/giveaways/nudge-later')) ?>">
+                    <?= Csrf::field() ?>
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <button type="submit" class="btn ghost"><?= e(__('ui.action.nudge_later')) ?></button>
+                </form>
+            </div>
+        </div>
+    </section>
+<?php endif; ?>
 
 <section class="card giveaway-summary">
     <dl>
@@ -54,13 +106,48 @@ $next    = ['planned' => ['open', 'cancelled'], 'open' => ['closed', 'cancelled'
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.label.prizes')) ?> (<?= count($prizes) ?>)</h2>
-        <?php if ($open && $available !== [] && !$vaultLocked): ?>
+        <?php if ($open && $available !== []): ?>
             <button type="button" class="btn small" data-modal-form="#add-prizes" data-modal-title="<?= e(__('ui.action.add_prizes')) ?>">+ <?= e(__('ui.action.add_prizes')) ?></button>
         <?php endif; ?>
     </div>
 
-    <?php if ($open && $vaultLocked): ?>
-        <?php $back = '/giveaways/show?id=' . $id; require dirname(__DIR__) . '/partials/vault_unlock.php'; ?>
+    <?php if ($prizes !== []): ?>
+        <div class="prize-safety <?= $needsCopies && $ready < count($unclaimed) ? 'pending' : '' ?>">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4"/></svg>
+            <div>
+                <?php if (!$needsCopies): ?>
+                    <p><?= e(__('ui.message.prizes_safe_recoverable')) ?></p>
+                <?php elseif ($unclaimed === []): ?>
+                    <p><?= e(__('ui.message.prizes_safe_none_left')) ?></p>
+                <?php elseif ($ready === 0): ?>
+                    <p><?= e(__('ui.message.prizes_safe_private')) ?></p>
+                <?php else: ?>
+                    <p><?= e(sprintf(__('ui.message.prizes_safe_claimable'), $ready, count($unclaimed))) ?></p>
+                <?php endif; ?>
+                <?php if ($needsCopies && $open && $unclaimed !== []): ?>
+                    <?php if ($vaultLocked && $ready < count($unclaimed)): ?>
+                        <?php $back = '/giveaways/show?id=' . $id; require dirname(__DIR__) . '/partials/vault_unlock.php'; ?>
+                    <?php else: ?>
+                        <div class="card-actions">
+                            <?php if ($ready < count($unclaimed)): ?>
+                                <form method="post" action="<?= e(url('/giveaways/claimable')) ?>">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn primary small"><?= e(__('ui.action.make_claimable')) ?></button>
+                                </form>
+                            <?php endif; ?>
+                            <?php if ($ready > 0): ?>
+                                <form method="post" action="<?= e(url('/giveaways/take-back')) ?>">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <button type="submit" class="btn small"><?= e(__('ui.action.take_back')) ?></button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </div>
     <?php endif; ?>
 
     <form id="add-prizes" method="post" action="<?= e(url('/giveaways/prizes')) ?>" class="subform hidden">
@@ -112,6 +199,9 @@ $next    = ['planned' => ['open', 'cancelled'], 'open' => ['closed', 'cancelled'
                                 <span class="badge early"><?= e(sprintf(__('ui.label.set_aside_for'), $p['winner_login'])) ?></span>
                             <?php else: ?>
                                 <span class="badge"><?= e(__('ui.label.waiting_for_winner')) ?></span>
+                            <?php endif; ?>
+                            <?php if ($needsCopies && !$p['claimed_at']): ?>
+                                <small class="muted"><?= e(__($p['ready'] ? 'ui.label.prize_claimable' : 'ui.label.prize_in_vault')) ?></small>
                             <?php endif; ?>
                         </td>
                         <td class="rowactions">
@@ -245,6 +335,10 @@ $next    = ['planned' => ['open', 'cancelled'], 'open' => ['closed', 'cancelled'
         </ul>
     <?php endif; ?>
 </section>
+<?php endif; ?>
+
+<?php if ($g['status'] === 'closed' && $pendingWinners === 0 && $unclaimed !== []): ?>
+    <div class="flash flash-success finish-hint"><?= e(sprintf(__('ui.message.giveaway_finish_hint'), count($unclaimed))) ?></div>
 <?php endif; ?>
 
 <?php if ($g['status'] !== 'open'): ?>

@@ -21,7 +21,7 @@ final class GiveawayController
                FROM giveaways g
           LEFT JOIN streams s ON s.id = g.stream_id
               WHERE g.user_id = ?
-           ORDER BY CASE g.status WHEN 'open' THEN 0 WHEN 'planned' THEN 1 ELSE 2 END,
+           ORDER BY CASE g.status WHEN 'open' THEN 0 WHEN 'closed' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END,
                     coalesce(g.ends_at, g.starts_at, g.created_at) DESC"
         );
         $stmt->execute([Auth::id()]);
@@ -48,7 +48,7 @@ final class GiveawayController
 
         $stmt = $pdo->prepare(
             'SELECT p.id, p.claimed_at, p.winner_id, k.id AS key_id, g.title AS game_title, gp.code AS platform_code,
-                    k.expires_at, w.twitch_login AS winner_login
+                    k.expires_at, w.twitch_login AS winner_login, (p.sealed_code IS NOT NULL) AS ready
                FROM giveaway_prizes p
                JOIN game_keys k ON k.id = p.game_key_id
                JOIN games g ON g.id = k.game_id
@@ -105,6 +105,11 @@ final class GiveawayController
             'entries'     => $entries,
             'content'     => self::contentOptions(),
             'vaultLocked' => !Vault::isUnlocked($userId),
+            'needsCopies' => Giveaways::needsCopies($userId),
+            'waitingWinners' => $waitingWinners = Giveaways::waitingWinners((int) $giveaway['id']),
+            'nudge'       => Giveaways::needsCopies($userId) && $waitingWinners['locked'] > 0
+                && ($_SESSION['giveaway_nudge_later'][(int) $giveaway['id']] ?? -1) < $waitingWinners['locked'],
+            'takeBackWarn' => !empty($_SESSION['giveaway_takeback_warn'][(int) $giveaway['id']]) && $waitingWinners['waiting'] > 0,
             'twitchReady' => Twitch::isConfigured(),
         ], $giveaway['title']);
     }
@@ -149,7 +154,19 @@ final class GiveawayController
         redirect($back);
     }
 
-    /** Opens, closes, cancels or reopens a giveaway. Closing drops its entries. */
+    /** Which status may follow which: closing ends entries, finishing (or cancelling) concludes. */
+    public const NEXT = [
+        'planned'   => ['open', 'cancelled'],
+        'open'      => ['closed', 'cancelled'],
+        'closed'    => ['open', 'finished'],
+        'finished'  => [],
+        'cancelled' => ['planned'],
+    ];
+
+    /**
+     * Moves a giveaway along. Finishing or cancelling concludes it: unused
+     * links stop working and unclaimed keys go back to the vault.
+     */
     public static function status(): void
     {
         Auth::requireLogin();
@@ -157,20 +174,71 @@ final class GiveawayController
 
         $giveaway = self::posted();
         $status   = (string) ($_POST['status'] ?? '');
+        $back     = '/giveaways/show?id=' . (int) $giveaway['id'];
 
-        if (!in_array($status, Giveaways::STATUSES, true)) {
+        if (!in_array($status, self::NEXT[$giveaway['status']] ?? [], true)) {
             flash('error', __('ui.message.invalid_input'));
-            redirect('/giveaways/show?id=' . (int) $giveaway['id']);
+            redirect($back);
+        }
+
+        if (in_array($status, Giveaways::ENDED, true)) {
+            $returned = Giveaways::finish((int) Auth::id(), (int) $giveaway['id'], $status);
+            flash('success', sprintf(__('ui.message.giveaway_status'), code_label('giveaway_status', $status))
+                . ($returned > 0 ? ' ' . sprintf(__('ui.message.giveaway_keys_returned'), $returned) : ''));
+            redirect($back);
         }
 
         Database::connection()->prepare('UPDATE giveaways SET status = ?, updated_at = now() WHERE id = ?')
             ->execute([$status, $giveaway['id']]);
 
-        if (in_array($status, ['closed', 'cancelled'], true)) {
-            Giveaways::clearEntries((int) $giveaway['id']);
+        flash('success', sprintf(__('ui.message.giveaway_status'), code_label('giveaway_status', $status)));
+        redirect($back);
+    }
+
+    /** Private vaults: copies the prizes so winners can claim them. */
+    public static function makeClaimable(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $giveaway = self::posted();
+        $back     = '/giveaways/show?id=' . (int) $giveaway['id'];
+
+        try {
+            $count = Giveaways::makeClaimable((int) Auth::id(), (int) $giveaway['id']);
+        } catch (VaultLocked) {
+            flash('error', __('ui.message.vault_locked'));
+            redirect($back);
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect($back);
         }
 
-        flash('success', sprintf(__('ui.message.giveaway_status'), code_label('giveaway_status', $status)));
+        flash('success', sprintf(__('ui.message.giveaway_made_claimable'), $count));
+        redirect($back);
+    }
+
+    /**
+     * Private vaults: deletes the copies of the unclaimed prizes. With
+     * winners still waiting, it first asks — they would have to wait.
+     */
+    public static function takeBack(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $giveaway = self::posted();
+        $id       = (int) $giveaway['id'];
+
+        if (empty($_POST['confirm']) && Giveaways::waitingWinners($id)['waiting'] > 0) {
+            $_SESSION['giveaway_takeback_warn'][$id] = true;
+            redirect('/giveaways/show?id=' . $id);
+        }
+
+        unset($_SESSION['giveaway_takeback_warn'][$id]);
+        $count = Giveaways::takeBack((int) Auth::id(), $id);
+
+        flash('success', sprintf(__('ui.message.giveaway_taken_back'), $count));
         redirect('/giveaways/show?id=' . (int) $giveaway['id']);
     }
 
@@ -216,9 +284,6 @@ final class GiveawayController
 
         try {
             $result = Giveaways::addPrizes((int) Auth::id(), (int) $giveaway['id'], $keyIds);
-        } catch (VaultLocked) {
-            flash('error', __('ui.message.vault_locked'));
-            redirect($back);
         } catch (UserError $e) {
             flash('error', $e->getMessage());
             redirect($back);
@@ -227,6 +292,32 @@ final class GiveawayController
         flash('success', sprintf(__('ui.message.giveaway_prizes_added'), $result['added'])
             . ($result['skipped'] !== [] ? ' ' . sprintf(__('ui.message.giveaway_prizes_skipped'), implode(', ', $result['skipped'])) : ''));
         redirect($back);
+    }
+
+    /** "I'll do it in a bit": hides the locked-keys nudge until another winner is waiting. */
+    public static function nudgeLater(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $giveaway = self::posted();
+        $id       = (int) $giveaway['id'];
+        $_SESSION['giveaway_nudge_later'][$id] = Giveaways::waitingWinners($id)['locked'];
+
+        redirect('/giveaways/show?id=' . $id);
+    }
+
+    /** "Let them unwrap first": keeps the keys open after all. */
+    public static function keepOpen(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $giveaway = self::posted();
+        unset($_SESSION['giveaway_takeback_warn'][(int) $giveaway['id']]);
+
+        flash('success', __('ui.message.giveaway_kept_open'));
+        redirect('/giveaways/show?id=' . (int) $giveaway['id']);
     }
 
     public static function removePrize(): void

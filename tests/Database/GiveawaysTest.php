@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** Prizes sealed into a giveaway, claimed only by their winner, never twice. */
+/** Prizes linked to vault keys, copied only when needed, claimed only by their winner, never twice. */
 final class GiveawaysTest extends DatabaseTestCase
 {
     private int $user;
@@ -71,7 +71,7 @@ final class GiveawaysTest extends DatabaseTestCase
 
         self::assertSame(1, $result['added']);
         self::assertCount(2, $result['skipped']);
-        self::assertStringNotContainsString('AAAA', (string) $this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE game_key_id = {$ok}")->fetchColumn());
+        self::assertNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE game_key_id = {$ok}")->fetchColumn(), 'Adding a prize must copy nothing.');
     }
 
     public function testWinnerPicksAKeyAndBothRecordsAreMarked(): void
@@ -101,6 +101,37 @@ final class GiveawaysTest extends DatabaseTestCase
 
         $this->expectException(UserError::class);
         Giveaways::claim($this->winner($g, '1002'), $this->viewer('1002'), $p1);
+    }
+
+    public function testPickingAKeySomeoneJustTookSaysSo(): void
+    {
+        Lang::setLocale('en');
+        $g = $this->giveaway();
+        Giveaways::addPrizes($this->user, $g, [$this->key('AAAA-1111'), $this->key('BBBB-2222')]);
+        [$p1] = $this->prizeIds($g);
+        Giveaways::claim($this->winner($g, '1001'), $this->viewer('1001'), $p1);
+
+        try {
+            Giveaways::claim($this->winner($g, '1002'), $this->viewer('1002'), $p1);
+            self::fail('The same key was claimed twice.');
+        } catch (UserError $e) {
+            self::assertSame(__('ui.message.claim_taken'), $e->getMessage());
+        }
+    }
+
+    public function testTakingBackIsRememberedUntilMadeClaimableAgain(): void
+    {
+        $k = $this->key('PRIV-0001');
+        Vault::makePrivate($this->user, 'phpunit-password-1');
+        $g = $this->giveaway();
+        Giveaways::addPrizes($this->user, $g, [$k]);
+        Giveaways::makeClaimable($this->user, $g);
+        Giveaways::takeBack($this->user, $g);
+
+        self::assertNotNull(Giveaways::find($this->user, $g)['copies_taken_back_at']);
+
+        Giveaways::makeClaimable($this->user, $g);
+        self::assertNull(Giveaways::find($this->user, $g)['copies_taken_back_at']);
     }
 
     public function testOnlyTheWinnersAccountCanClaim(): void
@@ -165,26 +196,117 @@ final class GiveawaysTest extends DatabaseTestCase
         Giveaways::draw($this->user, $g);
     }
 
-    public function testPrivateVaultKeysCanBeClaimedWithoutThePassword(): void
+    public function testRecoverableVaultKeysAreReadOnlyWhenClaimed(): void
     {
+        $g = $this->giveaway();
+        Giveaways::addPrizes($this->user, $g, [$this->key('AAAA-1111'), $this->key('BBBB-2222')]);
+        [$p1, $p2] = $this->prizeIds($g);
+
+        Giveaways::claim($this->winner($g, '1001'), $this->viewer('1001'), $p1);
+
+        self::assertNotNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE id = {$p1}")->fetchColumn(), 'The claimed key is kept for its winner.');
+        self::assertNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE id = {$p2}")->fetchColumn(), 'Unclaimed keys stay only in the vault.');
+    }
+
+    public function testPickingALockedKeyReservesItUntilTheKeysAreOpened(): void
+    {
+        Lang::setLocale('en');
         $k = $this->key('PRIV-0001');
+        $this->key('PRIV-0002');
         Vault::makePrivate($this->user, 'phpunit-password-1');
         $g = $this->giveaway();
-        Giveaways::addPrizes($this->user, $g, [$k]);
+        Giveaways::addPrizes($this->user, $g, [$k, $k + 1]);
+        [$p1] = $this->prizeIds($g);
+        $token = $this->winner($g, '1001');
 
+        self::assertNull(Giveaways::claim($token, $this->viewer('1001'), $p1), 'A locked key is reserved, not revealed.');
+        self::assertSame('for_giveaway', $this->pdo->query("SELECT status FROM game_keys WHERE id = {$k}")->fetchColumn());
+
+        try {
+            Giveaways::claim($this->winner($g, '1002'), $this->viewer('1002'), $p1);
+            self::fail('A reserved key was taken by someone else.');
+        } catch (UserError $e) {
+            self::assertSame(__('ui.message.claim_taken'), $e->getMessage());
+        }
+
+        Giveaways::makeClaimable($this->user, $g);
         $this->newRequest();
         $_SESSION = [];
         $_COOKIE  = [];
 
         self::assertFalse(Vault::isUnlocked($this->user));
-        self::assertSame('PRIV-0001', Giveaways::claim($this->winner($g, '1001'), $this->viewer('1001'), $this->prizeIds($g)[0]));
+        self::assertSame('PRIV-0001', Giveaways::claim($token, ['id' => null, 'twitch_user_id' => '1001'], null));
+        self::assertSame('given_away', $this->pdo->query("SELECT status FROM game_keys WHERE id = {$k}")->fetchColumn());
     }
 
-    public function testEditingTheCodeRefreshesThePrize(): void
+    public function testWaitingWinnersCountsThoseHoldingLockedKeys(): void
+    {
+        $k = $this->key('PRIV-0001');
+        Vault::makePrivate($this->user, 'phpunit-password-1');
+        $g = $this->giveaway();
+        Giveaways::addPrizes($this->user, $g, [$k]);
+        $this->winner($g, '1001');
+
+        self::assertSame(['waiting' => 1, 'locked' => 1], Giveaways::waitingWinners($g));
+
+        Giveaways::makeClaimable($this->user, $g);
+        self::assertSame(['waiting' => 1, 'locked' => 0], Giveaways::waitingWinners($g));
+    }
+
+    public function testTakingBackDeletesTheCopies(): void
+    {
+        $k = $this->key('PRIV-0001');
+        Vault::makePrivate($this->user, 'phpunit-password-1');
+        $g = $this->giveaway();
+        Giveaways::addPrizes($this->user, $g, [$k]);
+        Giveaways::makeClaimable($this->user, $g);
+
+        self::assertSame(1, Giveaways::takeBack($this->user, $g));
+        self::assertNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE giveaway_id = {$g}")->fetchColumn());
+    }
+
+    public function testAssignedPrizeOfAPrivateVaultIsCopiedForItsWinnerOnly(): void
+    {
+        $a = $this->key('PRIV-AAAA');
+        $b = $this->key('PRIV-BBBB');
+        Vault::makePrivate($this->user, 'phpunit-password-1');
+        $g = $this->giveaway('assigned');
+        Giveaways::addPrizes($this->user, $g, [$a, $b]);
+        [$p1, $p2] = $this->prizeIds($g);
+
+        $this->winner($g, '1001', $p2);
+
+        self::assertNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE id = {$p1}")->fetchColumn());
+        self::assertNotNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE id = {$p2}")->fetchColumn());
+    }
+
+    public function testFinishingReturnsUnclaimedKeysAndEndsUnusedLinks(): void
     {
         $g = $this->giveaway();
+        $a = $this->key('AAAA-1111');
+        $b = $this->key('BBBB-2222');
+        Giveaways::addPrizes($this->user, $g, [$a, $b]);
+        [$p1] = $this->prizeIds($g);
+        Giveaways::claim($this->winner($g, '1001'), $this->viewer('1001'), $p1);
+        $this->winner($g, '1002');
+        $this->pdo->exec("INSERT INTO giveaway_entries (giveaway_id, twitch_user_id, twitch_login) VALUES ({$g}, '5', 'five')");
+
+        self::assertSame(1, Giveaways::finish($this->user, $g));
+
+        self::assertSame('finished', $this->pdo->query("SELECT status FROM giveaways WHERE id = {$g}")->fetchColumn());
+        self::assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM giveaway_prizes WHERE giveaway_id = {$g}")->fetchColumn(), 'Only the claimed prize remains.');
+        self::assertSame('for_giveaway', $this->pdo->query("SELECT status FROM game_keys WHERE id = {$b}")->fetchColumn());
+        self::assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM giveaway_winners WHERE giveaway_id = {$g} AND claimed_at IS NULL AND cancelled_at IS NULL")->fetchColumn());
+        self::assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM giveaway_entries WHERE giveaway_id = {$g}")->fetchColumn());
+    }
+
+    public function testEditingTheCodeRefreshesACopy(): void
+    {
         $k = $this->key('OLD-CODE');
+        Vault::makePrivate($this->user, 'phpunit-password-1');
+        $g = $this->giveaway();
         Giveaways::addPrizes($this->user, $g, [$k]);
+        Giveaways::makeClaimable($this->user, $g);
 
         Giveaways::refreshKey($this->user, $k, 'NEW-CODE');
 

@@ -80,9 +80,13 @@ private preview. Preview access: streamorg@outlook.com.
 - **Named giveaways** with a short keyword for the chat, rules, an entry
   window, and an optional surprise mode that hides them until opened.
   Several can run at once — a month-long one and a quick surprise.
-- **Prizes from the vault**: keys marked "for giveaway" are copied into the
-  giveaway and stay linked to the original, which is marked given away when
-  the prize is claimed.
+- **Prizes from the vault, copied only when needed**: a prize just points at
+  a key marked "for giveaway". With a recoverable vault the key is opened
+  only when its winner claims it; with a private vault the streamer makes the
+  prizes claimable when ready, and can take the copies back. The vault key is
+  marked given away when its prize is claimed.
+- **Finishing** a giveaway ends the links not used yet, returns unclaimed
+  keys to the vault and deletes their copies.
 - **Winners by Twitch account**: drawn from chat entries, typed in after an
   external game such as Marbles, or picked by hand. Either the winner picks a
   key from the giveaway, or a key is assigned to them.
@@ -253,12 +257,13 @@ the repository.
   before they are stored; nothing uploaded is served as sent.
 - **Webhooks**: Twitch live-tracking messages are accepted only with a valid
   HMAC-SHA256 signature, less than ten minutes old and never twice.
-- **Giveaways**: prize codes are copied into a lock per giveaway (a random
-  key wrapped with `APP_KEY`), so winners can redeem without the streamer's
-  password. Claim links carry a random token of which only the SHA-256 is
-  looked up; claiming needs the winner's own Twitch account, and the prize and
-  vault key are updated in one locked transaction so a key is never given
-  twice.
+- **Giveaways**: nothing leaves the vault when a prize is added. A
+  recoverable vault is read at claim time; a private vault's prizes are copied
+  into a lock per giveaway (a random key wrapped with `APP_KEY`) only when the
+  streamer makes them claimable, and the copies can be taken back. Claim links
+  carry a random token of which only the SHA-256 is looked up; claiming needs
+  the winner's own Twitch account, and the prize and vault key are updated in
+  one locked transaction so a key is never given twice.
 - **Viewers**: a separate session from creators — a viewer is never a signed
   in user — and a Twitch sign-in with no scope whose token is revoked as soon
   as the identity is read.
@@ -360,18 +365,24 @@ session that never started. Each action goes to `twitch_live_log`.
 <details>
 <summary>Giveaways, claim links and viewers</summary>
 
-`Giveaways` holds the logic. Adding a key to a giveaway needs the vault
-open: the code is decrypted and sealed again with the giveaway's lock
-(AES-256-GCM bound to the giveaway and prize ids). The lock key itself is
-random per giveaway and stored encrypted with `APP_KEY`, so prizes can be
-added for as long as the giveaway runs and a winner can choose among them.
+`Giveaways` holds the logic. A prize is a link to a vault key; nothing is
+copied when it is added. With a recoverable vault the key is decrypted at the
+moment its winner claims it. A private vault cannot be opened without its
+password, so *make claimable* (vault open) seals the giveaway's unclaimed
+codes with its lock (AES-256-GCM bound to the giveaway and prize ids; the lock
+key is random per giveaway and stored encrypted with `APP_KEY`), and *take
+back* deletes those copies. An assigned prize of a private vault is sealed
+when its winner is set, while the streamer is there. A claimed prize keeps a
+sealed copy so its winner can always see it; finishing a giveaway deletes the
+unclaimed prizes and their copies.
 
 A winner is a Twitch user id (resolved from the name, so renames do not
 matter) with a claim link. The token's SHA-256 is used to find the winner,
 and an encrypted copy lets the streamer copy the link again. Claiming locks
 the winner and prize rows, checks the account, the expiry and any embargo
 on the game, then marks the prize claimed and the vault key `given_away`.
-Chat entries (`giveaway_entries`) are deleted when a giveaway is closed.
+Chat entries (`giveaway_entries`) are kept through closing, so winners can
+still be drawn, and deleted when the giveaway is finished.
 
 `Viewers` signs people in with Twitch through the same redirect address as
 channel connections, told apart by the OAuth state, under its own session

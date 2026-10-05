@@ -7,15 +7,15 @@
  */
 $sections = ['who', 'creators', 'viewers', 'giveaways', 'twitch', 'cookies', 'retention', 'rights', 'changes'];
 ?>
-<div class="viewer-page privacy">
-    <?php $viewer = null; require __DIR__ . '/partials/viewer_bar.php'; ?>
-
-    <h1><?= e(__('ui.privacy.title')) ?></h1>
-    <p class="muted"><?= e(__('ui.privacy.updated')) ?></p>
-    <p class="privacy-lead"><?= e(__('ui.privacy.lead')) ?></p>
+<div class="pub-privacy">
+    <header class="pub-hero">
+        <span class="lp-eyebrow"><?= e(__('ui.privacy.updated')) ?></span>
+        <h1><?= e(__('ui.privacy.title')) ?></h1>
+        <p class="pub-lead"><?= e(__('ui.privacy.lead')) ?></p>
+    </header>
 
     <?php foreach ($sections as $section): ?>
-        <section class="card">
+        <section class="pub-card">
             <h2><?= e(__('ui.privacy.' . $section . '_title')) ?></h2>
             <?php
             $lines  = explode("\n", __('ui.privacy.' . $section . '_text'));

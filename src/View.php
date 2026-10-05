@@ -14,6 +14,18 @@ final class View
         require dirname(__DIR__) . '/views/layout.php';
     }
 
+    /**
+     * Renders a page for the general public (claim links, viewers' prizes,
+     * the privacy policy) in the landing page's look, without the app's menu.
+     */
+    public static function publicPage(string $template, array $data = [], ?string $title = null): void
+    {
+        $content   = self::capture($template, $data);
+        $pageTitle = $title;
+
+        require dirname(__DIR__) . '/views/public_layout.php';
+    }
+
     /** Renders without the surrounding layout — used for AJAX fragments. */
     public static function partial(string $template, array $data = []): string
     {
