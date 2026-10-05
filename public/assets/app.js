@@ -1288,6 +1288,24 @@
         if (event.target.closest('[data-close-modal]')) closeModal();
     });
 
+    /** Links marked data-popup open in a small window of their own (the vault security explainer). */
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest('a[data-popup]');
+        if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+
+        const width = Math.min(780, screen.availWidth - 40);
+        const height = Math.min(860, screen.availHeight - 60);
+        const left = Math.max(0, (screen.availWidth - width) / 2);
+        const top = Math.max(0, (screen.availHeight - height) / 2);
+        const popup = window.open(link.href, link.target || 'streamorg-popup',
+            'popup,width=' + width + ',height=' + height + ',left=' + left + ',top=' + top);
+
+        if (popup) {
+            event.preventDefault();
+            popup.focus();
+        }
+    });
+
     /** A link ending in #new (the dashboard shortcuts) opens the page's add form. */
     onPage(function () {
         if (location.hash !== '#new') return;

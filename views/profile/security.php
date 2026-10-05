@@ -91,7 +91,10 @@
 <?php endif; ?>
 
 <section class="card" id="vault">
-    <h2><?= e(__('ui.label.key_vault')) ?></h2>
+    <div class="card-head">
+        <h2><?= e(__('ui.label.key_vault')) ?></h2>
+        <?php require dirname(__DIR__) . '/partials/vault_security_link.php'; ?>
+    </div>
 
     <?php $private = $user['vault_mode'] === 'private'; ?>
 

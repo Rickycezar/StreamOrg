@@ -71,6 +71,7 @@ $routes = [
         '/dashboard'         => [DashboardController::class, 'index'],
         '/login'             => [AuthController::class, 'showLogin'],
         '/keys'              => [KeysController::class, 'index'],
+        '/vault/security'    => [VaultInfoController::class, 'security'],
         '/negotiations'      => [NegotiationController::class, 'index'],
         '/content'           => [ContentController::class, 'index'],
         '/catalog'           => [CatalogController::class, 'index'],

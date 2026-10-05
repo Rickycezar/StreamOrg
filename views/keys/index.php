@@ -3,7 +3,10 @@
  *  @var array $platforms @var array $sources
  *  @var bool $canAddGames @var bool $vaultLocked */
 ?>
-<h1><?= e(__('ui.nav.vault')) ?></h1>
+<div class="page-head">
+    <h1><?= e(__('ui.nav.vault')) ?></h1>
+    <?php require dirname(__DIR__) . '/partials/vault_security_link.php'; ?>
+</div>
 
 <?php if ($vaultLocked): ?>
     <?php $back = '/keys'; require dirname(__DIR__) . '/partials/vault_unlock.php'; ?>
