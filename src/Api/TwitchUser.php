@@ -6,7 +6,8 @@ declare(strict_types=1);
  *
  * Twitch.php works with an app token, which can read public data but never
  * modify a channel. Editing the title, category and tags needs a user
- * token with channel:manage:broadcast, obtained through the authorization
+ * token with channel:manage:broadcast (and the channel schedule,
+ * channel:manage:schedule), obtained through the authorization
  * code flow: the user is sent to Twitch, approves, and comes back to
  * /profile/twitch/callback with a code that is exchanged for tokens.
  *
@@ -16,7 +17,9 @@ declare(strict_types=1);
  */
 final class TwitchUser
 {
-    public const SCOPE = 'channel:manage:broadcast';
+    public const SCOPE = 'channel:manage:broadcast channel:manage:schedule';
+
+    public const SCHEDULE_SCOPE = 'channel:manage:schedule';
 
     /** Twitch's limits for Modify Channel Information. */
     public const TITLE_MAX = 140;
@@ -203,6 +206,36 @@ final class TwitchUser
         return $row === false ? null : $row;
     }
 
+    /** Whether the user's connection was approved with that scope (older ones predate the schedule). */
+    public static function hasScope(int $userId, string $scope): bool
+    {
+        $stmt = Database::connection()->prepare('SELECT scopes FROM twitch_connections WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        $scopes = $stmt->fetchColumn();
+
+        return $scopes !== false && in_array($scope, explode(' ', (string) $scopes), true);
+    }
+
+    /**
+     * One call to the channel schedule (Helix schedule/segment) for the
+     * user's own channel: POST creates, PATCH updates, DELETE removes.
+     *
+     * @return array{status:int, body:string, error:?string}|null null when not connected
+     */
+    public static function scheduleSegment(int $userId, string $method, ?string $segmentId, ?array $body = null): ?array
+    {
+        $conn = self::connection($userId);
+
+        if ($conn === null) {
+            self::$lastError = 'not_connected';
+            return null;
+        }
+
+        $query = ['broadcaster_id' => $conn['twitch_user_id']] + ($segmentId !== null ? ['id' => $segmentId] : []);
+
+        return self::helixRaw($userId, $method, 'schedule/segment', $query, $body);
+    }
+
     /** Revokes the token at Twitch (best effort) and forgets it here. */
     public static function disconnect(int $userId): void
     {
@@ -368,11 +401,13 @@ final class TwitchUser
                 'Accept'        => 'application/json',
             ];
 
-            if ($method === 'GET') {
-                $response = Http::get($url, $headers);
+            if ($method === 'GET' || $method === 'DELETE') {
+                $response = $method === 'GET' ? Http::get($url, $headers) : Http::delete($url, $headers);
             } else {
                 $headers['Content-Type'] = 'application/json';
-                $response = Http::patch($url, (string) json_encode($body), $headers);
+                $response = $method === 'POST'
+                    ? Http::post($url, (string) json_encode($body), $headers)
+                    : Http::patch($url, (string) json_encode($body), $headers);
             }
 
             if ($response['status'] !== 401) {

@@ -2360,3 +2360,12 @@ td.user-cell .avatar-initials { font-size: .66rem; }
 .badge.twitch-cat { border-color: rgba(145, 70, 255, .35); background: rgba(145, 70, 255, .08); color: #7c3aed; }
 [data-theme="dark"] .badge.twitch-cat, [data-theme="midnight"] .badge.twitch-cat, [data-theme="ember"] .badge.twitch-cat, [data-theme="kelp"] .badge.twitch-cat,
 [data-theme="violet"] .badge.twitch-cat, [data-theme="dim"] .badge.twitch-cat, [data-theme="harbour"] .badge.twitch-cat { color: #c4b5fd; }
+
+.input-suffix { display: flex; align-items: center; gap: .5rem; }
+.input-suffix input { max-width: 8rem; }
+.prefix-rows { display: grid; gap: .4rem; margin-bottom: .5rem; max-width: 520px; }
+.prefix-row { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; }
+.prefix-default { display: inline-flex; align-items: center; gap: .35rem; font-size: .85rem; color: var(--muted); white-space: nowrap; }
+.prefix-default input { width: auto; margin: 0; }
+.title-prefix-row { display: grid; grid-template-columns: minmax(9rem, auto) 1fr; gap: .5rem; align-items: start; }
+.planner-bar { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }

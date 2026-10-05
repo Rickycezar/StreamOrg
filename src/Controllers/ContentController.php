@@ -21,6 +21,7 @@ final class ContentController
     private static function plannerSql(): string
     {
         return "SELECT s.id, s.title, s.status, s.scheduled_start, s.deadline, sp.code AS platform_code,
+                    coalesce(s.planned_minutes, (SELECT u.content_minutes FROM users u WHERE u.id = s.user_id)) AS minutes,
                     string_agg(g.title, ', ' ORDER BY sg.play_order) AS games,
                     (array_agg(t.path ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_path,
                     (array_agg(t.updated_at ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_version,
@@ -232,6 +233,9 @@ final class ContentController
             'embargoByGame' => $embargoByGame,
             'backlog'     => $backlog,
             'schedule'    => StreamSchedule::forUser((int) $userId),
+            'contentMinutes' => ContentDefaults::minutes((int) $userId),
+            'prefixes'    => ContentDefaults::prefixes((int) $userId),
+            'twitchSchedule' => TwitchSchedule::status((int) $userId),
             'twitchCategories' => Twitch::isConfigured(),
             'content'     => $content,
             'filters'     => $filters,
@@ -763,6 +767,34 @@ final class ContentController
         ]);
     }
 
+    /** AJAX: sends the planned content to the Twitch channel schedule. */
+    public static function twitchSchedule(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(json: true);
+
+        $userId = (int) Auth::id();
+
+        try {
+            $result = TwitchSchedule::send($userId);
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        }
+
+        $done = $result['created'] + $result['updated'] + $result['removed'] + $result['unchanged'];
+
+        if ($result['failed'] > 0 && $done === 0) {
+            json_response(['ok' => false, 'error' => sprintf(__('ui.message.twitch_schedule_failed'), (string) $result['error'])], 502);
+        }
+
+        json_response([
+            'ok'      => true,
+            'message' => sprintf(__('ui.message.twitch_schedule_sent'), $result['created'], $result['updated'], $result['removed'])
+                . ($result['failed'] > 0 ? ' ' . sprintf(__('ui.message.twitch_schedule_some_failed'), $result['failed'], (string) $result['error']) : ''),
+            'status'  => TwitchSchedule::describe(TwitchSchedule::status($userId)),
+        ]);
+    }
+
     /**
      * The calendar works in "wall-clock" time: dates go to the browser as
      * local times in the user's profile time zone, with no offset, and come
@@ -791,7 +823,8 @@ final class ContentController
 
     /**
      * One planner item, shaped as a FullCalendar event (and reused for the
-     * backlog). Only planned content can be moved.
+     * backlog). Only planned content can be moved or resized; its length is
+     * its own, or the user's usual content length.
      *
      * @return array<string,mixed>
      */
@@ -803,14 +836,19 @@ final class ContentController
             $row['expires_before_use']    ? __('ui.label.expires_first') : null,
         ]));
 
+        $start = self::toWall($row['scheduled_start']);
+
         return [
             'id'         => (string) $row['id'],
             'title'      => $row['title'],
-            'start'      => self::toWall($row['scheduled_start']),
+            'start'      => $start,
+            'end'        => $start === null ? null
+                : (new DateTimeImmutable($start))->modify('+' . (int) $row['minutes'] . ' minutes')->format('Y-m-d\TH:i:s'),
             'editable'   => $row['status'] === 'planned',
             'classNames' => array_merge(['status-' . $row['status']], $warnings !== [] ? ['has-warning'] : []),
             'extendedProps' => [
                 'status'      => $row['status'],
+                'minutes'     => (int) $row['minutes'],
                 'statusLabel' => code_label('stream_status', $row['status']),
                 'games'       => $row['games'],
                 'thumb'       => $row['thumb_path'] !== null
@@ -849,28 +887,31 @@ final class ContentController
 
     /**
      * POST: sets or clears one item's date and time, from a drop on the
-     * calendar or a drag back to the backlog. Only planned content moves:
-     * what is live, done or cancelled already happened (or will not).
+     * calendar or a drag back to the backlog, and with "minutes" its length
+     * (a resize). Only planned content moves: what is live, done or
+     * cancelled already happened (or will not).
      */
     public static function schedule(): void
     {
         Auth::requireLogin();
         Csrf::verify(json: true);
 
-        $id   = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
-        $wall = trim((string) ($_POST['start'] ?? ''));
-        $when = $wall === '' ? null : self::fromWall($wall);
+        $id      = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+        $wall    = trim((string) ($_POST['start'] ?? ''));
+        $when    = $wall === '' ? null : self::fromWall($wall);
+        $rawLen  = trim((string) ($_POST['minutes'] ?? ''));
+        $minutes = $rawLen === '' ? null : ContentDefaults::minutesFromInput($rawLen);
 
-        if (!$id || ($wall !== '' && $when === null)) {
+        if (!$id || ($wall !== '' && $when === null) || ($rawLen !== '' && $minutes === null)) {
             json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
         }
 
         $pdo  = Database::connection();
         $stmt = $pdo->prepare(
-            "UPDATE streams SET scheduled_start = ?
+            "UPDATE streams SET scheduled_start = ?, planned_minutes = coalesce(?, planned_minutes)
               WHERE id = ? AND user_id = ? AND status = 'planned'"
         );
-        $stmt->execute([$when?->format(DATE_ATOM), $id, Auth::id()]);
+        $stmt->execute([$when?->format(DATE_ATOM), $minutes, $id, Auth::id()]);
 
         if ($stmt->rowCount() === 0) {
             json_response(['ok' => false, 'error' => __('ui.message.planner_not_movable')], 409);

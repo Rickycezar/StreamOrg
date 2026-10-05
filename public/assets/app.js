@@ -815,6 +815,7 @@
         const list = backlog.querySelector('.backlog-list');
         const schedule = JSON.parse(root.dataset.schedule || '{}');
         const defaultStart = root.dataset.defaultStart || '20:00';
+        const contentMinutes = parseInt(root.dataset.contentMinutes, 10) || 120;
 
         /** "HH:MM" from the stream schedule for a calendar date (UTC wall time). */
         function scheduledStart(date) {
@@ -893,8 +894,38 @@
             return el;
         }
 
-        async function save(id, start) {
-            const result = await postJson('/content/schedule', { id: id, start: start });
+        /**
+         * Where content dropped on a day goes: right after the day's last
+         * item, or at the usual start time when the day is still empty.
+         */
+        function slotFor(date, exceptId) {
+            const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+            const key = wallTime(day).slice(0, 10);
+            let latest = null;
+
+            calendar.getEvents().forEach(function (other) {
+                if (other.id === String(exceptId) || !other.start) return;
+                if (wallTime(other.start).slice(0, 10) !== key) return;
+
+                const end = other.end || new Date(other.start.getTime() + contentMinutes * 60000);
+                if (!latest || end > latest) latest = end;
+            });
+
+            if (latest) return latest;
+
+            const hm = scheduledStart(day).split(':');
+            return new Date(day.getTime() + (parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10)) * 60000);
+        }
+
+        function minutesOf(event) {
+            return event.end ? Math.round((event.end.getTime() - event.start.getTime()) / 60000) : contentMinutes;
+        }
+
+        async function save(id, start, minutes) {
+            const payload = { id: id, start: start };
+            if (minutes) payload.minutes = minutes;
+
+            const result = await postJson('/content/schedule', payload);
 
             if (!result.ok) {
                 alert(result.error || 'Error');
@@ -915,8 +946,8 @@
             stickyHeaderDates: false,
             events: root.dataset.eventsUrl,
             editable: true,
-            eventDurationEditable: false,
-            defaultTimedEventDuration: '02:00',
+            eventDurationEditable: true,
+            defaultTimedEventDuration: { minutes: contentMinutes },
             droppable: true,
             dayMaxEvents: 3,
             navLinks: true,
@@ -940,7 +971,19 @@
             },
 
             eventDrop: async function (info) {
-                if (!await save(info.event.id, wallTime(info.event.start))) info.revert();
+                const minutes = minutesOf(info.oldEvent);
+                let start = info.event.start;
+
+                if (info.view.type === 'dayGridMonth') {
+                    start = slotFor(start, info.event.id);
+                    info.event.setDates(start, new Date(start.getTime() + minutes * 60000));
+                }
+
+                if (!await save(info.event.id, wallTime(start))) info.revert();
+            },
+
+            eventResize: async function (info) {
+                if (!await save(info.event.id, wallTime(info.event.start), minutesOf(info.event))) info.revert();
             },
 
             eventReceive: async function (info) {
@@ -948,8 +991,7 @@
                 let start = info.event.start;
 
                 if (info.event.allDay) {
-                    const hm = scheduledStart(start).split(':');
-                    start = new Date(start.getTime() + (parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10)) * 60000);
+                    start = slotFor(start, info.event.id);
                 }
 
                 info.event.remove();
@@ -988,7 +1030,8 @@
             eventData: function (el) {
                 const item = JSON.parse(el.dataset.event);
                 delete item.start;
-                item.duration = '02:00';
+                delete item.end;
+                item.duration = { minutes: (item.extendedProps && item.extendedProps.minutes) || contentMinutes };
                 return item;
             },
         });
@@ -1348,6 +1391,55 @@
 
         field.select();
         try { document.execCommand('copy'); done(); } catch (e) { }
+    });
+
+    /** Planner: sends the planned content to the Twitch channel schedule. */
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('.twitch-schedule-send');
+        if (!button) return;
+
+        const label = button.textContent;
+        const status = document.querySelector('[data-twitch-schedule-status]');
+        button.disabled = true;
+        button.textContent = '…';
+
+        const result = await postJson('/content/twitch-schedule', {});
+
+        button.disabled = false;
+        button.textContent = label;
+
+        if (!result.ok) {
+            alert(result.error || 'Error');
+            return;
+        }
+
+        if (status) status.textContent = result.message + ' ' + result.status;
+    });
+
+    /** Profile defaults: adds and removes title prefix rows. */
+    document.addEventListener('click', function (event) {
+        const add = event.target.closest('[data-prefix-add]');
+        const remove = event.target.closest('[data-prefix-remove]');
+
+        if (add) {
+            const form = add.closest('[data-prefix-form]');
+            const template = form.querySelector('[data-prefix-template]');
+            const holder = document.createElement('div');
+            holder.innerHTML = template.innerHTML.replace(/__KEY__/g, 'n' + Date.now());
+            const row = holder.firstElementChild;
+            form.querySelector('[data-prefix-rows]').append(row);
+            row.querySelector('input[type="text"]').focus();
+        } else if (remove) {
+            const row = remove.closest('.prefix-row');
+            const rows = row.parentElement;
+
+            if (rows.children.length > 1) {
+                row.remove();
+            } else {
+                row.querySelector('input[type="text"]').value = '';
+                row.querySelector('input[type="radio"]').checked = false;
+            }
+        }
     });
 
     /** A link ending in #new (the dashboard shortcuts) opens the page's add form. */
@@ -2402,6 +2494,27 @@
             const gameSelect    = document.getElementById('content-game');
             const sponsorSelect = document.getElementById('content-sponsor');
             const collabSelect  = document.getElementById('content-collab');
+            const prefixSelect  = document.getElementById('content-prefix');
+
+            if (prefixSelect) {
+                let appliedPrefix = '';
+
+                /** Swaps the chosen prefix at the start of the title, never stacking them. */
+                const applyPrefix = function () {
+                    let text = titleField.value;
+
+                    if (appliedPrefix && text.indexOf(appliedPrefix) === 0) {
+                        text = text.slice(appliedPrefix.length).replace(/^\s+/, '');
+                    }
+
+                    appliedPrefix = prefixSelect.value;
+                    titleField.value = appliedPrefix ? appliedPrefix + (text ? ' ' + text : ' ') : text;
+                };
+
+                prefixSelect.addEventListener('change', applyPrefix);
+
+                if (!titleField.value.trim() && prefixSelect.value) applyPrefix();
+            }
 
             if (gameSelect) {
                 gameSelect.addEventListener('change', function () {

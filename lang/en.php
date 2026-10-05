@@ -582,6 +582,9 @@ return [
         ],
 
         'action' => [
+            'twitch_reconnect' => 'Reconnect Twitch',
+            'twitch_schedule_send' => 'Send schedule to Twitch',
+            'add_prefix' => 'Add prefix',
             'find_twitch_categories' => 'Find Twitch categories (%d)',
             'find_automatically' => 'Find automatically',
             'nudge_open' => 'Open the doors for them',
@@ -666,6 +669,9 @@ return [
         ],
 
         'field' => [
+            'title_prefix' => 'Title prefix',
+            'title_prefixes' => 'Title prefixes',
+            'content_length' => 'Usual sponsored content length',
             'twitch_category' => 'Twitch category',
             'giveaway_name' => 'Name',
             'keyword' => 'Keyword',
@@ -765,6 +771,8 @@ return [
         ],
 
         'label' => [
+            'content_defaults' => 'New content',
+            'no_default_prefix' => 'No prefix by default',
             'in_catalog' => 'in the catalogue',
             'via_twitch' => 'via Twitch',
             'search_twitch_hint' => 'Search Twitch categories: type at least two characters',
@@ -976,6 +984,15 @@ return [
         ],
 
         'message' => [
+            'content_length_hint' => 'How long you usually give a piece of sponsored content. The calendar and dashboard use it; resize an item on the calendar to change just that one.',
+            'title_prefixes_hint' => 'Offered when writing a new content title, such as [STEAM DECK] or [PT-BR]. The default one is already filled in.',
+            'content_defaults_invalid' => 'Check the length (15 minutes to 24 hours) and the prefixes (up to 20, 60 characters each).',
+            'twitch_schedule_reconnect' => 'To send your schedule, reconnect Twitch once so StreamOrg may manage your channel schedule.',
+            'twitch_schedule_last' => 'Twitch schedule last sent %s (%d items).',
+            'twitch_schedule_never' => 'Planned Twitch content can go to the Schedule tab of your channel page.',
+            'twitch_schedule_sent' => 'Twitch schedule updated: %d added, %d changed, %d removed.',
+            'twitch_schedule_some_failed' => '%d could not be sent: %s',
+            'twitch_schedule_failed' => 'Twitch did not accept the schedule: %s (Twitch only offers a schedule to affiliates and partners.)',
             'already_in_catalog' => 'already in the catalogue',
             'add_game_twitch_first' => 'Pick the game as it is listed on Twitch: its store page, dates, studios and artwork are filled in from Steam or IGDB when they have it.',
             'add_game_admin_hint' => 'Pick a Twitch category and leave the rest empty to fill it all in from Steam or IGDB. Or type the details by hand: the category is then kept as chosen, or looked up.',

@@ -76,8 +76,30 @@ final class ProfileController
         Auth::requireLogin();
 
         self::tab('/profile/defaults', 'profile/defaults', [
-            'schedule' => StreamSchedule::forUser((int) Auth::id()),
+            'schedule'       => StreamSchedule::forUser((int) Auth::id()),
+            'contentMinutes' => ContentDefaults::minutes((int) Auth::id()),
+            'prefixes'       => ContentDefaults::prefixes((int) Auth::id()),
         ]);
+    }
+
+    /** Saves the content defaults: usual content length and title prefixes. */
+    public static function saveContentDefaults(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $minutes  = ContentDefaults::minutesFromInput((string) ($_POST['content_minutes'] ?? ''));
+        $prefixes = ContentDefaults::prefixesFromInput((array) ($_POST['prefix'] ?? []), (string) ($_POST['default_prefix'] ?? ''));
+
+        if ($minutes === null || $prefixes === null) {
+            flash('error', __('ui.message.content_defaults_invalid'));
+            redirect('/profile/defaults');
+        }
+
+        ContentDefaults::save((int) Auth::id(), $minutes, $prefixes);
+
+        flash('success', __('ui.message.saved'));
+        redirect('/profile/defaults');
     }
 
     /** Saves the default stream schedule from the defaults tab. */

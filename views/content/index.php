@@ -2,7 +2,9 @@
 /** @var array $counts @var int $missingKeys @var int $thisWeek @var array $backlog
  *  @var array $content @var array $filters @var array $statuses @var array $platforms
  *  @var array $keys @var array $keySources @var array $gamePlatforms
- *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories */
+ *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
+ *  @var int $contentMinutes @var list<array{prefix:string, is_default:bool}> $prefixes
+ *  @var array{state:string, synced:int, last:?string} $twitchSchedule */
 ?>
 <h1><?= e(__('ui.nav.content')) ?></h1>
 
@@ -57,7 +59,18 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
          data-now="<?= e((new DateTimeImmutable())->format('Y-m-d\TH:i:s')) ?>"
          data-events-url="<?= e(url('/content/calendar')) ?>"
          data-schedule="<?= e(json_encode((object) $schedule)) ?>"
-         data-default-start="<?= e(StreamSchedule::FALLBACK_START) ?>">
+         data-default-start="<?= e(StreamSchedule::FALLBACK_START) ?>"
+         data-content-minutes="<?= $contentMinutes ?>">
+    <?php if ($twitchLogin !== null): ?>
+        <div class="planner-bar">
+            <span class="muted small" data-twitch-schedule-status><?= e(TwitchSchedule::describe($twitchSchedule)) ?></span>
+            <?php if ($twitchSchedule['state'] === 'reconnect'): ?>
+                <a class="btn small" href="<?= e(url('/profile/twitch/connect')) ?>" data-turbo="false"><?= e(__('ui.action.twitch_reconnect')) ?></a>
+            <?php else: ?>
+                <button type="button" class="btn small twitch-schedule-send"><?= e(__('ui.action.twitch_schedule_send')) ?></button>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
     <div class="planner-layout">
         <div class="planner-calendar" id="planner-calendar">
             <div class="skeleton-calendar" aria-hidden="true">
@@ -161,6 +174,17 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
     <form id="add-content" class="subform hidden" method="post" action="<?= e(url('/content')) ?>">
         <?= Csrf::field() ?>
         <div class="grid">
+            <?php if ($prefixes !== []): ?>
+                <label>
+                    <span><?= e(__('ui.field.title_prefix')) ?></span>
+                    <select id="content-prefix">
+                        <option value=""><?= e(__('ui.label.none')) ?></option>
+                        <?php foreach ($prefixes as $p): ?>
+                            <option value="<?= e($p['prefix']) ?>" <?= $p['is_default'] ? 'selected' : '' ?>><?= e($p['prefix']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            <?php endif; ?>
             <label class="grow">
                 <span><?= e(__('ui.field.title')) ?></span>
                 <textarea name="title" rows="2" required class="title-area"></textarea>

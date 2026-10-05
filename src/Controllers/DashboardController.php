@@ -28,7 +28,7 @@ final class DashboardController
 
         $stmt = $pdo->prepare(
             "SELECT s.id, s.title, s.status, s.scheduled_start, s.actual_start, s.ended_at, s.twitch_pushed_at,
-                    s.deadline, sp.code AS platform_code,
+                    s.deadline, sp.code AS platform_code, s.planned_minutes,
                     string_agg(g.title, ', ' ORDER BY sg.play_order) AS games,
                     (array_agg(h.path ORDER BY sg.play_order) FILTER (WHERE h.path IS NOT NULL))[1] AS art_path,
                     (array_agg(h.updated_at ORDER BY sg.play_order) FILTER (WHERE h.path IS NOT NULL))[1] AS art_version,
@@ -52,9 +52,10 @@ final class DashboardController
             'to'   => $tomorrow->format(DATE_ATOM),
         ]);
 
-        $zone = new DateTimeZone(date_default_timezone_get());
+        $zone           = new DateTimeZone(date_default_timezone_get());
+        $contentMinutes = ContentDefaults::minutes($userId);
 
-        $todayItems = array_map(static function (array $row) use ($schedule, $zone): array {
+        $todayItems = array_map(static function (array $row) use ($contentMinutes, $zone): array {
             $row['art'] = $row['art_path'] !== null
                 ? GameImages::publicUrl($row['art_path'], (string) $row['art_version'])
                 : null;
@@ -62,7 +63,7 @@ final class DashboardController
             $start = (new DateTimeImmutable($row['scheduled_start']))->setTimezone($zone);
             $row['expected_end'] = $row['ended_at'] !== null
                 ? (new DateTimeImmutable($row['ended_at']))->setTimezone($zone)
-                : $start->modify('+' . StreamSchedule::minutesOn($schedule, $start) . ' minutes');
+                : $start->modify('+' . ($row['planned_minutes'] ?? $contentMinutes) . ' minutes');
 
             return $row;
         }, $stmt->fetchAll());

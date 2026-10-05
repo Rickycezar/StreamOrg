@@ -13,7 +13,7 @@ final class StreamSchedule
     /** Start time used when the user has no schedule for a day. */
     public const FALLBACK_START = '20:00';
 
-    /** Expected length of a stream when the schedule has no end time. */
+    /** How long content runs when the user has not said (see ContentDefaults). */
     public const DEFAULT_MINUTES = 120;
 
     /** @return array<int, array{start: string, end: ?string}> weekday => times, Monday first */
@@ -92,25 +92,6 @@ final class StreamSchedule
     public static function startOn(array $schedule, DateTimeInterface $date): string
     {
         return $schedule[(int) $date->format('N')]['start'] ?? self::FALLBACK_START;
-    }
-
-    /**
-     * How long a stream on that date is expected to last, in minutes: the
-     * schedule's start-to-end span (past midnight included), or the
-     * planner's default two hours when the day has no end time.
-     */
-    public static function minutesOn(array $schedule, DateTimeInterface $date): int
-    {
-        $day = $schedule[(int) $date->format('N')] ?? null;
-
-        if ($day === null || $day['end'] === null) {
-            return self::DEFAULT_MINUTES;
-        }
-
-        $minutes = static fn (string $hm): int => (int) substr($hm, 0, 2) * 60 + (int) substr($hm, 3, 2);
-        $span    = $minutes($day['end']) - $minutes($day['start']);
-
-        return $span > 0 ? $span : $span + 24 * 60;
     }
 
     private static function isTime(string $value): bool

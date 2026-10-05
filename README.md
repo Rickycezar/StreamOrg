@@ -52,8 +52,14 @@ private preview. Preview access: streamorg@outlook.com.
   Chatting, Special Events, Marbles On Stream… — used before its games when
   sending to Twitch and when live tracking matches a category.
 - **Your stream schedule** (days and usual hours, under *Profile → Defaults*)
-  gives content dropped on a day its start time and shades your off-hours on
-  the calendar.
+  gives content dropped on an empty day its start time and shades your
+  off-hours on the calendar; content dropped on a busy day goes right after
+  the day's last item.
+- **Content length**: how long you usually give sponsored content, set once
+  under *Profile → Defaults*; resize an item on the calendar to change just
+  that one.
+- **Title prefixes** ("[STEAM DECK]", "[PT-BR]"…) to pick from when writing a
+  title, with one preselected.
 
 ### Catalogue
 - **Twitch first**: with Twitch connected, a game is added by picking its
@@ -78,6 +84,10 @@ private preview. Preview access: streamorg@outlook.com.
 - **Connect your channel** (OAuth) and **send a stream's title, category and
   sponsor tags** to Twitch, after a preview of exactly what will change.
   Sending marks the planned content as live.
+- **Send your schedule** to the Schedule tab of your channel page: planned
+  Twitch content becomes one-off segments with its title, time, length and
+  category; later sends update what changed and remove what was unplanned.
+  Segments you made on Twitch are left alone (affiliates and partners only).
 - **Live tracking** (Twitch EventSub): when the channel goes live, changes
   category or goes offline, StreamOrg follows along — finishing the live
   content, starting today's plan for the new game, and returning plans that
@@ -351,8 +361,9 @@ failed download keeps the previous file.
 <details>
 <summary>Twitch</summary>
 
-Users connect on *Profile → Personal data* (scope `channel:manage:broadcast`;
-tokens encrypted and refreshed automatically). *Send to Twitch* sets the
+Users connect on *Profile → Personal data* (scopes `channel:manage:broadcast`
+and `channel:manage:schedule`; tokens encrypted and refreshed automatically;
+connections made before the schedule existed are asked to reconnect once). *Send to Twitch* sets the
 title (up to 140 characters), the category (an exact title match is saved on
 the shared game, a hand-picked one only for that user) and the tags — only
 sponsor hashtags naming a key site; other channel tags are kept. The redirect

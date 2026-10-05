@@ -581,6 +581,9 @@ return [
         ],
 
         'action' => [
+            'twitch_reconnect' => 'Reconectar a Twitch',
+            'twitch_schedule_send' => 'Enviar agenda para a Twitch',
+            'add_prefix' => 'Adicionar prefixo',
             'find_twitch_categories' => 'Buscar categorias da Twitch (%d)',
             'find_automatically' => 'Buscar automaticamente',
             'nudge_open' => 'Abrir a porta para eles',
@@ -665,6 +668,9 @@ return [
         ],
 
         'field' => [
+            'title_prefix' => 'Prefixo do título',
+            'title_prefixes' => 'Prefixos de título',
+            'content_length' => 'Duração usual de conteúdo patrocinado',
             'twitch_category' => 'Categoria na Twitch',
             'giveaway_name' => 'Nome',
             'keyword' => 'Palavra-chave',
@@ -764,6 +770,8 @@ return [
         ],
 
         'label' => [
+            'content_defaults' => 'Novo conteúdo',
+            'no_default_prefix' => 'Sem prefixo padrão',
             'in_catalog' => 'no catálogo',
             'via_twitch' => 'via Twitch',
             'search_twitch_hint' => 'Busque nas categorias da Twitch: digite pelo menos dois caracteres',
@@ -975,6 +983,15 @@ return [
         ],
 
         'message' => [
+            'content_length_hint' => 'Quanto tempo você costuma dedicar a um conteúdo patrocinado. O calendário e o painel usam isso; redimensione um item no calendário para mudar só ele.',
+            'title_prefixes_hint' => 'Oferecidos ao escrever o título de um novo conteúdo, como [STEAM DECK] ou [PT-BR]. O padrão já vem preenchido.',
+            'content_defaults_invalid' => 'Confira a duração (de 15 minutos a 24 horas) e os prefixos (até 20, com 60 caracteres cada).',
+            'twitch_schedule_reconnect' => 'Para enviar sua agenda, reconecte a Twitch uma vez para o StreamOrg poder gerenciar a agenda do seu canal.',
+            'twitch_schedule_last' => 'Agenda da Twitch enviada por último em %s (%d itens).',
+            'twitch_schedule_never' => 'O conteúdo planejado para a Twitch pode ir para a aba Agenda da página do seu canal.',
+            'twitch_schedule_sent' => 'Agenda da Twitch atualizada: %d adicionados, %d alterados, %d removidos.',
+            'twitch_schedule_some_failed' => '%d não puderam ser enviados: %s',
+            'twitch_schedule_failed' => 'A Twitch não aceitou a agenda: %s (a Twitch só oferece agenda para afiliados e parceiros.)',
             'already_in_catalog' => 'já está no catálogo',
             'add_game_twitch_first' => 'Escolha o jogo como ele aparece na Twitch: loja, datas, estúdios e artes são preenchidos pela Steam ou pelo IGDB quando eles têm.',
             'add_game_admin_hint' => 'Escolha uma categoria da Twitch e deixe o resto vazio para preencher tudo pela Steam ou pelo IGDB. Ou digite os dados à mão: a categoria fica a escolhida, ou é buscada.',
