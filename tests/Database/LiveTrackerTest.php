@@ -24,7 +24,7 @@ final class LiveTrackerTest extends DatabaseTestCase
     private function game(string $title, ?string $categoryId = null): int
     {
         $stmt = $this->pdo->prepare('INSERT INTO games (title, slug, twitch_category_id) VALUES (?, ?, ?) RETURNING id');
-        $stmt->execute([$title, 'phpunit-' . bin2hex(random_bytes(4)), $categoryId]);
+        $stmt->execute([$title, 'phpunit-' . bin2hex(random_bytes(4)), $categoryId ?? LiveTracker::JUST_CHATTING]);
 
         return (int) $stmt->fetchColumn();
     }

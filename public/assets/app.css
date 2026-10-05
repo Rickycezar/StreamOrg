@@ -2357,3 +2357,6 @@ td.user-cell .avatar-initials { font-size: .66rem; }
 .nudge .card-actions { margin-top: .8rem; }
 .nudge .card-actions form { margin: 0; }
 .nudge .flash { margin: .8rem 0 0; }
+.badge.twitch-cat { border-color: rgba(145, 70, 255, .35); background: rgba(145, 70, 255, .08); color: #7c3aed; }
+[data-theme="dark"] .badge.twitch-cat, [data-theme="midnight"] .badge.twitch-cat, [data-theme="ember"] .badge.twitch-cat, [data-theme="kelp"] .badge.twitch-cat,
+[data-theme="violet"] .badge.twitch-cat, [data-theme="dim"] .badge.twitch-cat, [data-theme="harbour"] .badge.twitch-cat { color: #c4b5fd; }

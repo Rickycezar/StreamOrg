@@ -9,6 +9,9 @@ final class IgdbProvider extends Provider
 {
     private const TOKEN_KEY = 'igdb_token';
 
+    /** IGDB's external_game_source for Steam. */
+    private const STEAM_SOURCE = 1;
+
     public function code(): string
     {
         return 'igdb';
@@ -111,6 +114,43 @@ final class IgdbProvider extends Provider
         ];
     }
 
+    /**
+     * IGDB as configured, or else through the Twitch app's credentials
+     * (IGDB accepts any Twitch app), so adding a game from Twitch can use
+     * it even when IGDB was never switched on as a provider.
+     */
+    public static function forTwitch(): ?self
+    {
+        $configured = Providers::get('igdb');
+
+        if ($configured instanceof self && $configured->isAvailable()) {
+            return $configured;
+        }
+
+        if (!Twitch::isConfigured()) {
+            return null;
+        }
+
+        return new self(['client_id' => Twitch::clientId(), 'client_secret' => Twitch::clientSecret(), 'is_enabled' => true]);
+    }
+
+    /** The Steam app id IGDB records for a game, if it is on Steam. */
+    public function steamAppId(string $ref): ?string
+    {
+        if (!ctype_digit($ref) || !$this->isConfigured()) {
+            return null;
+        }
+
+        $games = $this->query('fields external_games.uid, external_games.external_game_source; where id = ' . (int) $ref . '; limit 1;');
+
+        foreach ($games[0]['external_games'] ?? [] as $external) {
+            if ((int) ($external['external_game_source'] ?? 0) === self::STEAM_SOURCE && ctype_digit((string) ($external['uid'] ?? ''))) {
+                return (string) $external['uid'];
+            }
+        }
+
+        return null;
+    }
     /** @return list<array<string,mixed>> */
     private function query(string $apicalypse): array
     {

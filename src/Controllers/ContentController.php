@@ -246,7 +246,7 @@ final class ContentController
                 'SELECT code FROM key_platforms WHERE tags_content ORDER BY sort_order'
             )->fetchAll(PDO::FETCH_COLUMN),
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
-            'canAddGames' => CatalogController::defaultProvider() !== null,
+            'canAddGames' => CatalogController::canAddGames(),
             'twitchLogin' => TwitchUser::connection((int) Auth::id())['twitch_login'] ?? null,
         ], __('ui.nav.content'));
     }

@@ -197,17 +197,57 @@ final class Twitch
             ? self::get('games', ['name' => self::COMMON_CATEGORIES])
             : self::get('search/categories', ['query' => mb_substr($term, 0, 80), 'first' => 20]);
 
-        return array_values(array_map(static fn (array $row): array => [
+        $results = array_values(array_map(static fn (array $row): array => [
             'id'    => (string) $row['id'],
             'name'  => (string) $row['name'],
             'cover' => isset($row['box_art_url'])
                 ? str_replace(['{width}', '{height}'], ['52', '72'], (string) $row['box_art_url'])
                 : null,
         ], array_filter((array) ($data['data'] ?? []), static fn ($row): bool => is_array($row) && isset($row['id'], $row['name']))));
+
+        return $term === '' ? $results : self::rank($results, $term);
     }
 
-    /** @return array{id:string, name:string}|null a category by its Twitch id */
-    public static function category(string $id): ?array
+    /**
+     * Twitch's own order puts "Baltron" before "Balatro": the same title
+     * comes first, then titles starting with the search, then containing
+     * it, then the rest in Twitch's order.
+     *
+     * @param list<array{id:string, name:string, cover:?string}> $results
+     * @return list<array{id:string, name:string, cover:?string}>
+     */
+    public static function rank(array $results, string $term): array
+    {
+        $wanted = LiveTracker::normalise($term);
+        $score  = static function (string $name) use ($term, $wanted): int {
+            $plain = LiveTracker::normalise($name);
+
+            return match (true) {
+                $plain === $wanted || LiveTracker::sameTitle($term, $name) => 0,
+                str_starts_with($plain, $wanted)                           => 1,
+                $wanted !== '' && str_contains($plain, $wanted)            => 2,
+                default                                                    => 3,
+            };
+        };
+
+        $keyed = [];
+
+        foreach ($results as $i => $row) {
+            $keyed[] = [$score($row['name']), $i, $row];
+        }
+
+        usort($keyed, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+        return array_column($keyed, 2);
+    }
+
+    /**
+     * A category by its Twitch id, with its IGDB id (empty for non-game
+     * categories) and box art at the given size.
+     *
+     * @return array{id:string, name:string, igdb_id:?string, box_art:?string}|null
+     */
+    public static function category(string $id, string $size = '600x800'): ?array
     {
         if (!ctype_digit($id) || !self::isConfigured()) {
             return null;
@@ -215,7 +255,20 @@ final class Twitch
 
         $row = self::get('games', ['id' => $id])['data'][0] ?? null;
 
-        return is_array($row) && isset($row['id']) ? ['id' => (string) $row['id'], 'name' => (string) $row['name']] : null;
+        if (!is_array($row) || !isset($row['id'], $row['name'])) {
+            return null;
+        }
+
+        [$width, $height] = explode('x', $size) + [1 => '800'];
+
+        return [
+            'id'      => (string) $row['id'],
+            'name'    => (string) $row['name'],
+            'igdb_id' => ctype_digit((string) ($row['igdb_id'] ?? '')) ? (string) $row['igdb_id'] : null,
+            'box_art' => !empty($row['box_art_url'])
+                ? str_replace(['{width}', '{height}'], [$width, $height], (string) $row['box_art_url'])
+                : null,
+        ];
     }
 
     /**

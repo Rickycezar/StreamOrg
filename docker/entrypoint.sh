@@ -1,7 +1,8 @@
 #!/bin/sh
 # Runs before Apache on every container start (so on every deploy):
-# checks the essential settings, prepares the data folders and applies any
-# pending database migrations.
+# checks the essential settings, prepares the data folders, applies any
+# pending database migrations and, in the background, looks up the Twitch
+# category of games that do not have one yet.
 set -eu
 
 cd /var/www/html
@@ -34,5 +35,7 @@ until php bin/migrate.php; do
     echo "StreamOrg: database not ready, retrying in 3s…" >&2
     sleep 3
 done
+
+php bin/twitch_categories.php || true &
 
 exec "$@"

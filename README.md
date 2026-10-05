@@ -47,7 +47,7 @@ private preview. Preview access: streamorg@outlook.com.
   an embargo lifts, keys that expire before the stream, missed deadlines.
 - **Title helper**: choosing a game, sponsor or collab adds the right
   hashtags and credits to the title, which stays freely editable.
-- Register a missing game (from Steam) or key without leaving the form.
+- Register a missing game (picked from Twitch) or key without leaving the form.
 - **Any Twitch category**: content can have its own category — Just
   Chatting, Special Events, Marbles On Stream… — used before its games when
   sending to Twitch and when live tracking matches a category.
@@ -56,6 +56,15 @@ private preview. Preview access: streamorg@outlook.com.
   the calendar.
 
 ### Catalogue
+- **Twitch first**: with Twitch connected, a game is added by picking its
+  Twitch category; its store page, release date, studios, genres and artwork
+  are then filled in from Steam (found exactly through IGDB) or IGDB itself,
+  using the same Twitch credentials. Non-game categories keep Twitch's name
+  and box art.
+- **Every game has a Twitch category** — several may share one, and a game
+  Twitch does not list streams as Just Chatting until it is found. Imports
+  look the category up on their own; admins can set it by hand or look up
+  the rest in batches.
 - **Import games from providers** — Steam out of the box; IGDB, RAWG and OMDb
   with credentials — with release dates, studios, genres and store links.
 - **Real artwork, stored locally**: header, capsule, box art, hero banner and

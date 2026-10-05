@@ -174,6 +174,8 @@ final class AdminController
         $pdo = Database::connection();
 
         View::render('admin/games', [
+            'twitchReady' => Twitch::isConfigured(),
+            'missing'     => TwitchCategories::defaults($pdo),
             'games' => $pdo->query(
                 'SELECT g.*, p.name AS publisher_name, d.name AS developer_name
                    FROM games g
@@ -184,14 +186,36 @@ final class AdminController
         ], __('ui.nav.games'));
     }
 
+    /**
+     * Adds a game. Twitch first: a category alone adds the game with its
+     * details filled in from Steam or IGDB; typed details make a game by
+     * hand, with the chosen category or one looked up.
+     */
     public static function storeGame(): void
     {
         Auth::requireAdmin();
         Csrf::verify();
 
-        $title = trim((string) ($_POST['title'] ?? ''));
+        $title      = trim((string) ($_POST['title'] ?? ''));
+        $categoryId = trim((string) ($_POST['category_id'] ?? ''));
 
-        if ($title === '') {
+        if ($categoryId !== '' && $title === '') {
+            try {
+                $result = Database::transaction(static fn (PDO $pdo): array => GameCatalog::addFromTwitch($pdo, $categoryId));
+            } catch (UserError $e) {
+                flash('error', $e->getMessage());
+                redirect('/admin/games');
+            }
+
+            flash('success', $result['created']
+                ? sprintf(__('ui.message.game_added_from_twitch'), $result['title'])
+                : sprintf(__('ui.message.game_already_added'), $result['title']));
+            redirect('/admin/games');
+        }
+
+        $category = $categoryId !== '' ? Twitch::category($categoryId) : null;
+
+        if ($title === '' || ($categoryId !== '' && $category === null)) {
             flash('error', __('ui.message.invalid_input'));
             redirect('/admin/games');
         }
@@ -201,7 +225,8 @@ final class AdminController
         $stmt = Database::connection()->prepare(
             'INSERT INTO games (title, slug, publisher_id, developer_id, release_date, description, store_url)
              VALUES (?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT (slug) DO NOTHING'
+             ON CONFLICT (slug) DO NOTHING
+             RETURNING id'
         );
         $stmt->execute([
             $title,
@@ -213,11 +238,74 @@ final class AdminController
             safe_url($_POST['store_url'] ?? null),
         ]);
 
+        $gameId = $stmt->fetchColumn();
+
+        if ($gameId !== false && $category !== null) {
+            TwitchCategories::store(Database::connection(), (int) $gameId, $category, 'manual');
+        } elseif ($gameId !== false) {
+            TwitchCategories::assign(Database::connection(), (int) $gameId);
+        }
+
         flash(
-            $stmt->rowCount() > 0 ? 'success' : 'error',
-            $stmt->rowCount() > 0 ? __('ui.message.saved') : __('ui.message.duplicate')
+            $gameId !== false ? 'success' : 'error',
+            $gameId !== false ? __('ui.message.saved') : __('ui.message.duplicate')
         );
 
+        redirect('/admin/games');
+    }
+
+    /**
+     * Sets a game's Twitch category by hand, from the games table. Left
+     * empty, or with "find automatically", the game goes back to the Just
+     * Chatting stand-in and is looked up again.
+     */
+    public static function gameCategory(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $gameId = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: 0;
+        $raw    = trim((string) ($_POST['category_id'] ?? ''));
+        $pdo    = Database::connection();
+
+        if (($_POST['find'] ?? '') === '1') {
+            TwitchCategories::store($pdo, $gameId, null);
+            $category = TwitchCategories::assign($pdo, $gameId);
+
+            flash($category ? 'success' : 'error', $category
+                ? sprintf(__('ui.message.twitch_category_found'), $category['name'])
+                : __('ui.message.twitch_category_not_found'));
+            redirect('/admin/games');
+        }
+
+        $category = $raw === '' ? null : Twitch::category($raw);
+
+        if ($raw !== '' && $category === null) {
+            flash('error', __('ui.message.invalid_input'));
+            redirect('/admin/games');
+        }
+
+        TwitchCategories::store($pdo, $gameId, $category, 'manual');
+
+        flash('success', __('ui.message.saved'));
+        redirect('/admin/games');
+    }
+
+    /** Looks up the next batch of games that only have the Just Chatting stand-in. */
+    public static function findCategories(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        if (!Twitch::isConfigured()) {
+            flash('error', __('ui.message.twitch_not_configured'));
+            redirect('/admin/games');
+        }
+
+        $result = TwitchCategories::fillMissing(Database::connection());
+
+        flash('success', sprintf(__('ui.message.twitch_categories_filled'), $result['found'], $result['checked'])
+            . ($result['left'] > 0 ? ' ' . sprintf(__('ui.message.twitch_categories_left'), $result['left']) : ''));
         redirect('/admin/games');
     }
 

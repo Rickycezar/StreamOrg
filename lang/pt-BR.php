@@ -581,6 +581,8 @@ return [
         ],
 
         'action' => [
+            'find_twitch_categories' => 'Buscar categorias da Twitch (%d)',
+            'find_automatically' => 'Buscar automaticamente',
             'nudge_open' => 'Abrir a porta para eles',
             'nudge_later' => 'Faço isso daqui a pouco',
             'takeback_wait' => 'Deixar eles desembrulharem primeiro',
@@ -641,7 +643,7 @@ return [
             'details' => 'Detalhes',
             'close' => 'Fechar',
             'add_content' => 'Planejar conteúdo',
-            'new_game_api' => 'Novo jogo via API',
+            'new_game_api' => 'Novo jogo',
             'new_key' => 'Nova chave',
             'save_key' => 'Salvar chave',
             'create' => 'Adicionar',
@@ -762,6 +764,10 @@ return [
         ],
 
         'label' => [
+            'in_catalog' => 'no catálogo',
+            'via_twitch' => 'via Twitch',
+            'search_twitch_hint' => 'Busque nas categorias da Twitch: digite pelo menos dois caracteres',
+            'default' => 'padrão',
             'prize_claimable' => 'pronta para os vencedores',
             'prize_in_vault' => 'guardada no seu cofre',
             'category_from_game' => 'Do jogo',
@@ -969,6 +975,18 @@ return [
         ],
 
         'message' => [
+            'already_in_catalog' => 'já está no catálogo',
+            'add_game_twitch_first' => 'Escolha o jogo como ele aparece na Twitch: loja, datas, estúdios e artes são preenchidos pela Steam ou pelo IGDB quando eles têm.',
+            'add_game_admin_hint' => 'Escolha uma categoria da Twitch e deixe o resto vazio para preencher tudo pela Steam ou pelo IGDB. Ou digite os dados à mão: a categoria fica a escolhida, ou é buscada.',
+            'twitch_category_default_hint' => 'A Twitch não tinha categoria para este jogo na última verificação, então ele vai ao ar como Just Chatting. Ele é buscado de novo em "Buscar categorias da Twitch".',
+            'game_added_from_twitch' => '%s adicionado pela Twitch.',
+            'game_already_added' => '%s já está no catálogo.',
+            'twitch_category_found' => 'Categoria da Twitch encontrada: %s.',
+            'twitch_category_not_found' => 'Nenhuma categoria da Twitch corresponde bem o bastante a este título, então ele fica como Just Chatting. Escolha uma à mão se a Twitch o lista com outro nome.',
+            'twitch_categories_filled' => 'Categoria encontrada para %d dos %d jogos verificados; os demais ficam como Just Chatting.',
+            'twitch_categories_left' => 'Faltam %d para verificar: clique de novo para continuar.',
+            'twitch_categories_hint' => 'Procura os jogos que ainda vão ao ar como Just Chatting: pelo id do IGDB, pelo nome exato ou por uma busca que só aceita um título praticamente idêntico.',
+            'twitch_category_explain' => 'Todo jogo tem uma categoria da Twitch, usada ao enviar uma live para a Twitch e pelo acompanhamento ao vivo. Vários jogos podem compartilhar uma; um jogo que a Twitch não lista vai ao ar como Just Chatting. Deixe vazio para voltar a Just Chatting e buscar de novo depois.',
             'nudge_title' => 'Seus vencedores estão batendo na porta',
             'nudge_text' => '%d vencedor(es) já têm um prêmio guardado, mas as chaves continuam trancadas no seu cofre, então eles ainda não conseguem ver os códigos.',
             'takeback_warn_title' => 'Espera — tem gente desembrulhando o presente!',

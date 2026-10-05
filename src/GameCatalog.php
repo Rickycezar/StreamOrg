@@ -24,10 +24,13 @@ final class GameCatalog
      *
      * Re-importing the same (provider, ref) updates that row instead of
      * creating a second one, and never overwrites a populated field with null.
+     * With $category (the Twitch category the game was added from), a game
+     * that only had the Just Chatting stand-in takes it; otherwise its
+     * category is looked up.
      *
-     * @return array{id:int, created:bool, title:string}
+     * @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string}
      */
-    public static function importFromProvider(PDO $pdo, Provider $provider, string $ref, bool $refreshImages = false): array
+    public static function importFromProvider(PDO $pdo, Provider $provider, string $ref, bool $refreshImages = false, ?array $category = null): array
     {
         $detail = $provider->fetch($ref);
 
@@ -103,24 +106,153 @@ final class GameCatalog
             error_log("StreamOrg images for game #{$row['id']}: " . $e->getMessage());
         }
 
-        $names = $pdo->prepare(
-            'SELECT p.name AS publisher, d.name AS developer
+        if ($category !== null) {
+            self::takeCategory($pdo, (int) $row['id'], $category);
+        } else {
+            TwitchCategories::assign($pdo, (int) $row['id']);
+        }
+
+        return self::summary($pdo, (int) $row['id'], (bool) $row['inserted']);
+    }
+
+    /**
+     * Adds a game starting from its Twitch category, then fills in its
+     * details from wherever they can be found, most exact first:
+     *   1. Steam, by the app id IGDB records for the category's IGDB id;
+     *   2. IGDB itself, by that id;
+     *   3. only Twitch's name and box art — always the case for categories
+     *      with no IGDB id, which are the non-game ones (Just Chatting,
+     *      Music…): a title search would find unrelated games named alike.
+     * A game already in the catalogue under that category (or that title)
+     * is returned instead of added twice.
+     *
+     * @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string, via:string}
+     */
+    public static function addFromTwitch(PDO $pdo, string $categoryId): array
+    {
+        $category = Twitch::category($categoryId);
+
+        if ($category === null) {
+            throw new UserError(__('ui.message.invalid_input'));
+        }
+
+        $existing = self::findByCategory($pdo, $category);
+
+        if ($existing !== null) {
+            return self::summary($pdo, $existing, false) + ['via' => 'catalog'];
+        }
+
+        foreach (self::detailSources($category) as [$provider, $ref]) {
+            try {
+                $result = Database::transaction(
+                    static fn (PDO $pdo): array => self::importFromProvider($pdo, $provider, $ref, false, $category)
+                );
+
+                return $result + ['via' => $provider->code()];
+            } catch (Throwable $e) {
+                error_log("StreamOrg add from Twitch #{$category['id']} via {$provider->code()}: " . $e->getMessage());
+            }
+        }
+
+        $gameId = self::createPlain($pdo, $category['name'], $category);
+
+        if ($category['box_art'] !== null) {
+            try {
+                GameImages::sync($pdo, $gameId, ['portrait' => $category['box_art']]);
+            } catch (Throwable $e) {
+                error_log("StreamOrg box art for game #{$gameId}: " . $e->getMessage());
+            }
+        }
+
+        return self::summary($pdo, $gameId, true) + ['via' => 'twitch'];
+    }
+
+    /**
+     * The game a Twitch category already stands for: one stored with that
+     * category (preferring the same title), or one with exactly that title
+     * still waiting for its category, which takes it.
+     */
+    public static function findByCategory(PDO $pdo, array $category): ?int
+    {
+        $stmt = $pdo->prepare(
+            "SELECT id FROM games
+              WHERE twitch_category_id = ? AND twitch_category_source <> 'default'
+           ORDER BY lower(title) = lower(?) DESC, id
+              LIMIT 1"
+        );
+        $stmt->execute([$category['id'], $category['name']]);
+        $id = $stmt->fetchColumn();
+
+        if ($id !== false) {
+            return (int) $id;
+        }
+
+        $id = self::findByTitle($pdo, $category['name']);
+
+        if ($id !== null) {
+            self::takeCategory($pdo, $id, $category);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Where a Twitch category's details can come from, lazily: each source
+     * is only looked up when the one before it gave nothing.
+     *
+     * @return Generator<array{0:Provider, 1:string}>
+     */
+    private static function detailSources(array $category): Generator
+    {
+        $igdb = IgdbProvider::forTwitch();
+
+        if ($category['igdb_id'] === null || $igdb === null) {
+            return;
+        }
+
+        $steam = Providers::get('steam');
+
+        if ($steam !== null && $steam->isAvailable()) {
+            $appId = $igdb->steamAppId($category['igdb_id']);
+
+            if ($appId !== null) {
+                yield [$steam, $appId];
+            }
+        }
+
+        yield [$igdb, $category['igdb_id']];
+    }
+
+    /** Gives a game the category it was added from, unless it already has a real one. */
+    private static function takeCategory(PDO $pdo, int $gameId, array $category): void
+    {
+        $pdo->prepare(
+            "UPDATE games SET twitch_category_id = ?, twitch_category_name = ?, twitch_category_source = 'twitch'
+              WHERE id = ? AND twitch_category_source = 'default'"
+        )->execute([$category['id'], $category['name'], $gameId]);
+    }
+
+    /** @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string} */
+    private static function summary(PDO $pdo, int $gameId, bool $created): array
+    {
+        $stmt = $pdo->prepare(
+            'SELECT g.title, g.release_date, g.release_precision, p.name AS publisher, d.name AS developer
                FROM games g
           LEFT JOIN publishers p ON p.id = g.publisher_id
           LEFT JOIN developers d ON d.id = g.developer_id
               WHERE g.id = ?'
         );
-        $names->execute([(int) $row['id']]);
-        $studios = $names->fetch() ?: ['publisher' => null, 'developer' => null];
+        $stmt->execute([$gameId]);
+        $row = $stmt->fetch();
 
         return [
-            'id'        => (int) $row['id'],
-            'created'   => (bool) $row['inserted'],
-            'title'     => $detail['title'],
+            'id'        => $gameId,
+            'created'   => $created,
+            'title'     => (string) $row['title'],
             'release'   => $row['release_date'],
-            'precision' => $row['release_precision'],
-            'publisher' => $studios['publisher'],
-            'developer' => $studios['developer'],
+            'precision' => (string) $row['release_precision'],
+            'publisher' => $row['publisher'],
+            'developer' => $row['developer'],
         ];
     }
 
@@ -157,7 +289,7 @@ final class GameCatalog
             throw new UserError(__('ui.message.refresh_not_imported'));
         }
 
-        $provider = Providers::get((string) $game['source_provider']);
+        $provider = $game['source_provider'] === 'igdb' ? IgdbProvider::forTwitch() : Providers::get((string) $game['source_provider']);
 
         if ($provider === null || !$provider->isAvailable()) {
             throw new UserError(__('ui.message.provider_unavailable'));
@@ -199,8 +331,11 @@ final class GameCatalog
         return $stmt->rowCount() > 0;
     }
 
-    /** Creates a bare game row when no provider match is available. */
-    public static function createPlain(PDO $pdo, string $title): int
+    /**
+     * Creates a bare game row when no provider match is available, with
+     * the Twitch category it came from, or else one looked up.
+     */
+    public static function createPlain(PDO $pdo, string $title, ?array $category = null): int
     {
         $stmt = $pdo->prepare(
             'INSERT INTO games (title, slug) VALUES (?, ?)
@@ -208,8 +343,15 @@ final class GameCatalog
              RETURNING id'
         );
         $stmt->execute([trim($title), self::slug($title)]);
+        $gameId = (int) $stmt->fetchColumn();
 
-        return (int) $stmt->fetchColumn();
+        if ($category !== null) {
+            self::takeCategory($pdo, $gameId, $category);
+        } else {
+            TwitchCategories::assign($pdo, $gameId);
+        }
+
+        return $gameId;
     }
 
     /** Finds or creates a company, matching on slug. */

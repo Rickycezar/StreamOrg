@@ -216,7 +216,7 @@ final class KeysController
             'platforms' => $pdo->query('SELECT code, family FROM game_platforms ORDER BY sort_order')->fetchAll(),
             'sources'   => $pdo->query('SELECT code FROM key_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
-            'canAddGames' => CatalogController::defaultProvider() !== null,
+            'canAddGames' => CatalogController::canAddGames(),
             'vaultLocked' => !Vault::isUnlocked($userId),
         ], __('ui.nav.keys'));
     }

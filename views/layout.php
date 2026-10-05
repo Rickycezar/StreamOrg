@@ -291,6 +291,7 @@ $globals = [
         'giveaway' => __('ui.nav.giveaways'), 'winner' => __('ui.field.winner'),
         'won_at' => __('ui.field.won_at'), 'delivered' => __('ui.field.delivered'),
         'under_embargo_until' => __('ui.label.under_embargo_until'),
+        'in_catalog' => __('ui.label.in_catalog'),
     ],
 ];
 ?>

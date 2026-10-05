@@ -481,6 +481,16 @@
         }
     });
 
+    /** Marks a Twitch search result whose game the catalogue already has. */
+    function knownBadge(title, item) {
+        if (!item.known) return;
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = (window.STREAMORG_L || {}).in_catalog || '✔';
+        title.append(' ', badge);
+    }
+
     onPage(function () {
         document.querySelectorAll('[data-game-import]').forEach(function (box) {
             const gameSelect = document.querySelector(box.dataset.gameImport);
@@ -536,6 +546,7 @@
                         const title = document.createElement('span');
                         title.className = 'title';
                         title.textContent = item.title;
+                        knownBadge(title, item);
 
                         const action = document.createElement('button');
                         action.type = 'button';
@@ -1038,6 +1049,7 @@
                         const title = document.createElement('span');
                         title.className = 'title';
                         title.textContent = item.title;
+                        knownBadge(title, item);
 
                         const year = document.createElement('span');
                         year.className = 'year';

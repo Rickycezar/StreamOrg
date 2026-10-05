@@ -265,7 +265,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
             <label>
                 <span><?= e(__('ui.action.search')) ?></span>
                 <input type="search" class="game-import-search" autocomplete="off"
-                       placeholder="<?= e(__('ui.label.search_hint')) ?>">
+                       placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
             </label>
             <div class="results game-import-results"></div>
         </fieldset>

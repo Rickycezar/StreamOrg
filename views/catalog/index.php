@@ -1,6 +1,6 @@
 <?php
 /** @var array $games @var array $filters @var int $needsDate
- *  @var ?Provider $provider @var ?string $providerCode */
+ *  @var ?Provider $provider @var ?string $providerCode @var bool $twitchFirst */
 ?>
 <h1><?= e(__('ui.nav.catalog')) ?></h1>
 <p class="muted"><?= e(__('ui.message.catalog_intro')) ?></p>
@@ -8,18 +8,23 @@
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.action.create')) ?></h2>
-        <?php if ($provider !== null): ?>
+        <?php if ($twitchFirst): ?>
+            <span class="badge twitch-cat"><?= e(__('ui.label.via_twitch')) ?></span>
+        <?php elseif ($provider !== null): ?>
             <span class="badge ok"><?= e(sprintf(__('ui.label.via_provider'), code_label('api_provider', $providerCode))) ?></span>
         <?php endif; ?>
     </div>
 
-    <?php if ($provider === null): ?>
+    <?php if (!$twitchFirst && $provider === null): ?>
         <p class="empty"><?= e(__('ui.message.no_default_provider')) ?></p>
     <?php else: ?>
+        <?php if ($twitchFirst): ?>
+            <p class="muted small"><?= e(__('ui.message.add_game_twitch_first')) ?></p>
+        <?php endif; ?>
         <label>
             <span><?= e(__('ui.action.search')) ?></span>
             <input type="search" id="catalog-search" autocomplete="off"
-                   placeholder="<?= e(__('ui.label.search_hint')) ?>">
+                   placeholder="<?= e(__($twitchFirst ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
         </label>
         <div id="catalog-results" class="results"></div>
     <?php endif; ?>

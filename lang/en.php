@@ -582,6 +582,8 @@ return [
         ],
 
         'action' => [
+            'find_twitch_categories' => 'Find Twitch categories (%d)',
+            'find_automatically' => 'Find automatically',
             'nudge_open' => 'Open the doors for them',
             'nudge_later' => 'I\'ll do it in a bit',
             'takeback_wait' => 'Let them unwrap first',
@@ -642,7 +644,7 @@ return [
             'details' => 'Details',
             'close' => 'Close',
             'add_content' => 'Plan content',
-            'new_game_api' => 'New game from API',
+            'new_game_api' => 'New game',
             'new_key' => 'New key',
             'save_key' => 'Save key',
             'create' => 'Add',
@@ -763,6 +765,10 @@ return [
         ],
 
         'label' => [
+            'in_catalog' => 'in the catalogue',
+            'via_twitch' => 'via Twitch',
+            'search_twitch_hint' => 'Search Twitch categories: type at least two characters',
+            'default' => 'default',
             'prize_claimable' => 'ready for winners',
             'prize_in_vault' => 'safe in your vault',
             'category_from_game' => 'From the game',
@@ -970,6 +976,18 @@ return [
         ],
 
         'message' => [
+            'already_in_catalog' => 'already in the catalogue',
+            'add_game_twitch_first' => 'Pick the game as it is listed on Twitch: its store page, dates, studios and artwork are filled in from Steam or IGDB when they have it.',
+            'add_game_admin_hint' => 'Pick a Twitch category and leave the rest empty to fill it all in from Steam or IGDB. Or type the details by hand: the category is then kept as chosen, or looked up.',
+            'twitch_category_default_hint' => 'Twitch had no category for this game when it was last checked, so it streams as Just Chatting. It is looked up again by "Find Twitch categories".',
+            'game_added_from_twitch' => '%s added from Twitch.',
+            'game_already_added' => '%s is already in the catalogue.',
+            'twitch_category_found' => 'Twitch category found: %s.',
+            'twitch_category_not_found' => 'No Twitch category matches this title closely enough, so it stays as Just Chatting. Pick one by hand if Twitch lists it under another name.',
+            'twitch_categories_filled' => 'Found a category for %d of the %d games checked; the rest stay as Just Chatting.',
+            'twitch_categories_left' => '%d still to check: click again to continue.',
+            'twitch_categories_hint' => 'Looks up games still streaming as Just Chatting: by IGDB id, by exact name, or by a search that only accepts a near-identical title.',
+            'twitch_category_explain' => 'Every game has a Twitch category, used when sending a stream to Twitch and by live tracking. Several games may share one; a game Twitch does not list streams as Just Chatting. Leave it empty to go back to Just Chatting and look it up again later.',
             'nudge_title' => 'Your winners are waiting at the door',
             'nudge_text' => '%d winner(s) already have a prize saved, but the keys are still locked in your vault, so they cannot see their codes yet.',
             'takeback_warn_title' => 'Wait — someone\'s still unwrapping!',

@@ -5,9 +5,11 @@ declare(strict_types=1);
  * Turns a planned stream into a channel update for Twitch.
  *
  * Title: the content title as written, whitespace collapsed to one line.
- * Category: the Twitch category of the stream's first game. An exact title
- *   match is remembered on the (shared) game; a category the user picked
- *   by hand is remembered for that user only. No game leaves it as it is.
+ * Category: the Twitch category of the stream's first game. A game still
+ *   on the Just Chatting stand-in is looked up once more, an exact title
+ *   match being remembered on the (shared) game; a category the user
+ *   picked by hand is remembered for that user only. No game leaves it as
+ *   it is.
  * Tags: only sponsor hashtags — a #Tag in the title that names a key site
  *   marked "tag in content titles". The channel's other tags are kept; any
  *   earlier sponsor tag is replaced, so sponsors do not pile up over time.
@@ -57,14 +59,14 @@ final class TwitchPush
                 $category = ['state' => 'set', 'id' => $picked['id'], 'name' => $picked['name'], 'candidates' => [], 'save' => 'user'];
             } elseif ($stream['user_category_id'] !== null) {
                 $category = ['state' => 'set', 'id' => $stream['user_category_id'], 'name' => $stream['user_category_name'], 'candidates' => [], 'save' => false];
-            } elseif ($stream['twitch_category_id'] !== null) {
+            } elseif ($stream['twitch_category_source'] !== TwitchCategories::DEFAULT_SOURCE) {
                 $category = ['state' => 'set', 'id' => $stream['twitch_category_id'], 'name' => $stream['twitch_category_name'], 'candidates' => [], 'save' => false];
             } else {
                 $found = TwitchUser::findCategory($userId, (string) $stream['game_title']);
 
                 $category = $found['exact'] !== null
                     ? ['state' => 'set', 'id' => $found['exact']['id'], 'name' => $found['exact']['name'], 'candidates' => [], 'save' => 'game']
-                    : ['state' => 'choose', 'id' => null, 'name' => null, 'candidates' => $found['candidates'], 'save' => false];
+                    : ['state' => 'set', 'id' => $stream['twitch_category_id'], 'name' => $stream['twitch_category_name'], 'candidates' => [], 'save' => false];
             }
         }
 
@@ -144,8 +146,7 @@ final class TwitchPush
         $pdo = Database::connection();
 
         if ($plan['category']['save'] === 'game' && $plan['game_id'] !== null) {
-            $pdo->prepare('UPDATE games SET twitch_category_id = ?, twitch_category_name = ? WHERE id = ?')
-                ->execute([$plan['category']['id'], $plan['category']['name'], $plan['game_id']]);
+            TwitchCategories::store($pdo, $plan['game_id'], ['id' => $plan['category']['id'], 'name' => $plan['category']['name']], 'twitch');
         } elseif ($plan['category']['save'] === 'user' && $plan['game_id'] !== null) {
             $pdo->prepare(
                 'INSERT INTO user_twitch_categories (user_id, game_id, category_id, category_name)
@@ -175,7 +176,7 @@ final class TwitchPush
             'SELECT s.id, s.title, sp.code AS platform_code,
                     s.category_id AS stream_category_id, s.category_name AS stream_category_name,
                     g.id AS game_id, g.title AS game_title,
-                    g.twitch_category_id, g.twitch_category_name,
+                    g.twitch_category_id, g.twitch_category_name, g.twitch_category_source,
                     uc.category_id AS user_category_id, uc.category_name AS user_category_name
                FROM streams s
                JOIN streaming_platforms sp ON sp.id = s.streaming_platform_id

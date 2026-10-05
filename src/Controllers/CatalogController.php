@@ -4,11 +4,13 @@ declare(strict_types=1);
 /**
  * The catalogue as ordinary users see it.
  *
- * Anyone signed in may add a game, publisher or developer — but only by
- * importing from a provider, never by typing one in, so the shared
- * catalogue stays consistent with an external source. Which provider is
- * used is an administrative decision: this controller always uses the one
- * flagged default and never offers a choice.
+ * Anyone signed in may add a game, publisher or developer — but only from
+ * an external source, never by typing one in, so the shared catalogue
+ * stays consistent. With Twitch configured, games are added Twitch first:
+ * the search lists Twitch categories, and the game's details are filled in
+ * from Steam or IGDB (GameCatalog::addFromTwitch), so every game has its
+ * category from the start. Without Twitch, the provider flagged default
+ * is used, never offering a choice.
  *
  * Admins keep /admin/import, where the provider is selectable.
  */
@@ -28,6 +30,12 @@ final class CatalogController
         $provider = Providers::get((string) $code);
 
         return $provider !== null && $provider->isAvailable() ? $provider : null;
+    }
+
+    /** Whether games can be added at all: through Twitch, or the default provider. */
+    public static function canAddGames(): bool
+    {
+        return Twitch::isConfigured() || self::defaultProvider() !== null;
     }
 
     public static function index(): void
@@ -77,17 +85,22 @@ final class CatalogController
             'needsDate'    => $needsDate,
             'provider'     => $provider,
             'providerCode' => $provider?->code(),
+            'twitchFirst'  => Twitch::isConfigured(),
         ], __('ui.nav.catalog'));
     }
 
-    /** AJAX: search the default provider. No provider parameter is accepted. */
+    /**
+     * AJAX: search Twitch's categories (or, without Twitch, the default
+     * provider). No provider parameter is accepted. Twitch results say
+     * whether the catalogue already has that game.
+     */
     public static function search(): void
     {
         Auth::requireLogin();
 
         $provider = self::defaultProvider();
 
-        if ($provider === null) {
+        if (!Twitch::isConfigured() && $provider === null) {
             json_response(['ok' => false, 'error' => __('ui.message.no_default_provider')], 400);
         }
 
@@ -98,7 +111,7 @@ final class CatalogController
         }
 
         try {
-            $results = $provider->search($term);
+            $results = Twitch::isConfigured() ? self::twitchResults($term) : $provider->search($term);
         } catch (Throwable $e) {
             error_log('StreamOrg catalog search: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.provider_error')], 502);
@@ -107,14 +120,46 @@ final class CatalogController
         json_response(['ok' => true, 'results' => $results]);
     }
 
-    /** AJAX: import a result through the default provider. */
+    /** @return list<array{ref:string, title:string, year:?string, image:?string, known:bool}> */
+    private static function twitchResults(string $term): array
+    {
+        $categories = Twitch::searchCategories($term);
+
+        if ($categories === []) {
+            return [];
+        }
+
+        $ids  = array_column($categories, 'id');
+        $stmt = Database::connection()->prepare(
+            "SELECT DISTINCT twitch_category_id FROM games
+              WHERE twitch_category_source <> 'default'
+                AND twitch_category_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ')'
+        );
+        $stmt->execute($ids);
+        $known = array_flip($stmt->fetchAll(PDO::FETCH_COLUMN));
+
+        return array_map(static fn (array $c): array => [
+            'ref'   => $c['id'],
+            'title' => $c['name'],
+            'year'  => null,
+            'image' => $c['cover'],
+            'known' => isset($known[$c['id']]),
+        ], $categories);
+    }
+
+    /** AJAX: add a Twitch category's game (or import a default-provider result). */
     public static function import(): void
     {
         Auth::requireLogin();
         Csrf::verify(json: true);
 
+        $ref = trim((string) ($_POST['ref'] ?? ''));
+
+        if (Twitch::isConfigured()) {
+            self::addFromTwitch($ref);
+        }
+
         $provider = self::defaultProvider();
-        $ref      = trim((string) ($_POST['ref'] ?? ''));
 
         if ($provider === null || $ref === '') {
             json_response(['ok' => false, 'error' => __('ui.message.no_default_provider')], 400);
@@ -170,6 +215,35 @@ final class CatalogController
             'developer' => $result['developer'],
             'publisher' => $result['publisher'],
             'message'   => $result['created'] ? __('ui.message.imported') : __('ui.message.import_updated'),
+        ]);
+    }
+
+    /** Responds with the game a Twitch category stands for, adding it when new. */
+    private static function addFromTwitch(string $categoryId): never
+    {
+        try {
+            $result = Database::transaction(static function (PDO $pdo) use ($categoryId): array {
+                $result = GameCatalog::addFromTwitch($pdo, $categoryId);
+                GameCatalog::syncReleaseEmbargo($pdo, (int) Auth::id(), $result['id']);
+
+                return $result;
+            });
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        } catch (Throwable $e) {
+            error_log('StreamOrg add from Twitch: ' . $e->getMessage());
+            json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
+        }
+
+        json_response([
+            'ok'        => true,
+            'id'        => $result['id'],
+            'title'     => $result['title'],
+            'created'   => $result['created'],
+            'precision' => $result['precision'],
+            'developer' => $result['developer'],
+            'publisher' => $result['publisher'],
+            'message'   => __($result['created'] ? 'ui.message.imported' : 'ui.message.already_in_catalog'),
         ]);
     }
 

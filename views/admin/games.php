@@ -1,4 +1,4 @@
-<?php /** @var array $games @var array $publishers @var array $developers */ ?>
+<?php /** @var array $games @var array $publishers @var array $developers @var bool $twitchReady @var int $missing */ ?>
 <h1><?= e(__('ui.nav.games')) ?></h1>
 <p class="muted">
     <?= e(__('ui.message.games_intro')) ?>
@@ -8,16 +8,35 @@
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.nav.games')) ?> (<?= count($games) ?>)</h2>
-        <button type="button" class="btn primary" data-modal-form="#add-game"
-                data-modal-title="<?= e(__('ui.action.create')) ?>"><?= e(__('ui.action.create')) ?></button>
+        <div class="card-actions">
+            <?php if ($twitchReady && $missing > 0): ?>
+                <form method="post" action="<?= e(url('/admin/games/categories')) ?>">
+                    <?= Csrf::field() ?>
+                    <button type="submit" class="btn" title="<?= e(__('ui.message.twitch_categories_hint')) ?>">
+                        <?= e(sprintf(__('ui.action.find_twitch_categories'), $missing)) ?>
+                    </button>
+                </form>
+            <?php endif; ?>
+            <button type="button" class="btn primary" data-modal-form="#add-game"
+                    data-modal-title="<?= e(__('ui.action.create')) ?>"><?= e(__('ui.action.create')) ?></button>
+        </div>
     </div>
 
 <form id="add-game" method="post" action="<?= e(url('/admin/games')) ?>" class="subform hidden">
         <?= Csrf::field() ?>
+        <?php if ($twitchReady): ?>
+            <label>
+                <span><?= e(__('ui.field.twitch_category')) ?></span>
+                <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.picker_search')) ?>">
+                    <option value=""></option>
+                </select>
+            </label>
+            <p class="muted small"><?= e(__('ui.message.add_game_admin_hint')) ?></p>
+        <?php endif; ?>
         <div class="grid">
             <label>
                 <span><?= e(__('ui.field.title')) ?></span>
-                <input type="text" name="title" required>
+                <input type="text" name="title" <?= $twitchReady ? '' : 'required' ?>>
             </label>
             <label>
                 <span><?= e(__('ui.nav.publishers')) ?></span>
@@ -59,6 +78,7 @@
                 <th><?= e(__('ui.nav.developers')) ?></th>
                 <th><?= e(__('ui.field.release_date')) ?></th>
                 <th><?= e(__('ui.field.source')) ?></th>
+                <th><?= e(__('ui.field.twitch_category')) ?></th>
                 <th></th>
             </tr>
             </thead>
@@ -76,7 +96,18 @@
                     <td><?= e($game['developer_name'] ?: '—') ?></td>
                     <td><?= e(fmt_date($game['release_date'])) ?></td>
                     <td><?= $game['source_provider'] ? e(code_label('api_provider', $game['source_provider'])) : '—' ?></td>
+                    <td>
+                        <?php if ($game['twitch_category_source'] === TwitchCategories::DEFAULT_SOURCE): ?>
+                            <span class="badge" title="<?= e(__('ui.message.twitch_category_default_hint')) ?>"><?= e($game['twitch_category_name']) ?> · <?= e(__('ui.label.default')) ?></span>
+                        <?php else: ?>
+                            <span class="badge twitch-cat"><?= e($game['twitch_category_name']) ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td class="rowactions">
+                        <?php if ($twitchReady): ?>
+                            <button type="button" class="btn small" data-modal-form="#cat-<?= (int) $game['id'] ?>"
+                                    data-modal-title="<?= e($game['title']) ?>"><?= e(__('ui.field.twitch_category')) ?></button>
+                        <?php endif; ?>
                         <button type="button" class="btn small danger-btn row-delete"
                                 data-endpoint="/admin/catalogue/delete" data-kind="game"
                                 data-id="<?= (int) $game['id'] ?>" data-label="<?= e($game['title']) ?>">
@@ -90,3 +121,25 @@
         </div>
     <?php endif; ?>
 </section>
+
+<?php if ($twitchReady): foreach ($games as $game): ?>
+    <form id="cat-<?= (int) $game['id'] ?>" method="post" action="<?= e(url('/admin/games/category')) ?>" class="subform hidden">
+        <?= Csrf::field() ?>
+        <input type="hidden" name="game_id" value="<?= (int) $game['id'] ?>">
+        <p class="muted small"><?= e(__('ui.message.twitch_category_explain')) ?></p>
+        <label>
+            <span><?= e(__('ui.field.twitch_category')) ?></span>
+            <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.picker_search')) ?>">
+                <option value=""></option>
+                <?php if ($game['twitch_category_source'] !== TwitchCategories::DEFAULT_SOURCE): ?>
+                    <option value="<?= e($game['twitch_category_id']) ?>" selected><?= e($game['twitch_category_name']) ?></option>
+                <?php endif; ?>
+            </select>
+        </label>
+        <div class="card-actions">
+            <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
+            <button type="submit" name="find" value="1" class="btn"><?= e(__('ui.action.find_automatically')) ?></button>
+            <button type="button" class="btn row-cancel"><?= e(__('ui.action.cancel')) ?></button>
+        </div>
+    </form>
+<?php endforeach; endif; ?>
