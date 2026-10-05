@@ -37,6 +37,12 @@ final class Http
         return self::send('PATCH', $url, $body, $headers, $timeout);
     }
 
+    /** @return array{status:int, body:string, error:?string} */
+    public static function delete(string $url, array $headers = [], int $timeout = self::TIMEOUT): array
+    {
+        return self::send('DELETE', $url, null, $headers, $timeout);
+    }
+
     /** Decodes a JSON response body, returning null when it is not valid JSON. */
     public static function json(array $response): ?array
     {

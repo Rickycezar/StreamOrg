@@ -18,6 +18,9 @@ const files = [
     ['tom-select/dist/css/tom-select.min.css', 'tom-select.css'],
     ['fullcalendar/index.global.min.js', 'fullcalendar.js'],
     ['@fullcalendar/core/locales/pt-br.global.min.js', 'fullcalendar-pt-br.js'],
+    ['@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2', 'fonts/plus-jakarta-sans-latin.woff2'],
+    ['@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-ext-wght-normal.woff2', 'fonts/plus-jakarta-sans-latin-ext.woff2'],
+    ['@fontsource-variable/plus-jakarta-sans/LICENSE', 'fonts/plus-jakarta-sans-LICENSE.txt'],
 ];
 
 mkdirSync(out, { recursive: true });
@@ -25,6 +28,7 @@ mkdirSync(out, { recursive: true });
 const versions = {};
 
 for (const [from, to] of files) {
+    mkdirSync(dirname(join(out, to)), { recursive: true });
     copyFileSync(join(root, 'node_modules', from), join(out, to));
 
     const pkg = from.startsWith('@') ? from.split('/').slice(0, 2).join('/') : from.split('/')[0];

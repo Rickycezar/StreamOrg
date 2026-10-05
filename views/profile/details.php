@@ -1,6 +1,7 @@
 <?php
 /** @var array $user @var array $platforms @var array $locales @var array $timezones
- *  @var ?array $twitch @var bool $twitchConfigured */
+ *  @var ?array $twitch @var bool $twitchConfigured
+ *  @var bool $trackingAvailable @var bool $trackingActive @var array $trackingLog */
 ?>
 <section class="card">
     <div class="card-head">
@@ -19,6 +20,40 @@
                 <?= e(__('ui.action.twitch_disconnect')) ?>
             </button>
         </form>
+
+        <div class="tracking">
+            <div class="tracking-head">
+                <h3><?= e(__('ui.label.live_tracking')) ?></h3>
+                <span class="badge <?= $trackingActive ? 'ok' : 'off' ?>">
+                    <?= e(__($trackingActive ? 'ui.label.tracking_on' : 'ui.label.tracking_off')) ?>
+                </span>
+            </div>
+            <p class="muted small"><?= e(__('ui.message.tracking_explain')) ?></p>
+
+            <?php if ($trackingAvailable || $trackingActive): ?>
+                <form method="post" action="<?= e(url('/profile/twitch/tracking')) ?>">
+                    <?= Csrf::field() ?>
+                    <input type="hidden" name="tracking" value="<?= $trackingActive ? 'off' : 'on' ?>">
+                    <button type="submit" class="btn<?= $trackingActive ? '' : ' primary' ?>">
+                        <?= e(__($trackingActive ? 'ui.action.tracking_disable' : 'ui.action.tracking_enable')) ?>
+                    </button>
+                </form>
+            <?php else: ?>
+                <p class="empty"><?= e(__('ui.message.tracking_unavailable')) ?></p>
+            <?php endif; ?>
+
+            <?php if ($trackingLog !== []): ?>
+                <h3 class="section-head"><?= e(__('ui.label.tracking_log')) ?></h3>
+                <ul class="tracking-log">
+                    <?php foreach ($trackingLog as $entry): ?>
+                        <li class="kind-<?= e($entry['kind']) ?>">
+                            <span class="muted nowrap"><?= e(fmt_datetime($entry['at'], 'd/m H:i')) ?></span>
+                            <span><?= e(code_label('live_event', $entry['kind'])) ?><?= $entry['detail'] !== null ? ': ' : '' ?><b><?= e((string) $entry['detail']) ?></b></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </div>
     <?php elseif ($twitchConfigured): ?>
         <p class="muted small"><?= e(__('ui.message.twitch_connection_explain')) ?></p>
         <a class="btn primary" href="<?= e(url('/profile/twitch/connect')) ?>" data-turbo="false"><?= e(__('ui.action.twitch_connect')) ?></a>

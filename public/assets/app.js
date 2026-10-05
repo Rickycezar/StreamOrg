@@ -586,6 +586,7 @@
             const data = await response.json().catch(function () { return { ok: false }; });
 
             body.innerHTML = '';
+            modal.querySelector('#modal-title').textContent = T.heading || 'Twitch';
 
             if (!data.ok) {
                 const box = document.createElement('div');
@@ -694,7 +695,10 @@
                 body.append(el('div', 'flash flash-success', result.message));
                 const close = el('button', 'btn', 'OK');
                 close.type = 'button';
-                close.addEventListener('click', closeModal);
+                close.addEventListener('click', function () {
+                    closeModal(true);
+                    if (window.Turbo) window.Turbo.visit(location.href, { action: 'replace' });
+                });
                 body.append(close);
                 button.textContent = '✔ ' + (T.heading || '');
             });
@@ -790,7 +794,39 @@
         const L = window.STREAMORG_L || {};
         const backlog = root.querySelector('#planner-backlog');
         const list = backlog.querySelector('.backlog-list');
-        const defaultHour = parseInt(root.dataset.defaultHour || '20', 10);
+        const schedule = JSON.parse(root.dataset.schedule || '{}');
+        const defaultStart = root.dataset.defaultStart || '20:00';
+
+        /** "HH:MM" from the stream schedule for a calendar date (UTC wall time). */
+        function scheduledStart(date) {
+            const weekday = date.getUTCDay() || 7;
+            return (schedule[weekday] && schedule[weekday].start) || defaultStart;
+        }
+
+        /** The schedule as FullCalendar business hours: off-hours are shaded. */
+        function businessHours() {
+            const hours = [];
+
+            Object.keys(schedule).forEach(function (weekday) {
+                const day = schedule[weekday];
+                const dow = parseInt(weekday, 10) % 7;
+                let end = day.end;
+
+                if (!end) {
+                    const h = Math.min(parseInt(day.start, 10) + 2, 24);
+                    end = String(h).padStart(2, '0') + day.start.slice(2);
+                }
+
+                if (end > day.start) {
+                    hours.push({ daysOfWeek: [dow], startTime: day.start, endTime: end });
+                } else {
+                    hours.push({ daysOfWeek: [dow], startTime: day.start, endTime: '24:00' });
+                    if (end !== '00:00') hours.push({ daysOfWeek: [(dow + 1) % 7], startTime: '00:00', endTime: end });
+                }
+            });
+
+            return hours.length ? hours : false;
+        }
 
         function refreshBacklog() {
             const items = list.querySelectorAll('.backlog-item').length;
@@ -866,6 +902,7 @@
             dayMaxEvents: 3,
             navLinks: true,
             nowIndicator: true,
+            businessHours: businessHours(),
             allDaySlot: false,
             slotDuration: '00:30:00',
             snapDuration: '00:15:00',
@@ -892,7 +929,8 @@
                 let start = info.event.start;
 
                 if (info.event.allDay) {
-                    start = new Date(start.getTime() + defaultHour * 3600 * 1000);
+                    const hm = scheduledStart(start).split(':');
+                    start = new Date(start.getTime() + (parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10)) * 60000);
                 }
 
                 info.event.remove();
@@ -1248,6 +1286,94 @@
 
     document.addEventListener('click', function (event) {
         if (event.target.closest('[data-close-modal]')) closeModal();
+    });
+
+    /** A link ending in #new (the dashboard shortcuts) opens the page's add form. */
+    onPage(function () {
+        if (location.hash !== '#new') return;
+
+        const opener = document.querySelector('[data-new]');
+        history.replaceState(history.state, '', location.pathname + location.search);
+        if (opener) opener.click();
+    });
+
+    /** Dashboard: schedules an undated item for today at the chosen time. */
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('[data-pick-id]');
+        if (!button) return;
+
+        const box = button.closest('.pick-today');
+        const time = box.querySelector('[data-pick-time]');
+
+        if (!time.reportValidity()) return;
+
+        box.querySelectorAll('[data-pick-id]').forEach(function (b) { b.disabled = true; });
+        button.classList.add('busy');
+
+        const result = await postJson('/content/schedule', {
+            id: button.dataset.pickId,
+            start: box.dataset.date + 'T' + time.value.slice(0, 5) + ':00',
+        });
+
+        if (!result.ok) {
+            box.querySelectorAll('[data-pick-id]').forEach(function (b) { b.disabled = false; });
+            button.classList.remove('busy');
+            alert(result.error || 'Error');
+            return;
+        }
+
+        closeModal(true);
+
+        if (window.Turbo) {
+            window.Turbo.visit(location.href, { action: 'replace' });
+        } else {
+            location.reload();
+        }
+    });
+
+    let relativeTimer = null;
+
+    /** Dashboard: "in 1 h 20 min" / "due 5 min ago" under today's cards, refreshed every minute. */
+    onPage(function () {
+        clearInterval(relativeTimer);
+
+        const grid = document.querySelector('[data-relative]');
+        if (!grid) return;
+
+        function span(minutes) {
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            return (h ? h + ' h' : '') + (h && m ? ' ' : '') + (m || !h ? m + ' min' : '');
+        }
+
+        function tick() {
+            if (!grid.isConnected) {
+                clearInterval(relativeTimer);
+                return;
+            }
+
+            const now = Date.now() / 1000;
+
+            grid.querySelectorAll('[data-start]').forEach(function (el) {
+                const diff = Math.round((parseInt(el.dataset.start, 10) - now) / 60);
+
+                if (Math.abs(diff) < 1) {
+                    el.textContent = grid.dataset.nowLabel;
+                } else {
+                    el.textContent = (diff > 0 ? grid.dataset.in : grid.dataset.ago).replace('%s', span(Math.abs(diff)));
+                }
+
+                el.classList.toggle('overdue', diff <= -1);
+            });
+        }
+
+        tick();
+        relativeTimer = setInterval(tick, 60000);
+    });
+
+    document.addEventListener('change', function (event) {
+        const toggle = event.target.closest('[data-schedule-form] .schedule-toggle input');
+        if (toggle) toggle.closest('.schedule-day').classList.toggle('on', toggle.checked);
     });
 
     document.addEventListener('keydown', function (event) {

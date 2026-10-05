@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 /**
  * The signed-in user's own account, split into tabs: personal data,
- * password, appearance and security (key vault and sessions).
+ * password, appearance, defaults (stream schedule) and security (key
+ * vault and sessions).
  *
  * Separate from the admin user tools that do not exist yet: everything
  * here is scoped to Auth::id() and needs no special privilege.
@@ -21,6 +22,7 @@ final class ProfileController
         '/profile'            => 'ui.label.profile_details',
         '/profile/password'   => 'ui.label.change_password',
         '/profile/appearance' => 'ui.label.profile_appearance',
+        '/profile/defaults'   => 'ui.label.profile_defaults',
         '/profile/security'   => 'ui.label.profile_security',
     ];
 
@@ -44,9 +46,16 @@ final class ProfileController
 
         $pdo = Database::connection();
 
+        $userId = (int) Auth::id();
+        $log    = $pdo->prepare('SELECT kind, detail, at FROM twitch_live_log WHERE user_id = ? ORDER BY at DESC, id DESC LIMIT 10');
+        $log->execute([$userId]);
+
         self::tab('/profile', 'profile/details', [
-            'twitch'           => TwitchUser::connection((int) Auth::id()),
+            'twitch'           => TwitchUser::connection($userId),
             'twitchConfigured' => Twitch::isConfigured(),
+            'trackingAvailable' => TwitchEventSub::isAvailable(),
+            'trackingActive'   => TwitchEventSub::isActive($userId),
+            'trackingLog'      => $log->fetchAll(),
             'platforms' => $pdo->query('SELECT id, code FROM streaming_platforms WHERE is_enabled ORDER BY sort_order')->fetchAll(),
             'locales'   => Lang::available(),
             'timezones' => DateTimeZone::listIdentifiers(),
@@ -65,6 +74,34 @@ final class ProfileController
         Auth::requireLogin();
 
         self::tab('/profile/appearance', 'profile/appearance', ['themes' => self::THEMES]);
+    }
+
+    public static function defaults(): void
+    {
+        Auth::requireLogin();
+
+        self::tab('/profile/defaults', 'profile/defaults', [
+            'schedule' => StreamSchedule::forUser((int) Auth::id()),
+        ]);
+    }
+
+    /** Saves the default stream schedule from the defaults tab. */
+    public static function saveDefaults(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $days = StreamSchedule::fromInput((array) ($_POST['day'] ?? []));
+
+        if ($days === null) {
+            flash('error', __('ui.message.schedule_invalid'));
+            redirect('/profile/defaults');
+        }
+
+        StreamSchedule::save((int) Auth::id(), $days);
+
+        flash('success', __('ui.message.saved'));
+        redirect('/profile/defaults');
     }
 
     public static function security(): void
@@ -383,6 +420,10 @@ final class ProfileController
             )->execute([$result['login'], Auth::id()]);
         }
 
+        if (TwitchEventSub::isAvailable() && !TwitchEventSub::subscribe((int) Auth::id())) {
+            error_log('StreamOrg EventSub subscribe: ' . TwitchEventSub::lastError());
+        }
+
         flash('success', sprintf(__('ui.message.twitch_connected'), $result['login']));
         redirect('/profile');
     }
@@ -392,9 +433,39 @@ final class ProfileController
         Auth::requireLogin();
         Csrf::verify();
 
+        TwitchEventSub::unsubscribe((int) Auth::id());
         TwitchUser::disconnect((int) Auth::id());
 
         flash('success', __('ui.message.twitch_disconnected'));
+        redirect('/profile');
+    }
+
+    /** Turns live tracking (the EventSub subscriptions) on or off. */
+    public static function twitchTracking(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $userId = (int) Auth::id();
+
+        if (($_POST['tracking'] ?? '') !== 'on') {
+            TwitchEventSub::unsubscribe($userId);
+            flash('success', __('ui.message.tracking_off'));
+            redirect('/profile');
+        }
+
+        if (!TwitchEventSub::isAvailable() || TwitchUser::connection($userId) === null) {
+            flash('error', __('ui.message.tracking_unavailable'));
+            redirect('/profile');
+        }
+
+        if (!TwitchEventSub::subscribe($userId)) {
+            error_log('StreamOrg EventSub subscribe: ' . TwitchEventSub::lastError());
+            flash('error', __('ui.message.tracking_failed'));
+            redirect('/profile');
+        }
+
+        flash('success', __('ui.message.tracking_on'));
         redirect('/profile');
     }
 }

@@ -8,6 +8,7 @@
     "postinstall": "node scripts/vendor.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@fullcalendar/core": "^6.1.21",
     "@hotwired/turbo": "^8.0.0",
     "fullcalendar": "^6.1.21",

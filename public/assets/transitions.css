@@ -1,0 +1,29 @@
+/* Cross-page transitions between the landing page and the login screen. */
+
+@view-transition { navigation: auto; }
+
+.landing-bar .brand-mark,
+.login-mark { view-transition-name: brand-mark; }
+.login-card { view-transition-name: login-card; }
+
+::view-transition-group(brand-mark) { animation-duration: .5s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+
+::view-transition-old(root) { animation: vt-recede .3s cubic-bezier(.4, 0, 1, 1) both; }
+::view-transition-new(root) { animation: vt-appear .35s ease-out .05s both; }
+
+::view-transition-new(login-card) { animation: vt-rise .5s cubic-bezier(.2, .8, .2, 1) both; }
+::view-transition-old(login-card) { animation: vt-drop .28s cubic-bezier(.4, 0, 1, 1) both; }
+
+@keyframes vt-recede { to { opacity: 0; transform: scale(.97); filter: blur(2px); } }
+@keyframes vt-appear { from { opacity: 0; } }
+@keyframes vt-rise   { from { opacity: 0; transform: translateY(48px) scale(.96); } }
+@keyframes vt-drop   { to { opacity: 0; transform: translateY(32px) scale(.97); } }
+
+@supports not (view-transition-name: none) {
+    .login-card { animation: vt-rise .45s cubic-bezier(.2, .8, .2, 1) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    @view-transition { navigation: none; }
+    .login-card { animation: none; }
+}

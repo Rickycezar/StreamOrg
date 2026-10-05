@@ -230,6 +230,7 @@ final class ContentController
             'defaultEmbargo'  => (new DateTimeImmutable('today'))->format('Y-m-d\\TH:i'),
             'embargoByGame' => $embargoByGame,
             'backlog'     => $backlog,
+            'schedule'    => StreamSchedule::forUser((int) $userId),
             'content'     => $content,
             'filters'     => $filters,
             'statuses'    => self::STATUSES,
@@ -715,7 +716,9 @@ final class ContentController
 
         json_response([
             'ok'      => true,
-            'message' => sprintf(__('ui.message.twitch_sent'), $plan['login']),
+            'status'  => $plan['status'],
+            'message' => sprintf(__('ui.message.twitch_sent'), $plan['login'])
+                . ($plan['status'] === 'live' ? ' ' . __('ui.message.twitch_marked_live') : ''),
         ]);
     }
 

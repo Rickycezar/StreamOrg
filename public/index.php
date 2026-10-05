@@ -32,6 +32,10 @@ if ($requestPath === '/healthz') {
     HealthController::index();
 }
 
+if ($requestPath === '/twitch/eventsub' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    TwitchEventController::receive();
+}
+
 if ($hasSession || !in_array($requestPath, ['/', '/language'], true)) {
     Auth::start();
 }
@@ -73,6 +77,7 @@ $routes = [
         '/profile'           => [ProfileController::class, 'index'],
         '/profile/password'  => [ProfileController::class, 'passwordPage'],
         '/profile/appearance' => [ProfileController::class, 'appearance'],
+        '/profile/defaults'  => [ProfileController::class, 'defaults'],
         '/profile/security'  => [ProfileController::class, 'security'],
         '/profile/twitch/connect'  => [ProfileController::class, 'twitchConnect'],
         '/profile/twitch/callback' => [ProfileController::class, 'twitchCallback'],
@@ -91,6 +96,8 @@ $routes = [
         '/admin/key-sites'   => [AdminController::class, 'keySites'],
         '/admin/api'         => [AdminController::class, 'apiSettings'],
         '/admin/settings'    => [AdminController::class, 'settings'],
+        '/admin/testimonials' => [AdminController::class, 'testimonials'],
+        '/admin/testimonials/download' => [AdminController::class, 'downloadTestimonials'],
         '/admin/lang'        => [LangController::class, 'index'],
         '/admin/import'      => [ImportController::class, 'index'],
         '/admin/import/search' => [ImportController::class, 'search'],
@@ -126,9 +133,11 @@ $routes = [
         '/profile/password'  => [ProfileController::class, 'password'],
         '/profile/vault'     => [ProfileController::class, 'vault'],
         '/profile/appearance' => [ProfileController::class, 'theme'],
+        '/profile/defaults'  => [ProfileController::class, 'saveDefaults'],
         '/profile/sessions/revoke'        => [ProfileController::class, 'revokeSession'],
         '/profile/sessions/revoke-others' => [ProfileController::class, 'revokeOtherSessions'],
         '/profile/twitch/disconnect'      => [ProfileController::class, 'twitchDisconnect'],
+        '/profile/twitch/tracking'        => [ProfileController::class, 'twitchTracking'],
         '/content/twitch'    => [ContentController::class, 'twitchPush'],
         '/vault/unlock'      => [ProfileController::class, 'unlockVault'],
         '/streamers'         => [StreamerController::class, 'store'],
@@ -145,6 +154,7 @@ $routes = [
         '/admin/key-sites'   => [AdminController::class, 'storeKeySite'],
         '/admin/api'         => [AdminController::class, 'saveApiSettings'],
         '/admin/settings'    => [AdminController::class, 'saveSettings'],
+        '/admin/testimonials' => [AdminController::class, 'saveTestimonials'],
         '/admin/api/test'    => [AdminController::class, 'testProvider'],
         '/admin/lang'        => [LangController::class, 'save'],
         '/admin/import/game' => [ImportController::class, 'import'],

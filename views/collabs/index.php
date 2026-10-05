@@ -18,7 +18,7 @@
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.nav.collabs')) ?> (<?= count($collabs) ?>)</h2>
-        <button type="button" class="btn primary" data-modal-form="#add-collab"
+        <button type="button" class="btn primary" data-new data-modal-form="#add-collab"
                 data-modal-title="<?= e(__('ui.action.create')) ?>"><?= e(__('ui.action.create')) ?></button>
     </div>
 

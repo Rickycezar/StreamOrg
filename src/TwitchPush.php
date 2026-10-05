@@ -114,7 +114,9 @@ final class TwitchPush
     }
 
     /**
-     * Applies the plan to the channel.
+     * Applies the plan to the channel. Planned content becomes live, with
+     * its actual start set to now unless it already had one: sending the
+     * title is what a streamer does as they go on air.
      *
      * @throws UserError with a user-facing message
      */
@@ -151,10 +153,17 @@ final class TwitchPush
             )->execute([$userId, $plan['game_id'], $plan['category']['id'], $plan['category']['name']]);
         }
 
-        $pdo->prepare('UPDATE streams SET twitch_pushed_at = now() WHERE id = ? AND user_id = ?')
-            ->execute([$streamId, $userId]);
+        $stmt = $pdo->prepare(
+            "UPDATE streams
+                SET twitch_pushed_at = now(),
+                    actual_start = CASE WHEN status = 'planned' THEN coalesce(actual_start, now()) ELSE actual_start END,
+                    status = CASE WHEN status = 'planned' THEN 'live' ELSE status END
+              WHERE id = ? AND user_id = ?
+          RETURNING status"
+        );
+        $stmt->execute([$streamId, $userId]);
 
-        return $plan;
+        return $plan + ['status' => (string) $stmt->fetchColumn()];
     }
 
     /** @return array<string,mixed> */

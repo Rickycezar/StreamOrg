@@ -2,7 +2,7 @@
 /** @var array $counts @var int $missingKeys @var int $thisWeek @var array $backlog
  *  @var array $content @var array $filters @var array $statuses @var array $platforms
  *  @var array $keys @var array $keySources @var array $gamePlatforms
- *  @var bool $canAddGames @var ?string $twitchLogin */
+ *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule */
 ?>
 <h1><?= e(__('ui.nav.content')) ?></h1>
 
@@ -56,7 +56,8 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
          data-locale="<?= e($fcLocale) ?>"
          data-now="<?= e((new DateTimeImmutable())->format('Y-m-d\TH:i:s')) ?>"
          data-events-url="<?= e(url('/content/calendar')) ?>"
-         data-default-hour="20">
+         data-schedule="<?= e(json_encode((object) $schedule)) ?>"
+         data-default-start="<?= e(StreamSchedule::FALLBACK_START) ?>">
     <div class="planner-layout">
         <div class="planner-calendar" id="planner-calendar">
             <div class="skeleton-calendar" aria-hidden="true">
@@ -153,7 +154,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.nav.content')) ?> (<?= count($content) ?>)</h2>
-        <button type="button" class="btn primary" data-modal-form="#add-content"
+        <button type="button" class="btn primary" data-new data-modal-form="#add-content"
                 data-modal-title="<?= e(__('ui.action.add_content')) ?>"><?= e(__('ui.action.add_content')) ?></button>
     </div>
 
@@ -527,23 +528,6 @@ $pageGlobals = [
         return $carry;
     }, []),
     'STREAMORG_PRESELECT_COLLAB' => $preselect,
-    'STREAMORG_TWITCH_L' => [
-        'heading'    => __('ui.action.twitch_send'),
-        'channel'    => __('ui.label.twitch_channel'),
-        'title'      => __('ui.field.title'),
-        'now'        => __('ui.label.twitch_now'),
-        'category'   => __('ui.label.twitch_category'),
-        'keep'       => __('ui.label.twitch_category_keep'),
-        'choose'     => __('ui.label.twitch_category_choose'),
-        'none_found' => __('ui.message.twitch_no_category'),
-        'tags'       => __('ui.label.twitch_tags'),
-        'added'      => __('ui.label.twitch_tag_added'),
-        'removed'    => __('ui.label.twitch_tag_removed'),
-        'no_tags'    => __('ui.label.twitch_no_tags'),
-        'too_long'   => __('ui.message.twitch_title_too_long'),
-        'send'       => __('ui.action.twitch_send'),
-        'cancel'     => __('ui.action.cancel'),
-    ],
     'STREAMORG_EMBARGOES' => (object) array_map(
         static fn (?string $d): string => $d === null ? '' : substr(str_replace(' ', 'T', $d), 0, 16),
         $embargoByGame

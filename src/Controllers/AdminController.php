@@ -76,6 +76,60 @@ final class AdminController
         redirect('/admin/settings');
     }
 
+    public static function testimonials(): void
+    {
+        Auth::requireAdmin();
+
+        View::render('admin/testimonials', [
+            'json'  => (string) ($_SESSION['testimonials_draft'] ?? Testimonials::json()),
+            'count' => count(Testimonials::all()),
+        ], __('ui.nav.testimonials'));
+
+        unset($_SESSION['testimonials_draft']);
+    }
+
+    /** Saves the testimonials from an uploaded .json file, or else the editor. */
+    public static function saveTestimonials(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $file = $_FILES['file'] ?? null;
+        $json = (string) ($_POST['json'] ?? '');
+
+        if (is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 256 * 1024 || !is_uploaded_file($file['tmp_name'])) {
+                flash('error', __('ui.message.testimonials_upload_failed'));
+                redirect('/admin/testimonials');
+            }
+
+            $json = (string) file_get_contents($file['tmp_name']);
+        }
+
+        try {
+            $items = Testimonials::parse($json);
+        } catch (UserError $e) {
+            $_SESSION['testimonials_draft'] = $json;
+            flash('error', $e->getMessage());
+            redirect('/admin/testimonials');
+        }
+
+        Testimonials::save($items, Auth::id());
+
+        flash('success', sprintf(__('ui.message.testimonials_saved'), count($items)));
+        redirect('/admin/testimonials');
+    }
+
+    public static function downloadTestimonials(): void
+    {
+        Auth::requireAdmin();
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="testimonials.json"');
+        echo Testimonials::json();
+        exit;
+    }
+
     public static function games(): void
     {
         Auth::requireAdmin();

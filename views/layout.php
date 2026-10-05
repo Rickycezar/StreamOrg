@@ -28,6 +28,9 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
     <meta name="streamorg-lang" content="<?= e(Lang::locale()) ?>">
     <link rel="stylesheet" href="<?= e($asset('/assets/vendor/tom-select.css')) ?>" data-turbo-track="reload">
     <link rel="stylesheet" href="<?= e($asset('/assets/app.css')) ?>" data-turbo-track="reload">
+    <?php if ($user === null): ?>
+    <link rel="stylesheet" href="<?= e($asset('/assets/transitions.css')) ?>">
+    <?php endif; ?>
     <script src="<?= e($asset('/assets/vendor/turbo.js')) ?>" defer data-turbo-track="reload"></script>
     <script src="<?= e($asset('/assets/vendor/tom-select.js')) ?>" defer data-turbo-track="reload"></script>
     <script src="<?= e($asset('/assets/app.js')) ?>" defer data-turbo-track="reload"></script>
@@ -81,6 +84,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     '/admin/import'     => __('ui.nav.import'),
                     '/admin/api'        => __('ui.nav.api_settings'),
                     '/admin/settings'   => __('ui.nav.settings'),
+                    '/admin/testimonials' => __('ui.nav.testimonials'),
                     '/admin/lang'       => __('ui.nav.languages'),
                 ],
             ];
@@ -163,6 +167,23 @@ $globals = [
     'STREAMORG_SESSION' => Auth::clientMarker(),
     'BASE_URL'          => url('/'),
     'STREAMORG_PREFS'   => PreferenceController::all() ?: new stdClass(),
+    'STREAMORG_TWITCH_L' => [
+        'heading'    => __('ui.action.twitch_send'),
+        'channel'    => __('ui.label.twitch_channel'),
+        'title'      => __('ui.field.title'),
+        'now'        => __('ui.label.twitch_now'),
+        'category'   => __('ui.label.twitch_category'),
+        'keep'       => __('ui.label.twitch_category_keep'),
+        'choose'     => __('ui.label.twitch_category_choose'),
+        'none_found' => __('ui.message.twitch_no_category'),
+        'tags'       => __('ui.label.twitch_tags'),
+        'added'      => __('ui.label.twitch_tag_added'),
+        'removed'    => __('ui.label.twitch_tag_removed'),
+        'no_tags'    => __('ui.label.twitch_no_tags'),
+        'too_long'   => __('ui.message.twitch_title_too_long'),
+        'send'       => __('ui.action.twitch_send'),
+        'cancel'     => __('ui.action.cancel'),
+    ],
     'STREAMORG_L'       => [
         'status' => __('ui.field.status'),   'platform'  => __('ui.field.platform'),
         'scheduled' => __('ui.field.scheduled'), 'deadline' => __('ui.field.deadline'),

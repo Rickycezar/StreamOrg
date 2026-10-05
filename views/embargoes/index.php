@@ -24,7 +24,7 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.nav.embargoes')) ?> (<?= count($embargoes) ?>)</h2>
-        <button type="button" class="btn primary" data-modal-form="#add-embargo"
+        <button type="button" class="btn primary" data-new data-modal-form="#add-embargo"
                 data-modal-title="<?= e(__('ui.action.create')) ?>"><?= e(__('ui.action.create')) ?></button>
     </div>
 

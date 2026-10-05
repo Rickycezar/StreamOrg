@@ -177,6 +177,40 @@ final class Twitch
         return ['ok' => true, 'note' => 'Authenticated and reachable.'];
     }
 
+    /**
+     * One Helix call with the app token, for endpoints that need no user
+     * (EventSub subscriptions). Returns the raw response.
+     *
+     * @return array{status:int, body:string, error:?string}
+     */
+    public static function app(string $method, string $path, array $query = [], ?array $body = null): array
+    {
+        $token = self::token();
+
+        if ($token === null) {
+            return ['status' => 0, 'body' => '', 'error' => self::$lastError ?? 'No app token.'];
+        }
+
+        $url     = 'https://api.twitch.tv/helix/' . $path . ($query === [] ? '' : '?' . http_build_query($query));
+        $headers = [
+            'Client-Id'     => self::clientId(),
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+        ];
+
+        $response = match ($method) {
+            'GET'    => Http::get($url, $headers),
+            'DELETE' => Http::delete($url, $headers),
+            default  => Http::post($url, (string) json_encode($body), $headers + ['Content-Type' => 'application/json']),
+        };
+
+        if ($response['status'] === 401) {
+            unset($_SESSION[self::TOKEN_KEY]);
+        }
+
+        return $response;
+    }
+
     /** @param array<string, string|int> $query */
     private static function get(string $path, array $query): array
     {
