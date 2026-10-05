@@ -80,9 +80,14 @@ final class AdminController
     {
         Auth::requireAdmin();
 
+        $items = Testimonials::all();
+
         View::render('admin/testimonials', [
-            'json'  => (string) ($_SESSION['testimonials_draft'] ?? Testimonials::json()),
-            'count' => count(Testimonials::all()),
+            'json'    => (string) ($_SESSION['testimonials_draft'] ?? Testimonials::json()),
+            'items'   => Testimonials::forAdmin(Lang::locale()),
+            'count'   => count($items),
+            'shown'   => count(array_filter($items, static fn (array $t): bool => ($t['active'] ?? true) !== false)),
+            'enabled' => Testimonials::isEnabled(),
         ], __('ui.nav.testimonials'));
 
         unset($_SESSION['testimonials_draft']);
@@ -117,6 +122,38 @@ final class AdminController
         Testimonials::save($items, Auth::id());
 
         flash('success', sprintf(__('ui.message.testimonials_saved'), count($items)));
+        redirect('/admin/testimonials');
+    }
+
+    /** Shows or hides one testimonial on the landing page. */
+    public static function toggleTestimonial(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $index  = filter_input(INPUT_POST, 'index', FILTER_VALIDATE_INT);
+        $active = ($_POST['active'] ?? '') === '1';
+        $name   = $index === false || $index === null ? null : Testimonials::setActive($index, $active, Auth::id());
+
+        if ($name === null) {
+            flash('error', __('ui.message.not_found'));
+        } else {
+            flash('success', sprintf(__($active ? 'ui.message.testimonial_shown' : 'ui.message.testimonial_hidden'), $name));
+        }
+
+        redirect('/admin/testimonials');
+    }
+
+    /** Shows or hides the whole testimonials section. */
+    public static function toggleTestimonialsSection(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $enabled = ($_POST['enabled'] ?? '') === '1';
+        Testimonials::setEnabled($enabled, Auth::id());
+
+        flash('success', __($enabled ? 'ui.message.testimonials_section_on' : 'ui.message.testimonials_section_off'));
         redirect('/admin/testimonials');
     }
 

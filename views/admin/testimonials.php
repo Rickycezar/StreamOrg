@@ -1,5 +1,6 @@
 <?php
-/** @var string $json @var int $count */
+/** @var string $json @var int $count @var int $shown @var bool $enabled
+ *  @var list<array{index:int, name:string, quote:string, avatar:?string, active:bool}> $items */
 
 $example = <<<'JSON'
 [
@@ -12,7 +13,8 @@ $example = <<<'JSON'
     "detail": { "en": "Variety · 48k followers", "pt-BR": "Variedade · 48 mil seguidores" },
     "avatar": "https://example.com/avatar.png",
     "url": "https://twitch.tv/rafalimatv",
-    "rating": 5
+    "rating": 5,
+    "active": true
   }
 ]
 JSON;
@@ -21,9 +23,54 @@ JSON;
 
 <section class="card">
     <div class="card-head">
+        <h2><?= e(__('ui.label.testimonials_on_page')) ?></h2>
+        <form method="post" action="<?= e(url('/admin/testimonials/section')) ?>">
+            <?= Csrf::field() ?>
+            <input type="hidden" name="enabled" value="<?= $enabled ? '0' : '1' ?>">
+            <button type="submit" class="switch<?= $enabled ? ' on' : '' ?>" aria-pressed="<?= $enabled ? 'true' : 'false' ?>">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <?= e(__($enabled ? 'ui.label.testimonials_section_on' : 'ui.label.testimonials_section_off')) ?>
+            </button>
+        </form>
+    </div>
+
+    <?php if ($items === []): ?>
+        <p class="empty"><?= e(__('ui.message.testimonials_none')) ?></p>
+    <?php else: ?>
+        <p class="muted small"><?= e(sprintf(__('ui.message.testimonials_toggle_hint'), $shown, $count)) ?></p>
+        <ul class="testimonial-list<?= $enabled ? '' : ' section-off' ?>">
+            <?php foreach ($items as $item): ?>
+                <li class="<?= $item['active'] ? '' : 'off' ?>">
+                    <?php if ($item['avatar']): ?>
+                        <img src="<?= e($item['avatar']) ?>" alt="" loading="lazy" referrerpolicy="no-referrer">
+                    <?php else: ?>
+                        <span class="testimonial-initial"><?= e(mb_strtoupper(mb_substr($item['name'], 0, 1))) ?></span>
+                    <?php endif; ?>
+                    <span class="testimonial-text">
+                        <strong><?= e($item['name']) ?></strong>
+                        <small class="muted"><?= e(mb_strimwidth($item['quote'], 0, 110, '…')) ?></small>
+                    </span>
+                    <form method="post" action="<?= e(url('/admin/testimonials/toggle')) ?>">
+                        <?= Csrf::field() ?>
+                        <input type="hidden" name="index" value="<?= (int) $item['index'] ?>">
+                        <input type="hidden" name="active" value="<?= $item['active'] ? '0' : '1' ?>">
+                        <button type="submit" class="switch<?= $item['active'] ? ' on' : '' ?>" aria-pressed="<?= $item['active'] ? 'true' : 'false' ?>"
+                                aria-label="<?= e(sprintf(__($item['active'] ? 'ui.action.hide_testimonial' : 'ui.action.show_testimonial'), $item['name'])) ?>">
+                            <span class="switch-track"><span class="switch-thumb"></span></span>
+                            <?= e(__($item['active'] ? 'ui.label.shown' : 'ui.label.hidden')) ?>
+                        </button>
+                    </form>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
+
+<section class="card">
+    <div class="card-head">
         <h2><?= e(__('ui.label.testimonials_file')) ?></h2>
-        <span class="badge <?= $count > 0 ? 'ok' : 'off' ?>">
-            <?= e($count > 0 ? sprintf(__('ui.label.n_testimonials'), $count) : __('ui.label.testimonials_hidden')) ?>
+        <span class="badge <?= $enabled && $shown > 0 ? 'ok' : 'off' ?>">
+            <?= e($enabled && $shown > 0 ? sprintf(__('ui.label.n_testimonials'), $shown) : __('ui.label.testimonials_hidden')) ?>
         </span>
     </div>
     <p class="muted small"><?= e(__('ui.message.testimonials_explain')) ?></p>

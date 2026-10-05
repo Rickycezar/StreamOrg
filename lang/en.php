@@ -480,6 +480,8 @@ return [
         ],
 
         'action' => [
+            'hide_testimonial' => 'Hide %s',
+            'show_testimonial' => 'Show %s',
             'reset_password' => 'Reset password',
             'delete_forever' => 'Delete forever',
             'add_user' => 'Add user',
@@ -621,6 +623,11 @@ return [
         ],
 
         'label' => [
+            'testimonials_on_page' => 'On the landing page',
+            'testimonials_section_on' => 'Section shown',
+            'testimonials_section_off' => 'Section hidden',
+            'shown' => 'Shown',
+            'hidden' => 'Hidden',
             'edit_user' => 'Edit %s',
             'reset_password_for' => 'Reset the password of %s',
             'delete_user' => 'Delete %s',
@@ -633,8 +640,8 @@ return [
             'never' => 'never',
             'testimonials_file' => 'testimonials.json',
             'n_testimonials' => '%d on the landing page',
-            'testimonials_hidden' => 'hidden: the list is empty',
-            'testimonials_format' => 'Format',
+            'testimonials_hidden' => 'not shown on the landing page',
+            'testimonials_format' => 'Each item needs a name and a quote. quote and detail take a plain string or one string per language (en, pt-BR); detail, avatar (an image URL), url (the channel), rating (1 to 5, default 5) and active (false hides it, default true) are optional.',
             'live_tracking' => 'Live tracking',
             'tracking_on' => 'on',
             'tracking_off' => 'off',
@@ -783,6 +790,12 @@ return [
         ],
 
         'message' => [
+            'testimonial_shown' => '%s is shown on the landing page.',
+            'testimonial_hidden' => '%s is hidden from the landing page.',
+            'testimonials_section_on' => 'The testimonials section is shown on the landing page.',
+            'testimonials_section_off' => 'The testimonials section is hidden. The list is kept as it is.',
+            'testimonials_none' => 'No testimonials yet. Upload or paste the JSON below.',
+            'testimonials_toggle_hint' => '%d of %d shown. Hidden testimonials stay in the list and can be shown again any time.',
             'user_not_yourself' => 'You cannot remove your own administrator access, deactivate or delete your own account.',
             'user_last_admin' => 'This is the last active administrator. Make someone else an administrator first.',
             'user_updated' => 'User %s updated.',

@@ -1965,3 +1965,35 @@ body.sec-page { background: var(--bg); }
 tr.user-inactive td { color: var(--muted); }
 tr.user-inactive td strong { text-decoration: line-through; text-decoration-color: var(--border-strong); }
 label > span code.confirm-name { text-transform: none; letter-spacing: 0; font-size: .85rem; padding: 0 .3rem; border-radius: 3px; background: var(--danger-bg); color: var(--danger-ink); }
+
+.switch {
+    display: inline-flex; align-items: center; gap: .5rem; padding: .2rem .1rem;
+    background: none; border: 0; font: inherit; font-size: .82rem; color: var(--muted); cursor: pointer;
+}
+.switch-track {
+    position: relative; width: 34px; height: 20px; border-radius: 999px; flex: none;
+    background: var(--border-strong); transition: background .18s;
+}
+.switch-thumb {
+    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .18s var(--ease-out);
+}
+.switch.on { color: var(--ok); }
+.switch.on .switch-track { background: var(--ok); }
+.switch.on .switch-thumb { transform: translateX(14px); }
+.switch:focus-visible .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.testimonial-list { list-style: none; margin: .5rem 0 0; padding: 0; }
+.testimonial-list li {
+    display: flex; align-items: center; gap: .8rem; padding: .6rem 0;
+    border-bottom: 1px solid var(--border-soft); transition: opacity .18s;
+}
+.testimonial-list li:last-child { border-bottom: 0; }
+.testimonial-list li.off img, .testimonial-list li.off .testimonial-initial, .testimonial-list li.off .testimonial-text { opacity: .45; }
+.testimonial-list.section-off { opacity: .6; }
+.testimonial-list img, .testimonial-initial {
+    flex: none; width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
+}
+.testimonial-initial { display: grid; place-items: center; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
+.testimonial-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.testimonial-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

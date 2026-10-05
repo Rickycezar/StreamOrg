@@ -15,16 +15,21 @@ declare(strict_types=1);
  *         "detail": { "en": "Variety · 48k followers", "pt-BR": "Variedade · 48 mil seguidores" },
  *         "avatar": "https://static-cdn.jtvnw.net/…/profile_image.png",
  *         "url":    "https://twitch.tv/rafalimatv",
- *         "rating": 5
+ *         "rating": 5,
+ *         "active": true
  *       }
  *     ]
  *
  * "quote" and "detail" take a plain string or one string per language;
  * "detail", "avatar", "url" and "rating" (1–5, default 5) are optional.
+ * "active": false keeps a testimonial in the list but off the page, and a
+ * separate switch hides the whole section without touching the list.
  */
 final class Testimonials
 {
     private const KEY = 'landing_testimonials';
+
+    private const ENABLED_KEY = 'landing_testimonials_enabled';
 
     public const MAX_ITEMS = 30;
 
@@ -43,6 +48,12 @@ final class Testimonials
      */
     public static function forLocale(string $locale): array
     {
+        if (!self::isEnabled()) {
+            return [];
+        }
+
+        $shown = array_filter(self::all(), static fn (array $t): bool => ($t['active'] ?? true) !== false);
+
         return array_map(static fn (array $t): array => [
             'name'   => (string) $t['name'],
             'quote'  => (string) self::text($t['quote'] ?? '', $locale),
@@ -50,7 +61,63 @@ final class Testimonials
             'avatar' => $t['avatar'] ?? null,
             'url'    => $t['url'] ?? null,
             'rating' => (int) ($t['rating'] ?? 5),
-        ], self::all());
+        ], array_values($shown));
+    }
+
+    /**
+     * Every testimonial, hidden ones included, for the admin list.
+     *
+     * @return list<array{index:int, name:string, quote:string, avatar:?string, active:bool}>
+     */
+    public static function forAdmin(string $locale): array
+    {
+        $out = [];
+
+        foreach (self::all() as $index => $t) {
+            $out[] = [
+                'index'  => $index,
+                'name'   => (string) $t['name'],
+                'quote'  => (string) self::text($t['quote'] ?? '', $locale),
+                'avatar' => $t['avatar'] ?? null,
+                'active' => ($t['active'] ?? true) !== false,
+            ];
+        }
+
+        return $out;
+    }
+
+    /** Whether the landing page shows the section at all. */
+    public static function isEnabled(): bool
+    {
+        return Settings::get(self::ENABLED_KEY, '1') !== '0';
+    }
+
+    public static function setEnabled(bool $enabled, ?int $userId): void
+    {
+        Settings::set(self::ENABLED_KEY, $enabled ? '1' : '0', $userId);
+    }
+
+    /**
+     * Shows or hides one testimonial, by its position in the list.
+     * Returns its name, or null when there is no such position.
+     */
+    public static function setActive(int $index, bool $active, ?int $userId): ?string
+    {
+        $items = self::all();
+
+        if (!isset($items[$index])) {
+            return null;
+        }
+
+        if ($active) {
+            unset($items[$index]['active']);
+        } else {
+            $items[$index]['active'] = false;
+        }
+
+        self::save($items, $userId);
+
+        return (string) $items[$index]['name'];
     }
 
     /** The stored list, pretty-printed for editing and download. */
@@ -139,6 +206,17 @@ final class Testimonials
             }
 
             $entry['rating'] = $rating;
+
+            $active = $item['active'] ?? true;
+
+            if (!is_bool($active)) {
+                throw new UserError(sprintf(__('ui.message.testimonials_item'), $n, 'active'));
+            }
+
+            if (!$active) {
+                $entry['active'] = false;
+            }
+
             $clean[] = $entry;
         }
 

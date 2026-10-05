@@ -479,6 +479,8 @@ return [
         ],
 
         'action' => [
+            'hide_testimonial' => 'Ocultar %s',
+            'show_testimonial' => 'Mostrar %s',
             'reset_password' => 'Redefinir senha',
             'delete_forever' => 'Excluir para sempre',
             'add_user' => 'Adicionar usuário',
@@ -620,6 +622,11 @@ return [
         ],
 
         'label' => [
+            'testimonials_on_page' => 'Na página inicial',
+            'testimonials_section_on' => 'Seção visível',
+            'testimonials_section_off' => 'Seção oculta',
+            'shown' => 'Visível',
+            'hidden' => 'Oculto',
             'edit_user' => 'Editar %s',
             'reset_password_for' => 'Redefinir a senha de %s',
             'delete_user' => 'Excluir %s',
@@ -632,8 +639,8 @@ return [
             'never' => 'nunca',
             'testimonials_file' => 'testimonials.json',
             'n_testimonials' => '%d na página inicial',
-            'testimonials_hidden' => 'oculto: a lista está vazia',
-            'testimonials_format' => 'Formato',
+            'testimonials_hidden' => 'não aparecem na página inicial',
+            'testimonials_format' => 'Cada item precisa de name e quote. quote e detail aceitam um texto simples ou um texto por idioma (en, pt-BR); detail, avatar (URL de uma imagem), url (o canal), rating (de 1 a 5, padrão 5) e active (false oculta, padrão true) são opcionais.',
             'live_tracking' => 'Acompanhamento ao vivo',
             'tracking_on' => 'ligado',
             'tracking_off' => 'desligado',
@@ -782,6 +789,12 @@ return [
         ],
 
         'message' => [
+            'testimonial_shown' => '%s aparece na página inicial.',
+            'testimonial_hidden' => '%s foi ocultado da página inicial.',
+            'testimonials_section_on' => 'A seção de depoimentos aparece na página inicial.',
+            'testimonials_section_off' => 'A seção de depoimentos foi ocultada. A lista continua como está.',
+            'testimonials_none' => 'Ainda não há depoimentos. Envie ou cole o JSON abaixo.',
+            'testimonials_toggle_hint' => '%d de %d visíveis. Depoimentos ocultos continuam na lista e podem voltar a aparecer a qualquer momento.',
             'user_not_yourself' => 'Você não pode remover o seu próprio acesso de administrador, desativar ou excluir a sua própria conta.',
             'user_last_admin' => 'Este é o último administrador ativo. Torne outra pessoa administradora primeiro.',
             'user_updated' => 'Usuário %s atualizado.',
