@@ -476,7 +476,7 @@ final class TwitchUser
      *
      * @return array{access_token:string, refresh_token:string, expires_in:int, scope:list<string>}|null
      */
-    private static function tokenRequest(array $params): ?array
+    public static function tokenRequest(array $params): ?array
     {
         $response = Http::post('https://id.twitch.tv/oauth2/token', http_build_query($params + [
             'client_id'     => Twitch::clientId(),

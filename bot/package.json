@@ -1,0 +1,18 @@
+{
+  "name": "streamorg-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StreamOrg chat bot: answers chat commands in the channels that added it.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22.4"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

@@ -22,6 +22,9 @@ package.json
 package-lock.json
 scripts/
 
+# The chat bot is its own Coolify app (base directory bot/).
+bot/
+
 # Tests and docs.
 tests/
 phpunit.xml

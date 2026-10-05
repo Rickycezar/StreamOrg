@@ -10,7 +10,7 @@
 
 <div class="profile-layout">
     <nav class="subnav" aria-label="<?= e(__('ui.nav.profile')) ?>">
-        <?php foreach (ProfileController::TABS as $path => $label): ?>
+        <?php foreach (ProfileController::tabs() as $path => $label): ?>
             <a href="<?= e(url($path)) ?>" class="<?= $tab === $path ? 'active' : '' ?>"
                <?= $tab === $path ? 'aria-current="page"' : '' ?>><?= e(__($label)) ?></a>
         <?php endforeach; ?>

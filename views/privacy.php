@@ -5,7 +5,7 @@
  *
  * @var string $email
  */
-$sections = ['who', 'creators', 'viewers', 'giveaways', 'twitch', 'cookies', 'retention', 'rights', 'changes'];
+$sections = ['who', 'creators', 'viewers', 'giveaways', 'bot', 'twitch', 'cookies', 'retention', 'rights', 'changes'];
 ?>
 <div class="pub-privacy">
     <header class="pub-hero">

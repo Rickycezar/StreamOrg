@@ -112,6 +112,19 @@ private preview. Preview access: streamorg@outlook.com.
 - **Claim links only the winner can open**: the link works for that Twitch
   account only, signed in, until it expires (30 days by default).
 
+### Chat bot
+- **One bot for every channel** (`bot/`, a small Node service): it joins the
+  Twitch chat of streamers who add it from *Profile → Chat bot* and answers
+  commands. For now there is one, `!heartbeat`, to check it is listening.
+- **Commands made your own**: each streamer can rename a command, rewrite its
+  reply (with placeholders such as `{user}`), choose who may use it
+  (everyone, subscribers, VIPs, moderators or only the streamer), set a
+  cooldown, switch it off, or go back to the default.
+- **Managed from the administration**: the Twitch account the bot speaks as,
+  on/off, the command prefix, the default commands, blocking a channel, and
+  the bot's live status and recent activity. Changes reach the bot within
+  seconds. No chat messages are stored.
+
 ### Viewers
 - Winners sign in **as viewers, with Twitch only**, and see **My prizes**:
   every key they won, by streamer. Viewers have no access to anything else.
@@ -164,7 +177,8 @@ private preview. Preview access: streamorg@outlook.com.
 | Server | PHP 8.2 (`pdo_pgsql`, `curl`, `gd`, `mbstring`, `openssl`), no framework |
 | Database | PostgreSQL 15+ (uses the `citext` extension) |
 | Front end | Server-rendered views, [Turbo Drive](https://turbo.hotwired.dev/) navigation, [Tom Select](https://tom-select.js.org/) pickers, [FullCalendar](https://fullcalendar.io/), Plus Jakarta Sans on the landing page — vendored, no build step |
-| Tooling | Composer (autoloader, PHPUnit), npm (only to fetch the browser libraries) |
+| Chat bot | Node 22+ with `pg` only; Twitch chat over its IRC WebSocket, with Node's built-in WebSocket |
+| Tooling | Composer (autoloader, PHPUnit), npm (the browser libraries and the bot's one dependency) |
 | Deployment | Docker image, built and run by [Coolify](https://coolify.io/) on every `git push` |
 
 ---
@@ -248,6 +262,28 @@ What the image does:
   codes) lives in the database, so it survives deploys and is in the backups.
   Edits to the language files made on a deployed server do not survive the
   next deploy: change them in the project.
+
+### The chat bot
+
+The bot is a second Coolify application from the same repository:
+
+1. *New resource → Application* from the same Git repository and branch,
+   build pack *Dockerfile*, **base directory `/bot`**, and **watch paths
+   `bot/**`** so it only rebuilds when the bot changes. Pushes that only
+   touch `bot/` also redeploy the PHP app unless its watch paths exclude
+   `bot/`, which is harmless.
+2. No domain or public port: it only talks out, to Twitch and the database.
+   Its health check (`/health` on port 8080) is built into the image.
+3. The same `APP_KEY` and database settings (`DATABASE_URL`, or `DB_HOST`,
+   `DB_NAME`…) as the PHP app — it reads the tokens the app encrypted.
+4. In StreamOrg, *Administration → Chat bot*: sign in to Twitch as the bot
+   account (in a private window, for instance), *Connect the bot account*,
+   then switch it on. The status turns *Online* within a minute.
+
+The bot waits for the app's migrations, reloads when the app announces a
+change (`NOTIFY streamorg_bot`), refreshes its token, and reconnects on its
+own. `cd bot && npm test` runs its tests; `npm start` runs it locally with the
+same environment variables.
 
 Personal one-off import scripts (`bin/import_*.php`) are kept out of both git
 and the image. `docker-compose.yml` runs the same image with PostgreSQL for a
@@ -463,6 +499,7 @@ db/migrations/          numbered .sql files, applied in order
 bin/                    command-line tools
 tests/                  PHPUnit (Unit + Database suites)
 docker/                 Apache, PHP and entrypoint for the image
+bot/                    the chat bot (Node): src/, test/, its own Dockerfile
 config/                 config.example.php (config.php is git-ignored)
 ```
 
@@ -473,8 +510,10 @@ schedule and Twitch categories, catalogue with artwork, Twitch connection and
 live tracking, giveaways with claim links, viewer profiles, collabs and
 streamers, embargoes, sessions and account security, themes and profile
 pictures, administration (users, languages, testimonials), landing page and
-privacy policy. Planned: a chat bot (giveaway entries, commands, statistics)
-and negotiations with publishers (the page is a placeholder).
+privacy policy, and the chat bot's foundation (channels, personalised
+commands, a heartbeat command). Planned: chat bot giveaway entries, more
+commands and statistics, and negotiations with publishers (the page is a
+placeholder).
 
 ## License
 

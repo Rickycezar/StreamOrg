@@ -20,6 +20,18 @@ final class ProfileController
         '/profile/security'   => 'ui.label.profile_security',
     ];
 
+    /** The tabs this user sees: Chat bot only once an admin has set the bot up. */
+    public static function tabs(): array
+    {
+        return self::TABS + (ChatBot::isAvailable() ? ['/profile/bot' => 'ui.nav.chat_bot'] : []);
+    }
+
+    /** Renders a tab owned by another controller inside the profile frame. */
+    public static function renderTab(string $path, string $template, array $data = []): void
+    {
+        self::tab($path, $template, $data);
+    }
+
     /** Renders one tab inside the shared profile frame and sub-menu. */
     private static function tab(string $path, string $template, array $data = []): void
     {
@@ -31,7 +43,7 @@ final class ProfileController
             'tab'      => $path,
             'tabView'  => $template,
             'tabData'  => $data,
-        ], __('ui.nav.profile') . ' · ' . __(self::TABS[$path]));
+        ], __('ui.nav.profile') . ' · ' . __(self::tabs()[$path] ?? 'ui.nav.profile'));
     }
 
     public static function index(): void
@@ -479,13 +491,18 @@ final class ProfileController
 
     /**
      * Where Twitch sends the user back, with a code or with an error. The
-     * same address serves viewer sign-ins (told apart by their state), so
-     * the Twitch console needs no extra redirect URL.
+     * same address serves viewer sign-ins and the chat bot's account (told
+     * apart by their state), so the Twitch console needs no extra redirect
+     * URL.
      */
     public static function twitchCallback(): void
     {
         if (Viewers::isViewerCallback((string) ($_GET['state'] ?? ''))) {
             ViewerController::callback((string) ($_GET['code'] ?? ''));
+        }
+
+        if (ChatBot::isBotCallback((string) ($_GET['state'] ?? ''))) {
+            BotController::callback((string) ($_GET['code'] ?? ''));
         }
 
         Auth::requireLogin();
