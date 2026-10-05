@@ -1,8 +1,44 @@
 <?php
 /** @var array $user @var array $platforms @var array $locales @var array $timezones
  *  @var ?array $twitch @var bool $twitchConfigured
- *  @var bool $trackingAvailable @var bool $trackingActive @var array $trackingLog */
+ *  @var bool $trackingAvailable @var bool $trackingActive @var array $trackingLog @var ?string $avatar */
+
+$twitchSource = $twitch !== null || (($user['channel_handle'] ?? '') !== '' && Twitch::isConfigured());
 ?>
+<section class="card avatar-card">
+    <h2><?= e(__('ui.label.avatar')) ?></h2>
+    <div class="avatar-edit">
+        <?php $avatarUser = $user + ['avatar_url' => $avatar]; $avatarSize = 'xl'; require dirname(__DIR__) . '/partials/avatar.php'; ?>
+        <div class="avatar-actions">
+            <form method="post" action="<?= e(url('/profile/avatar')) ?>" enctype="multipart/form-data" class="avatar-upload">
+                <?= Csrf::field() ?>
+                <label class="btn">
+                    <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" required data-autosubmit-file>
+                    <?= e(__($avatar ? 'ui.action.avatar_change' : 'ui.action.avatar_upload')) ?>
+                </label>
+                <noscript><button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button></noscript>
+            </form>
+            <?php if ($twitchSource): ?>
+                <form method="post" action="<?= e(url('/profile/avatar/twitch')) ?>">
+                    <?= Csrf::field() ?>
+                    <button type="submit" class="btn twitch-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v11l-4 4h-4l-3 3v-3H4zM10 8v4M15 8v4"/></svg>
+                        <?= e(__('ui.action.avatar_twitch')) ?>
+                    </button>
+                </form>
+            <?php endif; ?>
+            <?php if ($avatar): ?>
+                <form method="post" action="<?= e(url('/profile/avatar/remove')) ?>">
+                    <?= Csrf::field() ?>
+                    <button type="submit" class="btn ghost"><?= e(__('ui.action.avatar_remove')) ?></button>
+                </form>
+            <?php endif; ?>
+            <p class="muted small"><?= e(__('ui.message.avatar_hint')) ?></p>
+        </div>
+    </div>
+</section>
+
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.label.twitch_connection')) ?></h2>

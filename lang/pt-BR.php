@@ -252,18 +252,13 @@ return [
     ],
 
     'theme' => [
-        'light' => 'Claro',
-        'sepia' => 'Sépia',
-        'contrast' => 'Alto contraste',
-        'dark' => 'Escuro',
-        'midnight' => 'Meia-noite',
-        'violet' => 'Violeta',
-        'moss' => 'Musgo',
-        'blush' => 'Rosado',
-        'dim' => 'Penumbra',
-        'harbour' => 'Porto',
+        'classic' => 'Clássico',
         'ember' => 'Brasa',
-        'kelp' => 'Alga',
+        'moss' => 'Musgo',
+        'blossom' => 'Florescer',
+        'coral' => 'Coral',
+        'harbour' => 'Porto',
+        'contrast' => 'Alto contraste',
     ],
 
     'session_end' => [
@@ -479,6 +474,10 @@ return [
         ],
 
         'action' => [
+            'avatar_upload' => 'Enviar uma foto',
+            'avatar_change' => 'Trocar foto',
+            'avatar_twitch' => 'Usar minha foto da Twitch',
+            'avatar_remove' => 'Remover',
             'hide_testimonial' => 'Ocultar %s',
             'show_testimonial' => 'Mostrar %s',
             'reset_password' => 'Redefinir senha',
@@ -623,6 +622,12 @@ return [
         ],
 
         'label' => [
+            'theme_mode' => 'Claro ou escuro',
+            'mode_light' => 'Claro',
+            'mode_dark' => 'Escuro',
+            'mode_auto' => 'Auto',
+            'user_menu' => 'Menu da conta',
+            'avatar' => 'Foto de perfil',
             'code_labels' => 'Rótulos de itens do banco de dados',
             'code_group_key_platform' => 'Sites de chaves',
             'code_group_game_platform' => 'Plataformas de jogos',
@@ -797,6 +802,15 @@ return [
         ],
 
         'message' => [
+            'theme_mode_explain' => 'Todo tema tem uma versão clara e uma escura. Auto acompanha o seu dispositivo, trocando quando ele troca. Você também pode trocar pelo menu da conta, no topo.',
+            'avatar_hint' => 'JPEG, PNG, WebP ou GIF de até 4 MB. A foto é recortada em formato quadrado.',
+            'avatar_too_big' => 'A foto é grande demais: até 4 MB.',
+            'avatar_not_image' => 'Esse arquivo não é uma imagem que conseguimos ler. Use JPEG, PNG, WebP ou GIF.',
+            'avatar_no_twitch' => 'Conecte sua conta da Twitch, ou informe seu canal da Twitch nos seus dados, para usar a foto dela.',
+            'avatar_twitch_failed' => 'Não foi possível buscar a foto na Twitch. Tente de novo mais tarde.',
+            'avatar_saved' => 'Foto de perfil atualizada.',
+            'avatar_from_twitch' => 'Foto de perfil copiada da Twitch.',
+            'avatar_removed' => 'Foto de perfil removida.',
             'code_labels_intro' => 'Itens adicionados na administração, como um novo site de chaves, não têm rótulo nos arquivos de idioma. Defina um aqui: ele fica no banco de dados e é usado sempre que os arquivos não tiverem. Rótulos que vêm dos arquivos aparecem em cinza.',
             'code_labels_blank' => 'Deixe um campo em branco para remover o rótulo guardado; o código passa a aparecer na tela.',
             'code_labels_saved' => 'Salvo: %d rótulo(s) alterado(s).',

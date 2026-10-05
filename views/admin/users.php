@@ -98,7 +98,8 @@ $value = static fn (string $key, string $default = ''): string => (string) ($old
             <tbody>
             <?php foreach ($users as $u): ?>
                 <tr class="<?= $u['is_active'] ? '' : 'user-inactive' ?>">
-                    <td>
+                    <td class="user-cell">
+                        <?php $avatarUser = $u; $avatarSize = 'sm'; require dirname(__DIR__) . '/partials/avatar.php'; ?>
                         <strong><?= e($u['username']) ?></strong>
                         <?php if ($u['display_name'] && $u['display_name'] !== $u['username']): ?>
                             <small class="muted"> · <?= e($u['display_name']) ?></small>

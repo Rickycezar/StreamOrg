@@ -13,7 +13,7 @@ final class VaultInfoController
         $user = Auth::user();
 
         echo View::partial('vault_security', [
-            'theme' => $user['theme'] ?? 'light',
+            'user'  => $user,
             'mode'  => $user !== null ? Vault::mode((int) $user['id']) : null,
         ]);
     }

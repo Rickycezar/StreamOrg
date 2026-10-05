@@ -1734,6 +1734,11 @@
         });
 
         const revealToggle = revealToggleEl();
+        const usermenu = document.getElementById('usermenu');
+        const badge = document.getElementById('keys-badge');
+
+        if (usermenu) usermenu.classList.toggle('keys-on', revealOn);
+        if (badge) badge.title = revealOn ? badge.dataset.on : badge.dataset.off;
 
         if (revealToggle) {
             revealToggle.setAttribute('aria-pressed', revealOn ? 'true' : 'false');
@@ -2408,6 +2413,82 @@
         return document.getElementById('nav-toggle');
     }
 
+    function setNavOpen(open) {
+        const navToggle = navToggleEl();
+        const backdrop = document.getElementById('nav-backdrop');
+
+        document.body.classList.toggle('nav-open', open);
+        if (navToggle) navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (backdrop) backdrop.hidden = !open;
+    }
+
+    function userMenu(open) {
+        const button = document.getElementById('usermenu-button');
+        const panel = document.getElementById('usermenu-panel');
+        if (!button || !panel) return;
+
+        const show = open === undefined ? panel.hidden : open;
+        panel.hidden = !show;
+        button.setAttribute('aria-expanded', show ? 'true' : 'false');
+    }
+
+    document.addEventListener('click', function (event) {
+        if (event.target.closest('#usermenu-button')) {
+            userMenu();
+            return;
+        }
+
+        if (!event.target.closest('#usermenu-panel')) userMenu(false);
+
+        if (event.target.closest('#nav-backdrop, [data-close-nav]')) setNavOpen(false);
+    });
+
+    /** Light / dark / auto from the user menu: applied at once, saved in the background. */
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-set-mode]');
+        if (!button) return;
+
+        const mode = button.dataset.setMode;
+
+        button.parentElement.querySelectorAll('[data-set-mode]').forEach(function (b) {
+            b.setAttribute('aria-checked', b === button ? 'true' : 'false');
+        });
+
+        if (window.StreamOrgTheme) window.StreamOrgTheme.setMode(mode);
+
+        const meta = document.querySelector('meta[name="streamorg-theme"]');
+        if (meta) {
+            const parts = meta.content.split(' ');
+            parts[2] = mode;
+            meta.content = parts.join(' ');
+        }
+
+        postJson('/profile/theme-mode', { mode: mode });
+    });
+
+    /** Appearance tab: preview the chosen family and mode before saving. */
+    document.addEventListener('change', function (event) {
+        const form = event.target.closest('[data-appearance]');
+
+        if (form) {
+            const family = form.querySelector('input[name="theme"]:checked');
+            const mode = form.querySelector('input[name="theme_mode"]:checked');
+            const root = document.documentElement;
+
+            if (family) {
+                root.dataset.themeLight = family.dataset.light;
+                root.dataset.themeDark = family.dataset.dark;
+            }
+
+            if (mode) root.dataset.themeMode = mode.value;
+            if (window.StreamOrgTheme) window.StreamOrgTheme.apply();
+            return;
+        }
+
+        const file = event.target.closest('input[data-autosubmit-file]');
+        if (file && file.files.length) file.form.requestSubmit();
+    });
+
     function closeNavGroups(except) {
         document.querySelectorAll('.navgroup[data-open]').forEach(function (group) {
             if (group === except) return;
@@ -2445,18 +2526,16 @@
 
         const navToggle = navToggleEl();
 
-        if (navToggle && !event.target.closest('#mainnav') && !event.target.closest('#nav-toggle')) {
-            document.body.classList.remove('nav-open');
-            navToggle.setAttribute('aria-expanded', 'false');
+        if (navToggle && !event.target.closest('#mainnav') && !event.target.closest('#nav-toggle')
+            && document.body.classList.contains('nav-open')) {
+            setNavOpen(false);
         }
     });
 
     document.addEventListener('click', function (event) {
-        const navToggle = event.target.closest('#nav-toggle');
-        if (!navToggle) return;
+        if (!event.target.closest('#nav-toggle')) return;
 
-        const open = document.body.classList.toggle('nav-open');
-        navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        setNavOpen(!document.body.classList.contains('nav-open'));
     });
 
     document.addEventListener('keydown', function (event) {
@@ -2464,28 +2543,37 @@
 
         closeNavGroups(null);
 
+        const panel = document.getElementById('usermenu-panel');
+
+        if (panel && !panel.hidden) {
+            userMenu(false);
+            document.getElementById('usermenu-button').focus();
+        }
+
         const navToggle = navToggleEl();
 
         if (navToggle && document.body.classList.contains('nav-open')) {
-            document.body.classList.remove('nav-open');
-            navToggle.setAttribute('aria-expanded', 'false');
+            setNavOpen(false);
             navToggle.focus();
         }
     });
 
     window.matchMedia('(max-width: 900px)').addEventListener('change', function (e) {
-        if (!e.matches) {
-            const navToggle = navToggleEl();
-            document.body.classList.remove('nav-open');
-            if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
-        }
+        if (!e.matches) setNavOpen(false);
     });
 
     function applyDocumentMeta() {
         const theme = document.querySelector('meta[name="streamorg-theme"]');
         const lang  = document.querySelector('meta[name="streamorg-lang"]');
 
-        if (theme) document.documentElement.dataset.theme = theme.content;
+        if (theme) {
+            const parts = theme.content.split(' ');
+            const root = document.documentElement;
+            root.dataset.themeLight = parts[0];
+            root.dataset.themeDark = parts[1];
+            root.dataset.themeMode = parts[2];
+            if (window.StreamOrgTheme) window.StreamOrgTheme.apply();
+        }
         if (lang) document.documentElement.lang = lang.content;
     }
 

@@ -253,18 +253,13 @@ return [
     ],
 
     'theme' => [
-        'light' => 'Light',
-        'sepia' => 'Sepia',
-        'contrast' => 'High contrast',
-        'dark' => 'Dark',
-        'midnight' => 'Midnight',
-        'violet' => 'Violet',
-        'moss' => 'Moss',
-        'blush' => 'Blush',
-        'dim' => 'Dim',
-        'harbour' => 'Harbour',
+        'classic' => 'Classic',
         'ember' => 'Ember',
-        'kelp' => 'Kelp',
+        'moss' => 'Moss',
+        'blossom' => 'Blossom',
+        'coral' => 'Coral',
+        'harbour' => 'Harbour',
+        'contrast' => 'High contrast',
     ],
 
     'session_end' => [
@@ -480,6 +475,10 @@ return [
         ],
 
         'action' => [
+            'avatar_upload' => 'Upload a picture',
+            'avatar_change' => 'Change picture',
+            'avatar_twitch' => 'Use my Twitch picture',
+            'avatar_remove' => 'Remove',
             'hide_testimonial' => 'Hide %s',
             'show_testimonial' => 'Show %s',
             'reset_password' => 'Reset password',
@@ -624,6 +623,12 @@ return [
         ],
 
         'label' => [
+            'theme_mode' => 'Light or dark',
+            'mode_light' => 'Light',
+            'mode_dark' => 'Dark',
+            'mode_auto' => 'Auto',
+            'user_menu' => 'Account menu',
+            'avatar' => 'Profile picture',
             'code_labels' => 'Labels for database items',
             'code_group_key_platform' => 'Key sites',
             'code_group_game_platform' => 'Game platforms',
@@ -798,6 +803,15 @@ return [
         ],
 
         'message' => [
+            'theme_mode_explain' => 'Every theme has a light and a dark version. Auto follows your device, switching when it does. You can also switch from the account menu at the top.',
+            'avatar_hint' => 'JPEG, PNG, WebP or GIF up to 4 MB. It is cropped to a square.',
+            'avatar_too_big' => 'The picture is too large: up to 4 MB.',
+            'avatar_not_image' => 'That file is not a picture we can read. Use JPEG, PNG, WebP or GIF.',
+            'avatar_no_twitch' => 'Connect your Twitch account, or set your Twitch channel in your details, to use its picture.',
+            'avatar_twitch_failed' => 'Could not get the picture from Twitch. Try again later.',
+            'avatar_saved' => 'Profile picture updated.',
+            'avatar_from_twitch' => 'Profile picture copied from Twitch.',
+            'avatar_removed' => 'Profile picture removed.',
             'code_labels_intro' => 'Items added in the administration, such as a new key site, have no label in the language files. Give them one here: it is stored in the database and used wherever the files have none. Labels that come from the files are shown greyed out.',
             'code_labels_blank' => 'Leave a field blank to remove the stored label; the code is then shown on screen.',
             'code_labels_saved' => 'Saved: %d label(s) changed.',

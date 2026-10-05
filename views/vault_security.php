@@ -4,7 +4,7 @@
  * links to the technical references. A document of its own, meant for a
  * small separate window, so it has no menu.
  *
- * @var string  $theme
+ * @var ?array  $user
  * @var ?string $mode  the signed-in user's vault mode, null for visitors
  */
 
@@ -39,13 +39,14 @@ $references = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="<?= e(Lang::locale()) ?>" data-theme="<?= e($theme) ?>">
+<html lang="<?= e(Lang::locale()) ?>" <?= Themes::htmlAttributes($user) ?>>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($t('title')) ?> · <?= e(__('ui.app_name')) ?></title>
     <link rel="icon" href="<?= e(url('/assets/brand/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e($asset('/assets/app.css')) ?>">
+    <script src="<?= e($asset('/assets/theme.js')) ?>"></script>
     <script src="<?= e($asset('/assets/popup.js')) ?>" defer></script>
 </head>
 <body class="sec-page">

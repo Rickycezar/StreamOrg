@@ -25,7 +25,7 @@ final class UserAdminController
 
         $users = Database::connection()->query(
             "SELECT u.id, u.username, u.display_name, u.email, u.role, u.locale, u.timezone, u.is_active,
-                    u.vault_mode, u.created_at, tc.twitch_login,
+                    u.vault_mode, u.created_at, u.avatar_path, u.avatar_updated_at, tc.twitch_login,
                     (SELECT max(s.last_seen_at) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
                FROM users u
           LEFT JOIN twitch_connections tc ON tc.user_id = u.id
@@ -271,6 +271,7 @@ final class UserAdminController
         }
 
         Database::connection()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+        Avatars::forget($target['avatar_path'] ?? null);
 
         flash('success', sprintf(__('ui.message.user_deleted'), $target['username']));
         redirect('/admin/users');

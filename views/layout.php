@@ -16,7 +16,7 @@ $brandSplit = str_contains($brand, 'Org')
 $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(dirname(__DIR__) . '/public' . $path) ?: 0);
 ?>
 <!DOCTYPE html>
-<html lang="<?= e(Lang::locale()) ?>" data-theme="<?= e($user['theme'] ?? 'light') ?>">
+<html lang="<?= e(Lang::locale()) ?>" <?= Themes::htmlAttributes($user) ?>>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,7 +24,9 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
     <link rel="icon" href="<?= e(url('/assets/brand/favicon.svg')) ?>" type="image/svg+xml">
     <link rel="icon" href="<?= e(url('/favicon.ico')) ?>" sizes="16x16 32x32 48x48">
     <link rel="apple-touch-icon" href="<?= e(url('/assets/brand/icon-180.png')) ?>">
-    <meta name="streamorg-theme" content="<?= e($user['theme'] ?? 'light') ?>">
+    <?php $themeAttrs = Themes::forUser($user); ?>
+    <meta name="streamorg-theme" content="<?= e($themeAttrs['light'] . ' ' . $themeAttrs['dark'] . ' ' . $themeAttrs['mode']) ?>">
+    <script src="<?= e($asset('/assets/theme.js')) ?>"></script>
     <meta name="streamorg-lang" content="<?= e(Lang::locale()) ?>">
     <link rel="stylesheet" href="<?= e($asset('/assets/vendor/tom-select.css')) ?>" data-turbo-track="reload">
     <link rel="stylesheet" href="<?= e($asset('/assets/app.css')) ?>" data-turbo-track="reload">
@@ -49,7 +51,14 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
         <span></span><span></span><span></span>
     </button>
 
-    <nav class="mainnav" id="mainnav">
+    <nav class="mainnav" id="mainnav" aria-label="<?= e(__('ui.action.menu')) ?>">
+        <div class="drawer-head">
+            <span class="brand">
+                <?php require dirname(__DIR__) . '/views/partials/logo.php'; ?>
+                <span class="brand-word"><?= e($brandSplit[0]) ?><b><?= e($brandSplit[1]) ?></b></span>
+            </span>
+            <button type="button" class="drawer-close" data-close-nav aria-label="<?= e(__('ui.action.close')) ?>">&times;</button>
+        </div>
         <?php
         $nav = [
             ['path' => '/dashboard', 'label' => __('ui.nav.dashboard')],
@@ -121,26 +130,81 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
         <?php endforeach; ?>
     </nav>
 
-    <div class="userbox">
-        <button type="button" id="reveal-toggle" class="reveal-toggle" aria-pressed="false"
-                data-on="<?= e(__('ui.action.keys_visible')) ?>"
-                data-off="<?= e(__('ui.action.keys_hidden')) ?>"
-                title="<?= e(__('ui.label.reveal_toggle_hint')) ?>">
-            <span class="dot"></span><span class="txt"><?= e(__('ui.action.keys_hidden')) ?></span>
+    <div class="usermenu" id="usermenu">
+        <button type="button" class="usermenu-button" id="usermenu-button"
+                aria-expanded="false" aria-controls="usermenu-panel" aria-haspopup="true"
+                aria-label="<?= e(__('ui.label.user_menu')) ?>">
+            <?php $avatarUser = $user; $avatarSize = 'sm'; require dirname(__DIR__) . '/views/partials/avatar.php'; ?>
+            <span class="keys-badge" id="keys-badge" title="<?= e(__('ui.action.keys_hidden')) ?>"
+                  data-on="<?= e(__('ui.action.keys_visible')) ?>" data-off="<?= e(__('ui.action.keys_hidden')) ?>">
+                <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM4 4l16 16"/></svg>
+                <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+            </span>
+            <span class="usermenu-name"><?= e($user['display_name'] ?: $user['username']) ?></span>
         </button>
 
-        <a class="who" href="<?= e(url('/profile')) ?>">
-            <?= e($user['display_name'] ?: $user['username']) ?>
-            <?php if (!empty($user['channel_handle'])): ?>
-                <small><?= e(code_label('streaming_platform', $user['channel_platform_code'] ?? '')) ?>/<?= e($user['channel_handle']) ?></small>
-            <?php endif; ?>
-        </a>
-        <form method="post" action="<?= e(url('/logout')) ?>" data-turbo="false">
-            <?= Csrf::field() ?>
-            <button type="submit" class="linkish"><?= e(__('ui.action.logout')) ?></button>
-        </form>
+        <div class="usermenu-panel" id="usermenu-panel" hidden>
+            <div class="usermenu-head">
+                <?php $avatarSize = 'md'; require dirname(__DIR__) . '/views/partials/avatar.php'; ?>
+                <span>
+                    <strong><?= e($user['display_name'] ?: $user['username']) ?></strong>
+                    <?php if (!empty($user['channel_handle'])): ?>
+                        <small><?= e(code_label('streaming_platform', $user['channel_platform_code'] ?? '')) ?>/<?= e($user['channel_handle']) ?></small>
+                    <?php else: ?>
+                        <small>@<?= e($user['username']) ?></small>
+                    <?php endif; ?>
+                </span>
+            </div>
+
+            <button type="button" id="reveal-toggle" class="usermenu-row reveal-toggle" aria-pressed="false"
+                    data-on="<?= e(__('ui.action.keys_visible')) ?>"
+                    data-off="<?= e(__('ui.action.keys_hidden')) ?>"
+                    title="<?= e(__('ui.label.reveal_toggle_hint')) ?>">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 10a4 4 0 1 0-3.9 4H11l1.5 1.5L14 14l1.5 1.5L17 14l2 2M7.5 10.5h.01"/></svg>
+                </span>
+                <span class="txt"><?= e(__('ui.action.keys_hidden')) ?></span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+            </button>
+
+            <div class="usermenu-row usermenu-mode">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+                </span>
+                <span class="segmented small" role="radiogroup" aria-label="<?= e(__('ui.label.theme_mode')) ?>">
+                    <?php foreach (Themes::MODES as $mode): ?>
+                        <button type="button" role="radio" data-set-mode="<?= e($mode) ?>"
+                                aria-checked="<?= $themeAttrs['mode'] === $mode ? 'true' : 'false' ?>"><?= e(__('ui.label.mode_' . $mode)) ?></button>
+                    <?php endforeach; ?>
+                </span>
+            </div>
+
+            <a class="usermenu-row" href="<?= e(url('/profile')) ?>">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+                </span>
+                <?= e(__('ui.nav.profile')) ?>
+            </a>
+            <a class="usermenu-row" href="<?= e(url('/profile/appearance')) ?>">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-2a2 2 0 0 0-1 3.7A1.5 1.5 0 0 1 12 21zM7.5 11h.01M10 7h.01M15 7.5h.01"/></svg>
+                </span>
+                <?= e(__('ui.label.profile_appearance')) ?>
+            </a>
+
+            <form method="post" action="<?= e(url('/logout')) ?>" data-turbo="false" class="usermenu-logout">
+                <?= Csrf::field() ?>
+                <button type="submit" class="usermenu-row">
+                    <span class="usermenu-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>
+                    </span>
+                    <?= e(__('ui.action.logout')) ?>
+                </button>
+            </form>
+        </div>
     </div>
 </header>
+<div class="nav-backdrop" id="nav-backdrop" hidden></div>
 <?php endif; ?>
 
 <main class="<?= $user === null ? 'centered' : '' ?>">

@@ -11,12 +11,6 @@ declare(strict_types=1);
  */
 final class ProfileController
 {
-    public const THEMES = [
-        'light', 'sepia', 'moss', 'blush', 'contrast',
-        'dim',
-        'dark', 'midnight', 'violet', 'harbour', 'ember', 'kelp',
-    ];
-
     /** Tab path => lang key of its label, in menu order. */
     public const TABS = [
         '/profile'            => 'ui.label.profile_details',
@@ -52,6 +46,7 @@ final class ProfileController
 
         self::tab('/profile', 'profile/details', [
             'twitch'           => TwitchUser::connection($userId),
+            'avatar'           => Avatars::url(Auth::user()),
             'twitchConfigured' => Twitch::isConfigured(),
             'trackingAvailable' => TwitchEventSub::isAvailable(),
             'trackingActive'   => TwitchEventSub::isActive($userId),
@@ -73,7 +68,7 @@ final class ProfileController
     {
         Auth::requireLogin();
 
-        self::tab('/profile/appearance', 'profile/appearance', ['themes' => self::THEMES]);
+        self::tab('/profile/appearance', 'profile/appearance', ['families' => Themes::FAMILIES, 'modes' => Themes::MODES]);
     }
 
     public static function defaults(): void
@@ -146,25 +141,96 @@ final class ProfileController
         }
     }
 
-    /** Saves the theme on its own, from the appearance tab. */
+    /** Saves the theme family and mode from the appearance tab. */
     public static function theme(): void
     {
         Auth::requireLogin();
         Csrf::verify();
 
-        $theme = (string) ($_POST['theme'] ?? '');
+        $family = (string) ($_POST['theme'] ?? '');
+        $mode   = (string) ($_POST['theme_mode'] ?? '');
 
-        if (!in_array($theme, self::THEMES, true)) {
+        if (!Themes::isFamily($family) || !Themes::isMode($mode)) {
             flash('error', __('ui.message.invalid_input'));
             redirect('/profile/appearance');
         }
 
         Database::connection()
-            ->prepare('UPDATE users SET theme = ? WHERE id = ?')
-            ->execute([$theme, Auth::id()]);
+            ->prepare('UPDATE users SET theme = ?, theme_mode = ? WHERE id = ?')
+            ->execute([$family, $mode, Auth::id()]);
 
         flash('success', __('ui.message.saved'));
         redirect('/profile/appearance');
+    }
+
+    /** Upload a new profile picture. */
+    public static function avatar(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $file = $_FILES['avatar'] ?? null;
+
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            flash('error', __(($file['error'] ?? null) === UPLOAD_ERR_INI_SIZE || ($file['error'] ?? null) === UPLOAD_ERR_FORM_SIZE
+                ? 'ui.message.avatar_too_big' : 'ui.message.avatar_not_image'));
+            redirect('/profile');
+        }
+
+        try {
+            Avatars::store((int) Auth::id(), (string) file_get_contents($file['tmp_name']));
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect('/profile');
+        }
+
+        flash('success', __('ui.message.avatar_saved'));
+        redirect('/profile');
+    }
+
+    /** Copies the Twitch profile picture. */
+    public static function avatarFromTwitch(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        try {
+            Avatars::fromTwitch((int) Auth::id(), Auth::user());
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect('/profile');
+        }
+
+        flash('success', __('ui.message.avatar_from_twitch'));
+        redirect('/profile');
+    }
+
+    public static function avatarRemove(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        Avatars::remove((int) Auth::id());
+
+        flash('success', __('ui.message.avatar_removed'));
+        redirect('/profile');
+    }
+
+    /** AJAX, from the user menu: switches light / dark / auto without a reload. */
+    public static function themeMode(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(json: true);
+
+        $mode = (string) ($_POST['mode'] ?? '');
+
+        if (!Themes::isMode($mode)) {
+            json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
+        }
+
+        Database::connection()->prepare('UPDATE users SET theme_mode = ? WHERE id = ?')->execute([$mode, Auth::id()]);
+
+        json_response(['ok' => true]);
     }
 
     /** Signs out one of your sessions. Ending the current one is a logout. */
