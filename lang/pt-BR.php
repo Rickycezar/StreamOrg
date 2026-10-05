@@ -538,6 +538,7 @@ return [
         ],
 
         'field' => [
+            'label_in' => 'Rótulo (%s)',
             'user_active' => 'Ativo: pode entrar',
             'user_reset_accept' => 'Entendo que os códigos deste cofre privado serão perdidos para sempre',
             'user_delete_type' => 'Digite %s para confirmar',
@@ -622,6 +623,13 @@ return [
         ],
 
         'label' => [
+            'code_labels' => 'Rótulos de itens do banco de dados',
+            'code_group_key_platform' => 'Sites de chaves',
+            'code_group_game_platform' => 'Plataformas de jogos',
+            'code_group_streaming_platform' => 'Plataformas de streaming',
+            'code_group_genre' => 'Gêneros',
+            'from_lang_file' => 'Vem do arquivo de idioma',
+            'key_site_label_hint' => 'Como o site aparece na tela em cada idioma. Opcional: o código é exibido até um rótulo ser definido.',
             'testimonials_on_page' => 'Na página inicial',
             'testimonials_section_on' => 'Seção visível',
             'testimonials_section_off' => 'Seção oculta',
@@ -690,7 +698,7 @@ return [
             'lang_missing' => 'Rótulos faltando',
             'reference' => '(referência)',
             'manage_lang' => 'Editar textos e rótulos da interface',
-            'lang_missing_hint' => 'Códigos no banco sem rótulo neste idioma.',
+            'lang_missing_hint' => 'Rótulos de itens do banco de dados sem texto em um arquivo de idioma nem no banco.',
             'yes' => 'sim',
             'no' => 'não',
             'tags_content_hint' => 'Oferecer esta origem como hashtag de patrocinador ao montar o título.',
@@ -789,6 +797,10 @@ return [
         ],
 
         'message' => [
+            'code_labels_intro' => 'Itens adicionados na administração, como um novo site de chaves, não têm rótulo nos arquivos de idioma. Defina um aqui: ele fica no banco de dados e é usado sempre que os arquivos não tiverem. Rótulos que vêm dos arquivos aparecem em cinza.',
+            'code_labels_blank' => 'Deixe um campo em branco para remover o rótulo guardado; o código passa a aparecer na tela.',
+            'code_labels_saved' => 'Salvo: %d rótulo(s) alterado(s).',
+            'code_needs_label' => 'Ainda sem rótulo em nenhum idioma. Clique para adicionar.',
             'testimonial_shown' => '%s aparece na página inicial.',
             'testimonial_hidden' => '%s foi ocultado da página inicial.',
             'testimonials_section_on' => 'A seção de depoimentos aparece na página inicial.',
@@ -884,8 +896,7 @@ return [
             'password_short' => 'A nova senha precisa ter ao menos 10 caracteres.',
             'password_mismatch' => 'As duas senhas novas não conferem.',
             'password_changed' => 'Senha alterada.',
-            'lang_intro' => 'As edições são gravadas nos arquivos em lang/, que continuam sendo a fonte da verdade e mantêm o bin/check_lang.php funcionando. A versão anterior de cada arquivo é preservada como .bak.',
-            'lang_missing_intro' => 'Estes códigos existem no banco mas não têm rótulo aqui, então o código apareceria cru na tela. Preencha os que você usa.',
+            'lang_intro' => 'Alterações nos textos da interface são gravadas direto nos arquivos em lang/, mantendo um .bak da versão anterior. Em um servidor publicado, essas alterações são substituídas no próximo deploy, então faça mudanças permanentes nos arquivos do projeto. Rótulos de itens do banco de dados (sites de chaves, plataformas, gêneros) ficam no banco e sobrevivem aos deploys.',
             'lang_blank_removes' => 'Deixar um campo em branco remove o rótulo. Só as linhas exibidas são salvas, então um filtro não apaga o que ocultou.',
             'lang_saved' => 'Salvo — %d chaves gravadas. Versão anterior preservada como %s.',
             'lang_write_failed' => 'Não foi possível gravar o arquivo de idioma; nada foi alterado.',
@@ -935,7 +946,7 @@ return [
             'login_required_fields' => 'Preencha os dois campos.',
             'keys_added' => '%d chave(s) adicionada(s).',
             'keys_skipped' => '%d duplicada(s) ignorada(s).',
-            'code_added_needs_label' => 'Adicionado. Defina um rótulo nos arquivos de idioma em %s.',
+            'code_added_needs_label' => 'Adicionado. Ainda não tem rótulo: defina um em Administração → Idiomas.',
             'admin_intro' => 'Catálogo compartilhado e integrações. Apenas administradores veem esta área.',
             'key_sites_intro' => 'De onde vêm as chaves: sites para criadores, a publicadora diretamente, ou compra.',
             'games_intro' => 'Adicione um título manualmente ou traga de um catálogo externo.',

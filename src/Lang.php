@@ -11,6 +11,10 @@ declare(strict_types=1);
  * A key missing from the active locale falls back to the default locale;
  * if it is missing there too the key itself is returned, which makes gaps
  * obvious on screen instead of rendering an empty label.
+ *
+ * Codes from the lookup tables (key sites, platforms, genres) can also have
+ * labels entered by admins (CodeLabels), used where a file has none:
+ * file, then database label, for the active locale and then the default.
  */
 final class Lang
 {
@@ -147,13 +151,25 @@ final class Lang
     {
         $locale = $locale ?? self::$locale;
 
-        $value = self::lookup($key, $locale);
+        $value = self::lookup($key, $locale) ?? self::dbLabel($key, $locale);
 
         if ($value === null && $locale !== self::DEFAULT_LOCALE) {
-            $value = self::lookup($key, self::DEFAULT_LOCALE);
+            $value = self::lookup($key, self::DEFAULT_LOCALE) ?? self::dbLabel($key, self::DEFAULT_LOCALE);
         }
 
         return is_string($value) ? $value : $key;
+    }
+
+    /** An admin-entered label for "group.code", when the group is a lookup table. */
+    private static function dbLabel(string $key, string $locale): ?string
+    {
+        $parts = explode('.', $key, 2);
+
+        if (count($parts) !== 2 || !isset(CodeLabels::GROUPS[$parts[0]])) {
+            return null;
+        }
+
+        return CodeLabels::get($parts[0], $parts[1], $locale);
     }
 
     /**
@@ -185,7 +201,13 @@ final class Lang
             $values = self::lookup($group, self::DEFAULT_LOCALE);
         }
 
-        return is_array($values) ? $values : [];
+        $values = is_array($values) ? $values : [];
+
+        if (isset(CodeLabels::GROUPS[$group])) {
+            $values += CodeLabels::group($group, $locale) + CodeLabels::group($group, self::DEFAULT_LOCALE);
+        }
+
+        return $values;
     }
 
     private static function lookup(string $key, string $locale): mixed

@@ -4,19 +4,13 @@ declare(strict_types=1);
 /**
  * Editing the language files from the interface.
  *
- * The files stay the single source of truth — bin/check_lang.php keeps
- * working, and nothing has to merge database overrides at render time.
+ * The files stay the single source of truth for interface strings —
+ * bin/check_lang.php keeps working. Labels for codes added at runtime
+ * (key sites, platforms, genres) are kept in the database instead
+ * (CodeLabels), since edits to files would be lost at the next deploy.
  */
 final class LangController
 {
-    /** Lookup tables whose rows need a label, and the group each uses. */
-    private const CODE_GROUPS = [
-        'key_platform'       => 'SELECT code FROM key_platforms ORDER BY code',
-        'game_platform'      => 'SELECT code FROM game_platforms ORDER BY code',
-        'streaming_platform' => 'SELECT code FROM streaming_platforms ORDER BY code',
-        'genre'              => 'SELECT code FROM genres ORDER BY code',
-    ];
-
     public static function index(): void
     {
         Auth::requireAdmin();
@@ -71,34 +65,109 @@ final class LangController
             'entries'   => $entries,
             'refRows'   => $refRows,
             'search'    => $search,
-            'missing'   => self::missing($data),
+            'codeRows'  => $codeRows = self::codeRows($locales),
+            'missingTotal' => self::missingTotal($codeRows, $locales),
             'counts'    => self::counts($data, $refData),
         ], __('ui.nav.languages'));
     }
 
     /**
-     * Codes that exist in the database with no label in this locale, and
-     * keys the reference locale has that this one does not. These are the
-     * reason the screen exists.
+     * Database codes that need a label from the database: those with no
+     * label in some language file, plus those that already have one.
+     * Each cell holds the file label (read-only here) and the stored one.
      *
-     * @return array<string, list<string>>
+     * @param list<string> $locales
+     * @return array<string, array<string, array<string, array{file:?string, db:?string}>>> group => code => locale => labels
      */
-    private static function missing(array $data): array
+    private static function codeRows(array $locales): array
     {
-        $pdo     = Database::connection();
-        $missing = [];
+        $files = [];
 
-        foreach (self::CODE_GROUPS as $group => $sql) {
-            $labels = $data[$group] ?? [];
+        foreach ($locales as $locale) {
+            $files[$locale] = LangFile::load($locale);
+        }
 
-            foreach ($pdo->query($sql)->fetchAll(PDO::FETCH_COLUMN) as $code) {
-                if (!isset($labels[$code])) {
-                    $missing[$group][] = (string) $code;
+        $rows = [];
+
+        foreach (CodeLabels::codes() as $group => $codes) {
+            foreach ($codes as $code) {
+                $cells  = [];
+                $needed = false;
+
+                foreach ($locales as $locale) {
+                    $file = $files[$locale][$group][$code] ?? null;
+                    $db   = CodeLabels::get($group, $code, $locale);
+
+                    $cells[$locale] = ['file' => is_string($file) ? $file : null, 'db' => $db];
+                    $needed = $needed || $file === null || $db !== null;
+                }
+
+                if ($needed) {
+                    $rows[$group][$code] = $cells;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /** Label slots with neither a file label nor a stored one. */
+    private static function missingTotal(array $codeRows, array $locales): int
+    {
+        $missing = 0;
+
+        foreach ($codeRows as $codes) {
+            foreach ($codes as $cells) {
+                foreach ($locales as $locale) {
+                    $missing += $cells[$locale]['file'] === null && $cells[$locale]['db'] === null ? 1 : 0;
                 }
             }
         }
 
         return $missing;
+    }
+
+    /** Saves labels for database codes: labels[group][code][locale]. A blank removes the stored label. */
+    public static function saveCodeLabels(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $labels  = $_POST['labels'] ?? [];
+        $known   = CodeLabels::codes();
+        $locales = Lang::available();
+        $saved   = 0;
+
+        if (is_array($labels)) {
+            foreach ($labels as $group => $codes) {
+                if (!isset($known[$group]) || !is_array($codes)) {
+                    continue;
+                }
+
+                foreach ($codes as $code => $perLocale) {
+                    if (!in_array((string) $code, $known[$group], true) || !is_array($perLocale)) {
+                        continue;
+                    }
+
+                    foreach ($perLocale as $locale => $label) {
+                        if (!in_array($locale, $locales, true) || !is_string($label)) {
+                            continue;
+                        }
+
+                        $before = CodeLabels::get($group, (string) $code, $locale);
+                        $label  = trim($label);
+
+                        if ($label !== (string) $before) {
+                            CodeLabels::set($group, (string) $code, $locale, $label, Auth::id());
+                            $saved++;
+                        }
+                    }
+                }
+            }
+        }
+
+        flash('success', sprintf(__('ui.message.code_labels_saved'), $saved));
+        redirect('/admin/lang#code-labels');
     }
 
     /** @return array{keys:int, ref:int} */

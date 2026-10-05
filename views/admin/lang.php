@@ -1,9 +1,7 @@
 <?php
 /** @var array $locales @var string $locale @var ?string $reference
  *  @var array $groups @var string $group @var array $entries @var array $refRows
- *  @var string $search @var array $missing @var array $counts */
-
-$missingTotal = array_sum(array_map('count', $missing));
+ *  @var string $search @var array $codeRows @var int $missingTotal @var array $counts */
 ?>
 <h1><?= e(__('ui.nav.languages')) ?></h1>
 <p class="muted"><?= e(__('ui.message.lang_intro')) ?></p>
@@ -25,32 +23,48 @@ $missingTotal = array_sum(array_map('count', $missing));
     </span>
 </section>
 
-<?php if ($missingTotal > 0): ?>
-<section class="card">
+<?php if ($codeRows !== []): ?>
+<form class="card" id="code-labels" method="post" action="<?= e(url('/admin/lang/labels')) ?>">
+    <?= Csrf::field() ?>
     <div class="card-head">
-        <h2><?= e(__('ui.label.lang_missing')) ?></h2>
+        <h2><?= e(__('ui.label.code_labels')) ?></h2>
+        <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </div>
-    <p class="muted small"><?= e(__('ui.message.lang_missing_intro')) ?></p>
+    <p class="muted small"><?= e(__('ui.message.code_labels_intro')) ?></p>
 
-    <?php foreach ($missing as $grp => $codes): ?>
-        <form method="post" action="<?= e(url('/admin/lang')) ?>" class="subform">
-            <?= Csrf::field() ?>
-            <input type="hidden" name="locale" value="<?= e($locale) ?>">
-            <input type="hidden" name="group" value="<?= e($grp) ?>">
-            <h3 class="section-head"><?= e($grp) ?></h3>
-            <div class="grid">
-                <?php foreach ($codes as $code): ?>
-                    <label>
-                        <span><code><?= e($code) ?></code></span>
-                        <input type="text" name="values[<?= e($code) ?>]"
-                               placeholder="<?= e($code) ?>" autocomplete="off">
-                    </label>
+    <?php foreach ($codeRows as $grp => $codes): ?>
+        <h3 class="section-head"><?= e(__('ui.label.code_group_' . $grp)) ?> <small class="muted"><code><?= e($grp) ?></code></small></h3>
+        <div class="table-wrap">
+            <table class="langtable code-labels">
+                <thead>
+                <tr>
+                    <th><?= e(__('ui.field.code')) ?></th>
+                    <?php foreach ($locales as $loc): ?><th><?= e($loc) ?></th><?php endforeach; ?>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($codes as $code => $cells): ?>
+                    <tr>
+                        <td class="nowrap"><code><?= e($code) ?></code></td>
+                        <?php foreach ($locales as $loc): $cell = $cells[$loc]; ?>
+                            <td>
+                                <?php if ($cell['file'] !== null): ?>
+                                    <span class="file-label" title="<?= e(__('ui.label.from_lang_file')) ?>"><?= e($cell['file']) ?></span>
+                                <?php else: ?>
+                                    <input type="text" name="labels[<?= e($grp) ?>][<?= e($code) ?>][<?= e($loc) ?>]"
+                                           value="<?= e((string) $cell['db']) ?>" placeholder="<?= e($code) ?>"
+                                           maxlength="120" autocomplete="off" class="<?= $cell['db'] === null ? 'needs-label' : '' ?>">
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
                 <?php endforeach; ?>
-            </div>
-            <button type="submit" class="btn primary small"><?= e(__('ui.action.save')) ?></button>
-        </form>
+                </tbody>
+            </table>
+        </div>
     <?php endforeach; ?>
-</section>
+    <p class="muted small"><?= e(__('ui.message.code_labels_blank')) ?></p>
+</form>
 <?php endif; ?>
 
 <form class="card filters" method="get" action="<?= e(url('/admin/lang')) ?>">

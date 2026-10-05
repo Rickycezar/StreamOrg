@@ -26,6 +26,15 @@
                 <input type="number" name="sort_order" value="0">
             </label>
         </div>
+        <div class="grid">
+            <?php foreach (Lang::available() as $loc): ?>
+                <label>
+                    <span><?= e(sprintf(__('ui.field.label_in'), $loc)) ?></span>
+                    <input type="text" name="labels[<?= e($loc) ?>]" maxlength="120" placeholder="Daredrop" autocomplete="off">
+                </label>
+            <?php endforeach; ?>
+        </div>
+        <p class="muted small"><?= e(__('ui.label.key_site_label_hint')) ?></p>
         <label class="inline">
             <input type="checkbox" name="tags_content" value="1" checked>
             <span><?= e(__('ui.field.tags_content')) ?>
@@ -55,9 +64,9 @@
                 <td>
                     <?= e($missing ? $row['code'] : $label) ?>
                     <?php if ($missing): ?>
-                        <span class="badge warn" title="<?= e(sprintf(__('ui.message.code_added_needs_label'), 'key_platform.' . $row['code'])) ?>">
+                        <a class="badge warn" href="<?= e(url('/admin/lang#code-labels')) ?>" title="<?= e(__('ui.message.code_needs_label')) ?>">
                             <?= e(__('ui.label.no_label')) ?>
-                        </span>
+                        </a>
                     <?php endif; ?>
                 </td>
                 <td><code><?= e($row['code']) ?></code></td>

@@ -539,6 +539,7 @@ return [
         ],
 
         'field' => [
+            'label_in' => 'Label (%s)',
             'user_active' => 'Active: can sign in',
             'user_reset_accept' => 'I understand that the codes in this private vault will be lost for good',
             'user_delete_type' => 'Type %s to confirm',
@@ -623,6 +624,13 @@ return [
         ],
 
         'label' => [
+            'code_labels' => 'Labels for database items',
+            'code_group_key_platform' => 'Key sites',
+            'code_group_game_platform' => 'Game platforms',
+            'code_group_streaming_platform' => 'Streaming platforms',
+            'code_group_genre' => 'Genres',
+            'from_lang_file' => 'From the language file',
+            'key_site_label_hint' => 'How the site is named on screen in each language. Optional: the code is shown until a label is given.',
             'testimonials_on_page' => 'On the landing page',
             'testimonials_section_on' => 'Section shown',
             'testimonials_section_off' => 'Section hidden',
@@ -691,7 +699,7 @@ return [
             'lang_missing' => 'Missing labels',
             'reference' => '(reference)',
             'manage_lang' => 'Edit interface text and labels',
-            'lang_missing_hint' => 'Codes stored in the database with no label in this locale.',
+            'lang_missing_hint' => 'Labels for database items with no text in a language file or in the database.',
             'yes' => 'yes',
             'no' => 'no',
             'tags_content_hint' => 'Offer this source as a sponsor hashtag when composing a content title.',
@@ -790,6 +798,10 @@ return [
         ],
 
         'message' => [
+            'code_labels_intro' => 'Items added in the administration, such as a new key site, have no label in the language files. Give them one here: it is stored in the database and used wherever the files have none. Labels that come from the files are shown greyed out.',
+            'code_labels_blank' => 'Leave a field blank to remove the stored label; the code is then shown on screen.',
+            'code_labels_saved' => 'Saved: %d label(s) changed.',
+            'code_needs_label' => 'No label in any language yet. Click to add one.',
             'testimonial_shown' => '%s is shown on the landing page.',
             'testimonial_hidden' => '%s is hidden from the landing page.',
             'testimonials_section_on' => 'The testimonials section is shown on the landing page.',
@@ -885,8 +897,7 @@ return [
             'password_short' => 'The new password must be at least 10 characters.',
             'password_mismatch' => 'The two new passwords do not match.',
             'password_changed' => 'Password changed.',
-            'lang_intro' => 'Edits are written straight into the files in lang/, so they stay the single source of truth and bin/check_lang.php keeps working. The previous version of each file is kept as .bak.',
-            'lang_missing_intro' => 'These codes exist in the database but have no label here, so the raw code would show on screen. Fill in the ones you use.',
+            'lang_intro' => 'Edits to interface strings are written straight into the files in lang/, keeping a .bak of the previous version. On a deployed server those edits are replaced at the next deploy, so make lasting changes in the project files. Labels for database items (key sites, platforms, genres) are stored in the database and survive deploys.',
             'lang_blank_removes' => 'Leaving a field blank removes that label. Only the rows shown are saved, so a filtered view will not delete what it hid.',
             'lang_saved' => 'Saved — %d keys written. Previous version kept as %s.',
             'lang_write_failed' => 'Could not write the language file; nothing was changed.',
@@ -936,7 +947,7 @@ return [
             'login_required_fields' => 'Fill in both fields.',
             'keys_added' => '%d key(s) added.',
             'keys_skipped' => '%d duplicate(s) skipped.',
-            'code_added_needs_label' => 'Added. Give it a label in the lang files under %s.',
+            'code_added_needs_label' => 'Added. It has no label yet: give it one under Administration → Languages.',
             'admin_intro' => 'Shared catalogue and integrations. Only administrators see this.',
             'key_sites_intro' => 'Where keys come from: creator key sites, the publisher directly, or a purchase.',
             'games_intro' => 'Add a title by hand, or pull it from an external catalogue.',

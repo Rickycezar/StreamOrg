@@ -323,7 +323,16 @@ final class AdminController
         $stmt->execute();
 
         if ($stmt->rowCount() > 0) {
-            flash('success', sprintf(__('ui.message.code_added_needs_label'), "key_platform.{$code}"));
+            $labelled = 0;
+
+            foreach ((array) ($_POST['labels'] ?? []) as $locale => $label) {
+                if (in_array($locale, Lang::available(), true) && is_string($label) && trim($label) !== '') {
+                    CodeLabels::set('key_platform', $code, $locale, $label, Auth::id());
+                    $labelled++;
+                }
+            }
+
+            flash('success', __($labelled > 0 ? 'ui.message.saved' : 'ui.message.code_added_needs_label'));
         } else {
             flash('error', __('ui.message.duplicate'));
         }

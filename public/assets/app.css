@@ -1997,3 +1997,7 @@ label > span code.confirm-name { text-transform: none; letter-spacing: 0; font-s
 .testimonial-initial { display: grid; place-items: center; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
 .testimonial-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .testimonial-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.code-labels input { margin: 0; }
+.code-labels input.needs-label { border-color: var(--warn-border); background: var(--warn-bg); }
+.code-labels .file-label { color: var(--muted); font-size: .85rem; }

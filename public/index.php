@@ -165,6 +165,7 @@ $routes = [
         '/admin/users/delete' => [UserAdminController::class, 'delete'],
         '/admin/api/test'    => [AdminController::class, 'testProvider'],
         '/admin/lang'        => [LangController::class, 'save'],
+        '/admin/lang/labels' => [LangController::class, 'saveCodeLabels'],
         '/admin/import/game' => [ImportController::class, 'import'],
     ],
 ];
