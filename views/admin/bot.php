@@ -4,7 +4,7 @@
  * the default commands, the channels that added it, and recent activity.
  *
  * @var array $account @var array<string, array> $defaults @var list<array> $channels
- * @var list<array> $log @var bool $twitchConfigured
+ * @var array $stats @var list<array> $log @var bool $twitchConfigured
  */
 $state = !empty($account['online']) ? (string) ($account['state'] ?? 'connected') : 'offline';
 $tone  = match ($state) {
@@ -107,6 +107,7 @@ $tone  = match ($state) {
                     <th><?= e(__('ui.field.channel')) ?></th>
                     <th><?= e(__('ui.field.user')) ?></th>
                     <th><?= e(__('ui.field.status')) ?></th>
+                    <th><?= e(__('ui.label.bot_access')) ?></th>
                     <th><?= e(__('ui.label.bot_joined')) ?></th>
                     <th></th>
                 </tr>
@@ -127,6 +128,11 @@ $tone  = match ($state) {
                         <td>
                             <span class="badge <?= $status[0] ?>"><?= e(__($status[1])) ?></span>
                             <?php if ($channel['last_error']): ?><br><small class="muted"><?= e($channel['last_error']) ?></small><?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($channel['is_enabled']): ?>
+                                <?= View::partial('bot/access', ['access' => $channel['access'], 'chattersOk' => $channel['chatters_ok']]) ?>
+                            <?php else: ?>—<?php endif; ?>
                         </td>
                         <td><?= $channel['joined_at'] ? e(fmt_datetime($channel['joined_at'])) : '—' ?></td>
                         <td class="rowactions">
@@ -153,6 +159,14 @@ $tone  = match ($state) {
             </table>
         </div>
     <?php endif; ?>
+</section>
+
+<section class="card">
+    <div class="card-head">
+        <h2><?= e(__('ui.label.bot_stats')) ?></h2>
+    </div>
+    <p class="muted small"><?= e(__('ui.message.bot_stats_hint')) ?></p>
+    <?= View::partial('bot/stats', ['stats' => $stats]) ?>
 </section>
 
 <section class="card">

@@ -19,6 +19,7 @@ final class BotController
             'account'          => ChatBot::account(),
             'defaults'         => ChatBot::defaults(),
             'channels'         => ChatBot::channels(),
+            'stats'            => ChatBot::statsSummary(),
             'log'              => ChatBot::recentLog(),
             'twitchConfigured' => Twitch::isConfigured(),
         ], __('ui.nav.chat_bot'));
@@ -149,6 +150,8 @@ final class BotController
             'channel'  => ChatBot::channel($userId),
             'twitch'   => TwitchUser::connection($userId),
             'commands' => ChatBot::commandsFor($userId),
+            'stats'    => ChatBot::statsSummary($userId),
+            'granted'  => TwitchUser::hasScope($userId, TwitchUser::BOT_SCOPE) && TwitchUser::hasScope($userId, TwitchUser::CHATTERS_SCOPE),
             'log'      => ChatBot::recentLog($userId, 15),
         ]);
     }

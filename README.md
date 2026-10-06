@@ -114,8 +114,17 @@ private preview. Preview access: streamorg@outlook.com.
 
 ### Chat bot
 - **One bot for every channel** (`bot/`, a small Node service): it joins the
-  Twitch chat of streamers who add it from *Profile → Chat bot* and answers
-  commands. For now there is one, `!heartbeat`, to check it is listening.
+  Twitch chat of streamers who add it from *Profile → Chat bot* (or whom an
+  admin adds) and answers commands. For now there is one, `!heartbeat`, to
+  check it is listening.
+- **A real Twitch chat bot**: it uses Twitch's chat API (EventSub through a
+  conduit, replies with the app token), so it carries the Chat Bot badge and
+  is listed under *Chat Bots*. The streamer either gives it permission (one
+  reconnect, no moderator powers) or makes it a moderator; either works.
+- **Viewer statistics while live**: per broadcast, viewer, live content and
+  stream category, the messages sent and the time spent in chat (from the
+  chatter list, once a minute). Counted in memory and written in one batch
+  per channel per minute; kept for 12 months.
 - **Commands made your own**: each streamer can rename a command, rewrite its
   reply (with placeholders such as `{user}`), choose who may use it
   (everyone, subscribers, VIPs, moderators or only the streamer), set a
@@ -177,7 +186,7 @@ private preview. Preview access: streamorg@outlook.com.
 | Server | PHP 8.2 (`pdo_pgsql`, `curl`, `gd`, `mbstring`, `openssl`), no framework |
 | Database | PostgreSQL 15+ (uses the `citext` extension) |
 | Front end | Server-rendered views, [Turbo Drive](https://turbo.hotwired.dev/) navigation, [Tom Select](https://tom-select.js.org/) pickers, [FullCalendar](https://fullcalendar.io/), Plus Jakarta Sans on the landing page — vendored, no build step |
-| Chat bot | Node 22+ with `pg` only; Twitch chat over its IRC WebSocket, with Node's built-in WebSocket |
+| Chat bot | Node 22+ with `pg` only; Twitch EventSub over Node's built-in WebSocket, Helix over `fetch` |
 | Tooling | Composer (autoloader, PHPUnit), npm (the browser libraries and the bot's one dependency) |
 | Deployment | Docker image, built and run by [Coolify](https://coolify.io/) on every `git push` |
 
@@ -282,7 +291,11 @@ The bot is a second Coolify application from the same repository:
 
 The bot waits for the app's migrations, reloads when the app announces a
 change (`NOTIFY streamorg_bot`), refreshes its token, and reconnects on its
-own. `cd bot && npm test` runs its tests; `npm start` runs it locally with the
+own. It keeps one EventSub conduit for the app (its id is stored), points the
+conduit's shard at its WebSocket on every start, and holds one chat
+subscription per channel. Streamers' tokens, which it uses for the chatter
+list, are refreshed under the same row lock as the app's, so the two never
+spend a refresh token twice. `cd bot && npm test` runs its tests; `npm start` runs it locally with the
 same environment variables.
 
 Personal one-off import scripts (`bin/import_*.php`) are kept out of both git

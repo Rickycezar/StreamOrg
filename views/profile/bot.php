@@ -4,7 +4,7 @@
  * its commands their own (or keeps the defaults).
  *
  * @var array $user @var array $account @var ?array $channel @var ?array $twitch
- * @var array<string, array> $commands @var list<array> $log
+ * @var array<string, array> $commands @var array $stats @var bool $granted @var list<array> $log
  */
 $active = $channel !== null && $channel['is_enabled'] && !$channel['is_blocked'];
 $bot    = (string) $account['twitch_login'];
@@ -43,6 +43,42 @@ $bot    = (string) $account['twitch_login'];
         </form>
     <?php endif; ?>
 </section>
+
+<?php if ($active && $twitch !== null): ?>
+    <section class="card">
+        <div class="card-head">
+            <h2><?= e(__('ui.label.bot_how_it_reads')) ?></h2>
+            <span><?= View::partial('bot/access', ['access' => (string) $channel['access'], 'chattersOk' => $channel['chatters_ok']]) ?></span>
+        </div>
+        <p class="muted small"><?= e(sprintf(__('ui.message.bot_access_intro'), $bot)) ?></p>
+
+        <div class="bot-ways">
+            <div class="bot-way<?= $granted ? ' done' : '' ?>">
+                <h3><?= e(__('ui.label.bot_way_permission')) ?></h3>
+                <p class="small"><?= e(__('ui.message.bot_way_permission')) ?></p>
+                <?php if ($granted): ?>
+                    <span class="badge ok"><?= e(__('ui.label.bot_permission_granted')) ?></span>
+                <?php else: ?>
+                    <a class="btn small primary" href="<?= e(url('/profile/twitch/connect')) ?>" data-turbo="false"><?= e(__('ui.action.bot_grant_permission')) ?></a>
+                <?php endif; ?>
+            </div>
+            <div class="bot-way<?= $channel['access'] === 'moderator' ? ' done' : '' ?>">
+                <h3><?= e(__('ui.label.bot_way_moderator')) ?></h3>
+                <p class="small"><?= e(__('ui.message.bot_way_moderator')) ?></p>
+                <code>/mod <?= e($bot) ?></code>
+            </div>
+        </div>
+        <p class="muted small"><?= e(__('ui.message.bot_access_recheck')) ?></p>
+    </section>
+
+    <section class="card">
+        <div class="card-head">
+            <h2><?= e(__('ui.label.bot_stats')) ?></h2>
+        </div>
+        <p class="muted small"><?= e(__('ui.message.bot_stats_streamer')) ?></p>
+        <?= View::partial('bot/stats', ['stats' => $stats]) ?>
+    </section>
+<?php endif; ?>
 
 <section>
     <h2><?= e(__('ui.label.bot_commands')) ?></h2>

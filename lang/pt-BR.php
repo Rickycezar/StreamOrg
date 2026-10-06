@@ -529,7 +529,7 @@ return [
 
         'privacy' => [
             'title' => 'Política de privacidade',
-            'updated' => 'Atualizada em 5 de outubro de 2026.',
+            'updated' => 'Atualizada em 6 de outubro de 2026.',
             'lead' => 'O StreamOrg guarda só o que precisa para funcionar, nunca vende nem compartilha dados e não exibe anúncios. Esta página diz exatamente o que é guardado, por quê e por quanto tempo.',
             'who_title' => 'Quem mantém o StreamOrg',
             'who_text' => "O StreamOrg (streamorg.com e streamorg.com.br) é mantido por Henrique Barros, responsável pelos dados descritos aqui.\nDúvidas e pedidos: %s.",
@@ -540,13 +540,13 @@ return [
             'giveaways_title' => 'Sorteios',
             'giveaways_text' => "Quando você ganha, o streamer registra seu nome da Twitch para que só a sua conta consiga resgatar o prêmio.\nQuando você participa de um sorteio pelo chat, seu nome da Twitch e o horário ficam guardados só até o sorteio ser concluído, e então são apagados.",
             'bot_title' => 'O bot do chat',
-            'bot_text' => "O bot do StreamOrg só entra no chat da Twitch dos streamers que o adicionam (ou pedem a um administrador para adicionar, o que podem desfazer no perfil), e só responde comandos.\n- Ele lê o chat para perceber comandos, mas não guarda mensagens nem registro de quem usou um comando.\n- O registro de atividade, visto pelo streamer e pelo administrador, diz qual comando foi respondido em qual canal, sem nomes de espectadores, e é apagado depois de 14 dias.\nSe o bot passar a coletar mais, esta página vai dizer o quê e por quê antes de começar.",
+            'bot_text' => "O bot do StreamOrg só entra no chat da Twitch dos streamers que o adicionam (ou pedem a um administrador para adicionar, o que podem desfazer no perfil). Ele responde comandos e, enquanto o canal está ao vivo, guarda estatísticas simples para aquele streamer.\n- O quê: o id, o nome e o nome de exibição da sua conta da Twitch; por live, quantas mensagens você mandou e, aproximadamente, quanto tempo esteve no chat (verificado uma vez por minuto), com o conteúdo que o streamer tinha ao vivo e a categoria da live. Nunca o texto das suas mensagens, nem registro de quem usou um comando.\n- Por quê: para o streamer ver como as lives e os conteúdos patrocinados foram com a comunidade dele.\n- Quem vê: o streamer daquele canal e o administrador do StreamOrg. Nunca é vendido nem compartilhado.\n- Por quanto tempo: 12 meses, depois é apagado. O registro de atividade do bot (qual comando foi respondido em qual canal, sem nomes de espectadores) é apagado depois de 14 dias.\nPara apagar as suas estatísticas, escreva para o endereço em Seus direitos.",
             'twitch_title' => 'Twitch e hospedagem',
             'twitch_text' => "Dados são trocados com a Twitch só para oferecer esses recursos, sob os termos da própria Twitch. Nada é vendido nem compartilhado com mais ninguém.\nO StreamOrg roda em um servidor alugado da Hetzner, na União Europeia.",
             'cookies_title' => 'Cookies',
             'cookies_text' => 'Só os cookies de que o StreamOrg precisa para funcionar: sua sessão, sua escolha de idioma e, para cofres de chaves privados, o cookie que mantém o cofre aberto enquanto você está conectado. Nada de análise, publicidade ou rastreadores de terceiros.',
             'retention_title' => 'Por quanto tempo os dados ficam guardados',
-            'retention_text' => "- Dados da conta: enquanto a conta existir. Peça a exclusão em %s.\n- Perfis de espectador: até você excluir o seu, em Meus prêmios.\n- Registros de sorteios: o streamer mantém o registro de que um prêmio foi para um vencedor; excluir seu perfil de espectador remove seu nome dele.",
+            'retention_text' => "- Dados da conta: enquanto a conta existir. Peça a exclusão em %s.\n- Perfis de espectador: até você excluir o seu, em Meus prêmios.\n- Registros de sorteios: o streamer mantém o registro de que um prêmio foi para um vencedor; excluir seu perfil de espectador remove seu nome dele.\n- Estatísticas de chat do bot: 12 meses.",
             'rights_title' => 'Seus direitos',
             'rights_text' => 'Pela LGPD você pode pedir para ver, corrigir, exportar ou excluir seus dados. Espectadores podem excluir o próprio perfil em Meus prêmios. Para qualquer outro pedido, escreva para %s e você terá uma resposta em até 15 dias.',
             'changes_title' => 'Mudanças nesta política',
@@ -571,6 +571,12 @@ return [
         ],
         'bot_command' => [
             'heartbeat' => 'Confere se o bot está ouvindo: ele responde na hora.',
+        ],
+        'bot_access' => [
+            'permission' => 'Com a sua permissão',
+            'moderator' => 'Como moderador',
+            'none' => 'Sem acesso ainda',
+            'unknown' => 'Ainda não verificado',
         ],
         'nav' => [
             'chat_bot' => 'Bot do chat',
@@ -603,6 +609,7 @@ return [
         ],
 
         'action' => [
+            'bot_grant_permission' => 'Dar permissão na Twitch',
             'bot_add_channel' => 'Adicionar o bot',
             'bot_remove_channel' => 'Tirar o bot',
             'bot_connect' => 'Conectar a conta do bot',
@@ -810,6 +817,20 @@ return [
         ],
 
         'label' => [
+            'bot_access' => 'Lê o chat',
+            'bot_watch_time' => 'Tempo assistido',
+            'bot_messages_only' => 'Só mensagens',
+            'bot_stats' => 'Estatísticas',
+            'bot_broadcasts' => 'Lives registradas',
+            'bot_recording' => 'Registrando agora',
+            'bot_last_broadcast' => 'última %s',
+            'bot_viewers' => 'Espectadores vistos',
+            'bot_storage' => 'Espaço',
+            'bot_storage_value' => '%s linhas · %s MB',
+            'bot_how_it_reads' => 'Como o bot lê o seu chat',
+            'bot_way_permission' => 'Dê permissão a ele',
+            'bot_way_moderator' => 'Ou torne-o moderador',
+            'bot_permission_granted' => 'Permissão dada',
             'bot_account' => 'Conta do bot',
             'bot_service' => 'Serviço do bot',
             'bot_seen' => 'Último sinal %s',
@@ -1046,6 +1067,14 @@ return [
         ],
 
         'message' => [
+            'bot_chatters_ok' => 'O bot consegue ver quem está no chat, então o tempo assistido é registrado.',
+            'bot_chatters_missing' => 'O bot não consegue ver quem está no chat: só as mensagens são contadas. Dê permissão a ele ou torne-o moderador.',
+            'bot_stats_hint' => 'Enquanto um canal com o bot está ao vivo, o StreamOrg registra por espectador, live, conteúdo ao vivo e categoria quantas mensagens ele mandou e por quanto tempo, aproximadamente, esteve no chat (verificado a cada minuto). Guardado por 12 meses.',
+            'bot_stats_streamer' => 'Enquanto você está ao vivo, o StreamOrg conta por espectador as mensagens enviadas e, aproximadamente, quanto tempo ele fica no seu chat (verificado a cada minuto), junto com o conteúdo que você tem ao vivo e a categoria da live. Guardado por 12 meses.',
+            'bot_access_intro' => 'A Twitch deixa %s ler o seu chat (e aparecer como bot de chat) de duas formas. Uma basta.',
+            'bot_way_permission' => 'Reconecte a Twitch uma vez e aprove as permissões do bot. Ele continua um participante comum, sem poderes de moderador, e também consegue ver quem está no chat para o tempo assistido.',
+            'bot_way_moderator' => 'Digite isto no seu chat. Moderadores também passam pelo modo lento, só seguidores e só emotes.',
+            'bot_access_recheck' => 'O bot confere de novo em até cinco minutos depois que você mudar qualquer um dos dois.',
             'bot_channels_hint' => 'Todos com uma conta da Twitch conectada. O streamer adiciona o bot pelo próprio perfil, ou um administrador adiciona aqui; o streamer pode tirá-lo quando quiser. Um canal bloqueado fica sem o bot até ser desbloqueado.',
             'bot_user_needs_twitch' => 'Este usuário não conectou um canal da Twitch.',
             'bot_added_admin' => 'O bot está entrando naquele canal.',

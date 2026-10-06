@@ -7,7 +7,8 @@ declare(strict_types=1);
  * Twitch.php works with an app token, which can read public data but never
  * modify a channel. Editing the title, category and tags needs a user
  * token with channel:manage:broadcast (and the channel schedule,
- * channel:manage:schedule), obtained through the authorization
+ * channel:manage:schedule; and for the chat bot, channel:bot and
+ * moderator:read:chatters), obtained through the authorization
  * code flow: the user is sent to Twitch, approves, and comes back to
  * /profile/twitch/callback with a code that is exchanged for tokens.
  *
@@ -17,9 +18,15 @@ declare(strict_types=1);
  */
 final class TwitchUser
 {
-    public const SCOPE = 'channel:manage:broadcast channel:manage:schedule';
+    public const SCOPE = 'channel:manage:broadcast channel:manage:schedule channel:bot moderator:read:chatters';
 
     public const SCHEDULE_SCOPE = 'channel:manage:schedule';
+
+    /** Lets the StreamOrg chat bot read and post in this channel without being a moderator. */
+    public const BOT_SCOPE = 'channel:bot';
+
+    /** Lets the chat bot see who is in chat, for watch time. */
+    public const CHATTERS_SCOPE = 'moderator:read:chatters';
 
     /** Twitch's limits for Modify Channel Information. */
     public const TITLE_MAX = 140;
@@ -387,8 +394,10 @@ final class TwitchUser
      */
     private static function helixRaw(int $userId, string $method, string $path, array $query, ?array $body): ?array
     {
-        foreach ([false, true] as $forceRefresh) {
-            $token = self::accessToken($userId, $forceRefresh);
+        $refused = null;
+
+        foreach ([false, true] as $retry) {
+            $token = self::accessToken($userId, $retry ? $refused : null);
 
             if ($token === null) {
                 return null;
@@ -413,16 +422,26 @@ final class TwitchUser
             if ($response['status'] !== 401) {
                 return $response;
             }
+
+            $refused = $token;
         }
 
         return $response;
     }
 
-    /** A valid access token, refreshed when it is about to expire. */
-    private static function accessToken(int $userId, bool $forceRefresh = false): ?string
+    /**
+     * A valid access token, refreshed when it is about to expire (or, with
+     * $failed, because Twitch just refused that one).
+     *
+     * The chat bot refreshes the same tokens, so a refresh happens under a
+     * row lock: whoever comes second finds the token already renewed and
+     * uses it, instead of spending the refresh token twice and losing the
+     * connection.
+     */
+    private static function accessToken(int $userId, ?string $failed = null): ?string
     {
         $stmt = Database::connection()->prepare(
-            'SELECT access_token, refresh_token, expires_at < now() + interval \'2 minutes\' AS expiring
+            'SELECT access_token, expires_at < now() + interval \'2 minutes\' AS expiring
                FROM twitch_connections WHERE user_id = ?'
         );
         $stmt->execute([$userId]);
@@ -433,33 +452,53 @@ final class TwitchUser
             return null;
         }
 
-        if (!$forceRefresh && !$row['expiring']) {
+        if ($failed === null && !$row['expiring']) {
             return Crypto::decrypt($row['access_token']);
         }
 
-        $tokens = self::tokenRequest([
-            'grant_type'    => 'refresh_token',
-            'refresh_token' => (string) Crypto::decrypt($row['refresh_token']),
-        ]);
+        return Database::transaction(static function (PDO $pdo) use ($userId, $failed): ?string {
+            $stmt = $pdo->prepare(
+                'SELECT access_token, refresh_token, expires_at < now() + interval \'2 minutes\' AS expiring
+                   FROM twitch_connections WHERE user_id = ? FOR UPDATE'
+            );
+            $stmt->execute([$userId]);
+            $row = $stmt->fetch();
 
-        if ($tokens === null) {
-            Database::connection()->prepare('DELETE FROM twitch_connections WHERE user_id = ?')->execute([$userId]);
-            self::$lastError = 'reconnect';
-            return null;
-        }
+            if ($row === false) {
+                self::$lastError = 'not_connected';
+                return null;
+            }
 
-        Database::connection()->prepare(
-            'UPDATE twitch_connections
-                SET access_token = ?, refresh_token = ?, expires_at = now() + make_interval(secs => ?)
-              WHERE user_id = ?'
-        )->execute([
-            Crypto::encrypt($tokens['access_token']),
-            Crypto::encrypt($tokens['refresh_token']),
-            $tokens['expires_in'],
-            $userId,
-        ]);
+            $stored = Crypto::decrypt($row['access_token']);
 
-        return $tokens['access_token'];
+            if (!$row['expiring'] && ($failed === null || $stored !== $failed)) {
+                return $stored;
+            }
+
+            $tokens = self::tokenRequest([
+                'grant_type'    => 'refresh_token',
+                'refresh_token' => (string) Crypto::decrypt($row['refresh_token']),
+            ]);
+
+            if ($tokens === null) {
+                $pdo->prepare('DELETE FROM twitch_connections WHERE user_id = ?')->execute([$userId]);
+                self::$lastError = 'reconnect';
+                return null;
+            }
+
+            $pdo->prepare(
+                'UPDATE twitch_connections
+                    SET access_token = ?, refresh_token = ?, expires_at = now() + make_interval(secs => ?)
+                  WHERE user_id = ?'
+            )->execute([
+                Crypto::encrypt($tokens['access_token']),
+                Crypto::encrypt($tokens['refresh_token']),
+                $tokens['expires_in'],
+                $userId,
+            ]);
+
+            return $tokens['access_token'];
+        });
     }
 
     private static function storedToken(int $userId): ?string

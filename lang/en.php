@@ -530,7 +530,7 @@ return [
 
         'privacy' => [
             'title' => 'Privacy policy',
-            'updated' => 'Last updated on 5 October 2026.',
+            'updated' => 'Last updated on 6 October 2026.',
             'lead' => 'StreamOrg keeps only what it needs to work, never sells or shares data, and shows no ads. This page says exactly what is kept, why and for how long.',
             'who_title' => 'Who runs StreamOrg',
             'who_text' => "StreamOrg (streamorg.com and streamorg.com.br) is run by Henrique Barros, who is responsible for the data described here.\nQuestions and requests: %s.",
@@ -541,13 +541,13 @@ return [
             'giveaways_title' => 'Giveaways',
             'giveaways_text' => "When you win, the streamer records your Twitch name so that only your account can claim the prize.\nWhen you enter a giveaway from the chat, your Twitch name and the time are kept only until the giveaway is finished, then deleted.",
             'bot_title' => 'The chat bot',
-            'bot_text' => "The StreamOrg bot only joins the Twitch chats of streamers who add it (or have an administrator add it, which they can undo on their profile), and only answers commands.\n- It reads the chat to notice commands, but keeps no chat messages and no record of who used a command.\n- Its activity log, seen by the streamer and the administrator, says which command was answered in which channel, without viewer names, and is deleted after 14 days.\nIf the bot ever collects more, this page will say what and why before it starts.",
+            'bot_text' => "The StreamOrg bot only joins the Twitch chats of streamers who add it (or have an administrator add it, which they can undo on their profile). It answers commands and, while the channel is live, keeps simple statistics for that streamer.\n- What: your Twitch account id, name and display name; per broadcast, the number of messages you sent and roughly how long you were in the chat (checked once a minute), with the content the streamer had live and the stream category. Never the text of your messages, and no record of who used a command.\n- Why: so the streamer can see how their streams and sponsored content did with their community.\n- Who sees it: the streamer of that channel and StreamOrg's administrator. It is never sold or shared.\n- How long: 12 months, then deleted. The bot's activity log (which command was answered in which channel, without viewer names) is deleted after 14 days.\nTo have your statistics deleted, write to the address under Your rights.",
             'twitch_title' => 'Twitch and hosting',
             'twitch_text' => "Data is exchanged with Twitch only to provide these features, under Twitch's own terms. Nothing is sold or shared with anyone else.\nStreamOrg runs on a server rented from Hetzner, in the European Union.",
             'cookies_title' => 'Cookies',
             'cookies_text' => 'Only the cookies StreamOrg needs to work: your session, your language choice and, for private key vaults, the cookie that keeps the vault open while you are signed in. No analytics, no advertising and no third-party trackers.',
             'retention_title' => 'How long data is kept',
-            'retention_text' => "- Account data: for as long as the account exists. Ask for it to be deleted at %s.\n- Viewer profiles: until you delete yours, in My prizes.\n- Giveaway records: the streamer keeps the record that a prize went to a winner; deleting your viewer profile removes your name from it.",
+            'retention_text' => "- Account data: for as long as the account exists. Ask for it to be deleted at %s.\n- Viewer profiles: until you delete yours, in My prizes.\n- Giveaway records: the streamer keeps the record that a prize went to a winner; deleting your viewer profile removes your name from it.\n- Chat statistics from the bot: 12 months.",
             'rights_title' => 'Your rights',
             'rights_text' => 'Under Brazil\'s LGPD and similar laws you can ask to see, correct, export or delete your data. Viewers can delete their profile themselves in My prizes. For anything else, write to %s and you will get an answer within 15 days.',
             'changes_title' => 'Changes to this policy',
@@ -572,6 +572,12 @@ return [
         ],
         'bot_command' => [
             'heartbeat' => 'Checks the bot is listening: it answers right away.',
+        ],
+        'bot_access' => [
+            'permission' => 'With your permission',
+            'moderator' => 'As a moderator',
+            'none' => 'No access yet',
+            'unknown' => 'Not checked yet',
         ],
         'nav' => [
             'chat_bot' => 'Chat bot',
@@ -604,6 +610,7 @@ return [
         ],
 
         'action' => [
+            'bot_grant_permission' => 'Give permission on Twitch',
             'bot_add_channel' => 'Add the bot',
             'bot_remove_channel' => 'Remove the bot',
             'bot_connect' => 'Connect the bot account',
@@ -811,6 +818,20 @@ return [
         ],
 
         'label' => [
+            'bot_access' => 'Reads chat',
+            'bot_watch_time' => 'Watch time',
+            'bot_messages_only' => 'Messages only',
+            'bot_stats' => 'Statistics',
+            'bot_broadcasts' => 'Broadcasts recorded',
+            'bot_recording' => 'Recording now',
+            'bot_last_broadcast' => 'last one %s',
+            'bot_viewers' => 'Viewers seen',
+            'bot_storage' => 'Storage',
+            'bot_storage_value' => '%s rows · %s MB',
+            'bot_how_it_reads' => 'How the bot reads your chat',
+            'bot_way_permission' => 'Give it permission',
+            'bot_way_moderator' => 'Or make it a moderator',
+            'bot_permission_granted' => 'Permission given',
             'bot_account' => 'Bot account',
             'bot_service' => 'Bot service',
             'bot_seen' => 'Last report %s',
@@ -1047,6 +1068,14 @@ return [
         ],
 
         'message' => [
+            'bot_chatters_ok' => 'The bot can see who is in chat, so watch time is recorded.',
+            'bot_chatters_missing' => 'The bot cannot see who is in chat: only messages are counted. Give it permission, or make it a moderator.',
+            'bot_stats_hint' => 'While a channel with the bot is live, StreamOrg records per viewer, broadcast, live content and category how many messages they sent and roughly how long they were in chat (sampled every minute). Kept for 12 months.',
+            'bot_stats_streamer' => 'While you are live, StreamOrg counts per viewer the messages they send and roughly how long they are in your chat (checked every minute), together with the content you have live and the stream category. Kept for 12 months.',
+            'bot_access_intro' => 'Twitch lets %s read your chat (and show as a chat bot) in either of two ways. One is enough.',
+            'bot_way_permission' => 'Reconnect Twitch once and approve the bot permissions. It stays a regular chatter, without moderator powers, and can also see who is in chat for watch time.',
+            'bot_way_moderator' => 'Type this in your chat. Moderators also get past slow mode, followers-only and emote-only chat.',
+            'bot_access_recheck' => 'The bot checks again within five minutes after you change either.',
             'bot_channels_hint' => 'Everyone with a connected Twitch account. Streamers add the bot from their profile, or an admin adds it here; they can remove it at any time. A blocked channel stays without the bot until unblocked.',
             'bot_user_needs_twitch' => 'This user has not connected a Twitch channel.',
             'bot_added_admin' => 'The bot is joining that channel.',

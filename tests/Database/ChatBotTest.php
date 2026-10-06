@@ -90,6 +90,29 @@ final class ChatBotTest extends DatabaseTestCase
         self::assertSame('Added to the channel by an admin', ChatBot::recentLog($user)[0]['message']);
     }
 
+    public function testStatisticsSummaryCountsOneChannelOrAll(): void
+    {
+        $user = $this->createUser('phpunit_bot_stats');
+        ChatBot::setChannel($user, true);
+
+        $broadcast = (int) $this->pdo->query(
+            "INSERT INTO twitch_broadcasts (user_id, twitch_stream_id, started_at) VALUES ({$user}, 'phpunit-s', now()) RETURNING id"
+        )->fetchColumn();
+        $this->pdo->exec("INSERT INTO chat_viewers (twitch_user_id, login) VALUES ('phpunit-v1', 'ana'), ('phpunit-v2', 'bia')");
+        $this->pdo->exec(
+            "INSERT INTO chat_viewer_stats (broadcast_id, user_id, viewer_id, category_id, watch_seconds, messages)
+             VALUES ({$broadcast}, {$user}, 'phpunit-v1', '1', 120, 2), ({$broadcast}, {$user}, 'phpunit-v2', '1', 60, 0)"
+        );
+
+        $mine = ChatBot::statsSummary($user);
+        self::assertSame(1, $mine['broadcasts']);
+        self::assertSame(2, $mine['viewers']);
+        self::assertTrue($mine['live']);
+        self::assertNull($mine['bytes']);
+        self::assertGreaterThan(0, ChatBot::statsSummary()['bytes']);
+        self::assertSame('unknown', ChatBot::channel($user)['access']);
+    }
+
     public function testPrefixMustBeASymbol(): void
     {
         $this->expectException(UserError::class);

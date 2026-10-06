@@ -16,8 +16,12 @@ declare(strict_types=1);
  */
 final class ChatBot
 {
-    /** Scopes asked of the bot account: reading and writing chat. */
-    public const SCOPES = 'chat:read chat:edit user:read:chat user:write:chat user:bot';
+    /**
+     * Scopes asked of the bot account: reading and writing chat through
+     * Twitch's chat API (so it shows as a chat bot), and the chatter list
+     * in channels where the streamer made it a moderator.
+     */
+    public const SCOPES = 'user:read:chat user:write:chat user:bot moderator:read:chatters';
 
     /** Built-in behaviours, and the {placeholders} their reply may use. */
     public const CODES = [
@@ -163,10 +167,15 @@ final class ChatBot
         self::notify();
     }
 
-    /** @return array{is_enabled:bool, is_blocked:bool, joined_at:?string, last_error:?string}|null null when never added */
+    /**
+     * @return array{is_enabled:bool, is_blocked:bool, joined_at:?string, last_error:?string, access:string, chatters_ok:?bool}|null
+     *         null when never added
+     */
     public static function channel(int $userId): ?array
     {
-        $stmt = Database::connection()->prepare('SELECT is_enabled, is_blocked, joined_at, last_error FROM bot_channels WHERE user_id = ?');
+        $stmt = Database::connection()->prepare(
+            'SELECT is_enabled, is_blocked, joined_at, last_error, access, chatters_ok FROM bot_channels WHERE user_id = ?'
+        );
         $stmt->execute([$userId]);
         $row = $stmt->fetch();
 
@@ -208,7 +217,7 @@ final class ChatBot
             'SELECT u.id AS user_id, u.username, u.display_name, t.twitch_login,
                     b.user_id IS NOT NULL AS added,
                     coalesce(b.is_enabled, false) AS is_enabled, coalesce(b.is_blocked, false) AS is_blocked,
-                    b.joined_at, b.last_error, b.created_at
+                    b.joined_at, b.last_error, b.created_at, coalesce(b.access, \'unknown\') AS access, b.chatters_ok
                FROM users u
           LEFT JOIN bot_channels b       ON b.user_id = u.id
           LEFT JOIN twitch_connections t ON t.user_id = u.id
@@ -341,6 +350,41 @@ final class ChatBot
 
         self::log($userId, 'info', 'Command back to default: ' . $code);
         self::notify();
+    }
+
+    /**
+     * What the bot has recorded: broadcasts, distinct viewers and the
+     * latest broadcast, for one channel or all of them (with the space the
+     * tables take, for the admin).
+     *
+     * @return array{broadcasts:int, viewers:int, rows:int, last:?string, live:bool, bytes:?int}
+     */
+    public static function statsSummary(?int $userId = null): array
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            'SELECT (SELECT count(*) FROM twitch_broadcasts WHERE CAST(:user AS bigint) IS NULL OR user_id = :user) AS broadcasts,
+                    (SELECT count(DISTINCT viewer_id) FROM chat_viewer_stats WHERE CAST(:user AS bigint) IS NULL OR user_id = :user) AS viewers,
+                    (SELECT count(*) FROM chat_viewer_stats WHERE CAST(:user AS bigint) IS NULL OR user_id = :user) AS rows,
+                    (SELECT max(started_at) FROM twitch_broadcasts WHERE CAST(:user AS bigint) IS NULL OR user_id = :user) AS last,
+                    EXISTS (SELECT 1 FROM twitch_broadcasts WHERE ended_at IS NULL AND (CAST(:user AS bigint) IS NULL OR user_id = :user)) AS live'
+        );
+        $stmt->execute(['user' => $userId]);
+        $row = $stmt->fetch();
+
+        $bytes = $userId !== null ? null : (int) $pdo->query(
+            "SELECT pg_total_relation_size('twitch_broadcasts') + pg_total_relation_size('chat_viewer_stats')
+                  + pg_total_relation_size('chat_viewers')"
+        )->fetchColumn();
+
+        return [
+            'broadcasts' => (int) $row['broadcasts'],
+            'viewers'    => (int) $row['viewers'],
+            'rows'       => (int) $row['rows'],
+            'last'       => $row['last'],
+            'live'       => (bool) $row['live'],
+            'bytes'      => $bytes,
+        ];
     }
 
     /** @return list<array{at:string, level:string, message:string, username:?string}> newest first; one user's, or everything */
