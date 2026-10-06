@@ -20,11 +20,12 @@ final class TitleCountersTest extends DatabaseTestCase
 
     private function stream(?string $at, array $prefixes, string $body = 'Playing'): int
     {
-        $stmt = $this->pdo->prepare(
-            "INSERT INTO streams (user_id, streaming_platform_id, title, title_prefixes, title_body, status, scheduled_start)
-             VALUES (?, (SELECT id FROM streaming_platforms WHERE code = 'twitch'), ?, " . TitleCounters::FROM_JSON . ", ?, 'planned', ?) RETURNING id"
+        $template = trim(implode(' ', $prefixes) . ' ' . $body);
+        $stmt     = $this->pdo->prepare(
+            "INSERT INTO streams (user_id, streaming_platform_id, title, title_template, status, scheduled_start)
+             VALUES (?, (SELECT id FROM streaming_platforms WHERE code = 'twitch'), ?, ?, 'planned', ?) RETURNING id"
         );
-        $stmt->execute([$this->user, $body, json_encode($prefixes), $body, $at]);
+        $stmt->execute([$this->user, $template, TitleCounters::templateFor($this->user, $template), $at]);
 
         return (int) $stmt->fetchColumn();
     }
@@ -86,19 +87,22 @@ final class TitleCountersTest extends DatabaseTestCase
 
         ContentDefaults::save($this->user, 120, ContentDefaults::prefixesFromInput([['text' => '[STREAM #{stream}]']], ['live', 'day'], $renames), $posted, $renames);
 
-        $stmt = $this->pdo->prepare('SELECT array_to_json(title_prefixes) FROM streams WHERE id = ?');
+        $stmt = $this->pdo->prepare('SELECT title_template FROM streams WHERE id = ?');
         $stmt->execute([$a]);
-        self::assertSame(['[STREAM #{live}]'], json_decode((string) $stmt->fetchColumn(), true));
+        self::assertSame('[STREAM #{live}] Playing', $stmt->fetchColumn());
         self::assertSame('[STREAM #153] Playing', $this->title($a));
 
         $this->expectException(UserError::class);
         ContentDefaults::save($this->user, 120, [], TitleCounters::fromInput([['id' => $byName['day'], 'name' => 'day', 'value' => '0']]));
     }
 
-    public function testOnlyTheUsersPrefixesOrOnesAlreadyOnTheContentAreAccepted(): void
+    public function testOnlyTitlesUsingACounterKeepATemplate(): void
     {
-        self::assertSame(['[PT-BR]', '[STREAM #{stream}]'], TitleCounters::templates($this->user, ['[PT-BR]', '[nope]', '[STREAM #{stream}]', '[PT-BR]']));
-        self::assertSame(['[OLD]'], TitleCounters::templates($this->user, ['[OLD]'], ['[OLD]']));
+        self::assertSame('[STREAM #{stream}] Hi', TitleCounters::templateFor($this->user, '[STREAM #{stream}] Hi'));
+        self::assertNull(TitleCounters::templateFor($this->user, '[PT-BR] Hi {nope}'));
+
+        $plain = $this->stream('2030-01-05 20:00+00', ['[PT-BR]']);
+        self::assertSame('[PT-BR] Playing', $this->title($plain));
     }
 
     public function testCounterInputIsChecked(): void

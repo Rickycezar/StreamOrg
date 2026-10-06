@@ -92,6 +92,7 @@ final class ProfileController
             'contentMinutes' => ContentDefaults::minutes((int) Auth::id()),
             'prefixes'       => ContentDefaults::prefixes((int) Auth::id()),
             'counters'       => TitleCounters::forUser((int) Auth::id()),
+            'collabPrefix'   => ContentDefaults::collabPrefix((int) Auth::id()),
         ]);
     }
 
@@ -113,7 +114,9 @@ final class ProfileController
             $renames  = TitleCounters::renames(TitleCounters::forUser($userId), $counters);
             $prefixes = ContentDefaults::prefixesFromInput((array) ($_POST['prefix'] ?? []), array_column($counters, 'name'), $renames);
 
-            ContentDefaults::save($userId, $minutes, $prefixes, $counters, $renames);
+            $collab   = ContentDefaults::collabPrefixFromInput((string) ($_POST['collab_prefix'] ?? 'ft.'));
+
+            ContentDefaults::save($userId, $minutes, $prefixes, $counters, $renames, $collab);
         } catch (UserError $e) {
             flash('error', $e->getMessage());
             redirect('/profile/defaults');

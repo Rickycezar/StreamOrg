@@ -6,8 +6,8 @@ declare(strict_types=1);
  * 037_timeline_title_numbers.sql): a prefix such as "[STREAM #{stream}]"
  * names a counter in braces.
  *
- * Content keeps its prefixes as templates, and its number is its place in
- * time: a counter's value is where numbering starts after, and each dated,
+ * A title that uses a counter is kept as a template (streams.title_template,
+ * see 038_title_templates.sql), and its number is its place in time: a counter's value is where numbering starts after, and each dated,
  * not cancelled content using it counts up from there, earliest first.
  * Undated content shows "?". The database works the titles out again
  * whenever content or counters change (streamorg_renumber_titles), so the
@@ -18,9 +18,6 @@ final class TitleCounters
     public const MAX = 20;
     public const VALUE_MAX = 999999;
     public const NAME = '[a-z][a-z0-9_]{0,19}';
-
-    /** SQL turning a JSON list parameter into the text[] stored on content. */
-    public const FROM_JSON = 'ARRAY(SELECT jsonb_array_elements_text(CAST(? AS jsonb)))';
 
     /** @return list<array{id:int, name:string, value:int}> */
     public static function forUser(int $userId): array
@@ -151,9 +148,7 @@ final class TitleCounters
         $removed  = array_diff_key($existing, array_flip($kept));
 
         foreach ($removed as $name) {
-            $stmt = $pdo->prepare(
-                "SELECT 1 FROM streams WHERE user_id = ? AND position(? IN array_to_string(title_prefixes, ' ')) > 0 LIMIT 1"
-            );
+            $stmt = $pdo->prepare('SELECT 1 FROM streams WHERE user_id = ? AND position(? IN title_template) > 0 LIMIT 1');
             $stmt->execute([$userId, '{' . $name . '}']);
 
             if ($stmt->fetchColumn() !== false) {
@@ -165,16 +160,15 @@ final class TitleCounters
             ->execute([$userId, '{' . implode(',', $kept) . '}']);
 
         if ($renames !== []) {
-            $rows = $pdo->prepare('SELECT id, array_to_json(title_prefixes) AS prefixes FROM streams WHERE user_id = ? AND title_prefixes IS NOT NULL');
+            $rows = $pdo->prepare('SELECT id, title_template FROM streams WHERE user_id = ? AND title_template IS NOT NULL');
             $rows->execute([$userId]);
-            $set = $pdo->prepare('UPDATE streams SET title_prefixes = ' . self::FROM_JSON . ' WHERE id = ?');
+            $set = $pdo->prepare('UPDATE streams SET title_template = ? WHERE id = ?');
 
             foreach ($rows->fetchAll() as $row) {
-                $list    = json_decode((string) $row['prefixes'], true) ?: [];
-                $renamed = array_map(static fn (string $p): string => self::rename($p, $renames), $list);
+                $renamed = self::rename((string) $row['title_template'], $renames);
 
-                if ($renamed !== $list) {
-                    $set->execute([json_encode($renamed), $row['id']]);
+                if ($renamed !== $row['title_template']) {
+                    $set->execute([$renamed, $row['id']]);
                 }
             }
         }
@@ -198,28 +192,14 @@ final class TitleCounters
     }
 
     /**
-     * The prefixes chosen for a content, as templates in the chosen order:
-     * each must be one of the user's prefixes, or one the content already
-     * had (a prefix deleted since stays on the content that used it).
-     *
-     * @param list<string> $chosen
-     * @param list<string> $alreadyOn
-     * @return list<string>
+     * The template to keep for a title: the title itself when it uses one
+     * of the user's counters, else null (a plain title needs none).
      */
-    public static function templates(int $userId, array $chosen, array $alreadyOn = []): array
+    public static function templateFor(int $userId, string $title): ?string
     {
-        $allowed = array_merge(array_column(ContentDefaults::prefixes($userId), 'prefix'), $alreadyOn);
-        $picked  = [];
+        $names = array_column(self::forUser($userId), 'name');
 
-        foreach ($chosen as $text) {
-            $text = trim((string) $text);
-
-            if ($text !== '' && in_array($text, $allowed, true) && !in_array($text, $picked, true)) {
-                $picked[] = $text;
-            }
-        }
-
-        return $picked;
+        return array_intersect(self::variables($title), $names) !== [] ? $title : null;
     }
 
     /**
@@ -241,9 +221,9 @@ final class TitleCounters
         }
 
         $stmt = Database::connection()->prepare(
-            "SELECT id, array_to_string(title_prefixes, ' ') AS prefixes, (extract(epoch FROM scheduled_start) * 1000)::bigint AS at
+            "SELECT id, title_template AS prefixes, (extract(epoch FROM scheduled_start) * 1000)::bigint AS at
                FROM streams
-              WHERE user_id = ? AND title_prefixes IS NOT NULL AND scheduled_start IS NOT NULL AND status <> 'cancelled'"
+              WHERE user_id = ? AND title_template IS NOT NULL AND scheduled_start IS NOT NULL AND status <> 'cancelled'"
         );
         $stmt->execute([$userId]);
 

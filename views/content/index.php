@@ -5,6 +5,7 @@
  *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
  *  @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
  *  @var array<string, array{base:int, dates:list<array{0:int, 1:int}>}> $timeline counters and the content they number
+ *  @var string $collabPrefix the word before collab guests ("ft.")
  *  @var array{state:string, synced:int, last:?string} $twitchSchedule */
 ?>
 <div class="page-head">
@@ -178,11 +179,10 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
     <form id="add-content" class="subform hidden" method="post" action="<?= e(url('/content')) ?>">
         <?= Csrf::field() ?>
         <div class="grid">
-            <div class="grow title-block">
+            <div class="title-block">
                 <?= View::partial('content/title_field', [
                     'prefixes' => $prefixes,
-                    'chosen'   => array_column(array_filter($prefixes, static fn (array $p): bool => $p['is_default']), 'prefix'),
-                    'body'     => '',
+                    'value'    => implode('', array_map(static fn (array $p): string => $p['prefix'] . ' ', array_filter($prefixes, static fn (array $p): bool => $p['is_default']))),
                     'streamId' => null,
                 ]) ?>
             </div>
@@ -467,11 +467,10 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                     <td colspan="8">
                         <form class="inline-edit" data-endpoint="/content/update" data-id="<?= (int) $row['id'] ?>">
                             <div class="grid">
-                                <div class="grow title-block">
+                                <div class="title-block">
                                     <?= View::partial('content/title_field', [
                                         'prefixes' => $prefixes,
-                                        'chosen'   => json_decode((string) $row['title_prefixes'], true) ?: [],
-                                        'body'     => (string) ($row['title_prefixes'] !== null ? $row['title_body'] : $row['title']),
+                                        'value'    => (string) ($row['title_template'] ?? $row['title']),
                                         'streamId' => (int) $row['id'],
                                     ]) ?>
                                 </div>
@@ -553,6 +552,8 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
 <?php
 $pageGlobals = [
     'STREAMORG_TITLE_TIMELINE' => (object) $timeline,
+    'STREAMORG_COLLAB_PREFIX'  => $collabPrefix,
+    'STREAMORG_SPONSOR_NAMES'  => array_map(static fn (string $code): string => code_label('key_platform', $code), $tagSources),
     'STREAMORG_KEYS' => array_map(static fn (array $k): array => [
         'id'      => (int) $k['id'],
         'game_id' => (int) $k['game_id'],

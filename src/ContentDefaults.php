@@ -13,6 +13,7 @@ final class ContentDefaults
     public const MAX_MINUTES = 1440;
     public const MAX_PREFIXES = 20;
     public const PREFIX_MAX = 60;
+    public const COLLAB_PREFIX_MAX = 20;
 
     /** How long one piece of content usually runs, in minutes. */
     public static function minutes(int $userId): int
@@ -22,6 +23,32 @@ final class ContentDefaults
         $minutes = $stmt->fetchColumn();
 
         return $minutes === false ? StreamSchedule::DEFAULT_MINUTES : (int) $minutes;
+    }
+
+    /** The word before collab guests in a title ("ft." unless the user chose another, or none). */
+    public static function collabPrefix(int $userId): string
+    {
+        $stmt = Database::connection()->prepare('SELECT collab_prefix FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $prefix = $stmt->fetchColumn();
+
+        return $prefix === false ? 'ft.' : (string) $prefix;
+    }
+
+    /**
+     * Reads the collab credit field: up to 20 characters, no @ or #.
+     *
+     * @throws UserError
+     */
+    public static function collabPrefixFromInput(string $value): string
+    {
+        $value = trim((string) preg_replace('/\s+/u', ' ', $value));
+
+        if (mb_strlen($value) > self::COLLAB_PREFIX_MAX || preg_match('/[@#]/', $value)) {
+            throw new UserError(sprintf(__('ui.message.collab_prefix_invalid'), self::COLLAB_PREFIX_MAX));
+        }
+
+        return $value;
     }
 
     /** A length in minutes from a form field, or null when malformed or out of range. */
@@ -106,17 +133,18 @@ final class ContentDefaults
     }
 
     /**
-     * Saves the length, the counters and the prefixes.
+     * Saves the length, the collab credit, the counters and the prefixes.
      *
      * @param list<array{prefix:string, is_default:bool}> $prefixes
      * @param list<array{id:?int, name:string, value:int}> $counters
      * @param array<string, string> $renames old counter name => new
      * @throws UserError when a counter still used by content would be deleted
      */
-    public static function save(int $userId, int $minutes, array $prefixes, array $counters = [], array $renames = []): void
+    public static function save(int $userId, int $minutes, array $prefixes, array $counters = [], array $renames = [], ?string $collabPrefix = null): void
     {
-        Database::transaction(static function (PDO $pdo) use ($userId, $minutes, $prefixes, $counters, $renames): void {
-            $pdo->prepare('UPDATE users SET content_minutes = ? WHERE id = ?')->execute([$minutes, $userId]);
+        Database::transaction(static function (PDO $pdo) use ($userId, $minutes, $prefixes, $counters, $renames, $collabPrefix): void {
+            $pdo->prepare('UPDATE users SET content_minutes = ?, collab_prefix = coalesce(?, collab_prefix) WHERE id = ?')
+                ->execute([$minutes, $collabPrefix, $userId]);
             TitleCounters::save($pdo, $userId, $counters, $renames);
             $pdo->prepare('DELETE FROM user_title_prefixes WHERE user_id = ?')->execute([$userId]);
 

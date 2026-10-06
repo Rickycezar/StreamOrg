@@ -53,4 +53,20 @@ final class ContentDefaultsTest extends DatabaseTestCase
             array_map(static fn (array $p): array => [$p['prefix'], $p['is_default']], ContentDefaults::prefixes($user))
         );
     }
+
+    public function testCollabCreditDefaultsToFtAndCanChange(): void
+    {
+        $user = $this->createUser('phpunit_collab_credit');
+
+        self::assertSame('ft.', ContentDefaults::collabPrefix($user));
+
+        ContentDefaults::save($user, 120, [], [], [], ContentDefaults::collabPrefixFromInput('  com  '));
+        self::assertSame('com', ContentDefaults::collabPrefix($user));
+
+        ContentDefaults::save($user, 120, [], [], [], ContentDefaults::collabPrefixFromInput(''));
+        self::assertSame('', ContentDefaults::collabPrefix($user));
+
+        $this->expectException(UserError::class);
+        ContentDefaults::collabPrefixFromInput('with @');
+    }
 }

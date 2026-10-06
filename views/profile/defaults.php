@@ -2,7 +2,7 @@
 /**
  * @var array $user @var array<int, array{start: string, end: ?string}> $schedule
  * @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
- * @var list<array{id:int, name:string, value:int}> $counters
+ * @var list<array{id:int, name:string, value:int}> $counters @var string $collabPrefix
  */
 $remove = '<button type="button" class="btn small" data-row-remove aria-label="' . e(__('ui.action.delete')) . '">×</button>';
 
@@ -92,6 +92,17 @@ $counterRow = static function (string $key, ?array $counter) use ($remove): stri
             <template data-row-template="prefix"><?= $prefixRow('__KEY__', '', false) ?></template>
             <button type="button" class="btn small" data-row-add="prefix">+ <?= e(__('ui.action.add_prefix')) ?></button>
         </fieldset>
+
+        <label class="collab-prefix">
+            <span><?= e(__('ui.field.collab_prefix')) ?></span>
+            <span class="input-suffix">
+                <input type="text" name="collab_prefix" value="<?= e($collabPrefix) ?>" maxlength="<?= ContentDefaults::COLLAB_PREFIX_MAX ?>" placeholder="ft." autocomplete="off">
+                <span class="muted collab-prefix-example" data-collab-example>
+                    <?= e(trim($collabPrefix . ' @hoku_xx, @eulink')) ?>
+                </span>
+            </span>
+            <small class="muted"><?= e(__('ui.message.collab_prefix_hint')) ?></small>
+        </label>
 
         <fieldset class="inset" data-rows-scope>
             <legend><?= e(__('ui.field.counters')) ?></legend>

@@ -1444,119 +1444,136 @@
         return String(timeline.base + before + 1);
     }
 
-    function renderTemplate(text, field) {
-        return text.replace(COUNTER, function (whole, name) {
-            const n = counterNumber(name, field);
-            return n === null ? whole : n;
-        });
+    /** "Keymailer" / "#Keymailer" / "Key Mailer" -> "keymailer", to recognise sponsor tags. */
+    function tagKey(text) {
+        return String(text).toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
     }
 
-    function segment(cls, text, hint) {
-        const span = document.createElement('span');
-        span.className = cls;
-        span.textContent = text;
-        if (hint) span.title = hint;
-        return span;
-    }
+    /**
+     * The title split into coloured pieces: prefixes at the start (and any
+     * of the user's prefixes elsewhere), counters, the collab credit,
+     * sponsor tags and developer/publisher tags; the rest is plain text.
+     */
+    function titleTokens(text, prefixes, sponsors) {
+        const tokens = [];
+        const lead = /^(\s*\[[^\]]*\])+/.exec(text);
+        const word = typeof window.STREAMORG_COLLAB_PREFIX === 'string' ? window.STREAMORG_COLLAB_PREFIX : 'ft.';
+        const credit = (word ? word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' ' : '') + '@[^\\s,#]+(?:,\\s*@[^\\s,#]+)*';
+        const pattern = new RegExp('(\\[[^\\]]*\\])|(\\{[a-z][a-z0-9_]{0,19}\\})|(' + credit + ')|(#[^\\s#]+)', 'g');
+        let last = 0;
+        let match;
 
-    function titleField(field) {
-        const input = field.querySelector('[data-prefix-input]');
-        const chosenBox = field.querySelector('[data-prefix-chosen]');
-        const body = field.querySelector('textarea[name="title"]');
-        const preview = field.querySelector('[data-title-preview]');
-        const options = field.querySelectorAll('.prefix-option');
-        const form = field.closest('form');
-        let chosen = [];
-
-        try { chosen = JSON.parse(input.value) || []; } catch (e) { chosen = []; }
-
-        function update() {
-            input.value = JSON.stringify(chosen);
-            chosenBox.innerHTML = '';
-
-            chosen.forEach(function (text, i) {
-                const chip = document.createElement('span');
-                chip.className = 'prefix-chip';
-                chip.dataset.index = String(i);
-
-                if (i > 0) {
-                    const left = document.createElement('button');
-                    left.type = 'button';
-                    left.className = 'chip-move';
-                    left.textContent = '‹';
-                    chip.append(left);
-                }
-
-                chip.append(segment('', renderTemplate(text, field)));
-
-                const remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'chip-remove';
-                remove.textContent = '×';
-                chip.append(remove);
-                chosenBox.append(chip);
-            });
-
-            options.forEach(function (option) {
-                option.classList.toggle('chosen', chosen.indexOf(option.dataset.prefixText) !== -1);
-            });
-
-            preview.innerHTML = '';
-            let length = 0;
-
-            chosen.forEach(function (text) {
-                text.split(/(\{[a-z][a-z0-9_]{0,19}\})/).forEach(function (part) {
-                    if (!part) return;
-
-                    const match = /^\{([a-z][a-z0-9_]{0,19})\}$/.exec(part);
-                    const n = match ? counterNumber(match[1], field) : null;
-
-                    if (match && n !== null) {
-                        preview.append(segment('seg-number' + (n === '?' ? ' undated' : ''), n, n === '?' ? preview.dataset.undated : preview.dataset.numbered));
-                        length += n.length;
-                    } else {
-                        preview.append(segment('seg-prefix', part));
-                        length += part.length;
-                    }
-                });
-                preview.append(' ');
-                length += 1;
-            });
-
-            const own = body.value.replace(/\s+/g, ' ').trim();
-
-            own.split(/((?:^|\s)(?:#\S+|ft\. @[^#]+?)(?=\s#|\s*$))/).forEach(function (part) {
-                if (!part) return;
-                preview.append(segment(/^\s?(#|ft\. @)/.test(part) ? 'seg-tag' : 'seg-text', part));
-            });
-            length += own.length;
-            if (!own) length = Math.max(0, length - 1);
-
-            const max = parseInt(preview.dataset.max, 10);
-            const platform = form && form.querySelector('[name="platform"]');
-            const over = (!platform || platform.value === 'twitch') && length > max;
-            preview.append(segment('seg-count' + (over ? ' over' : ''), ' ' + length + '/' + max + (over ? ' · ' + preview.dataset.over : '')));
-            field.classList.toggle('over', over);
+        function push(kind, value) {
+            if (value) tokens.push({ kind: kind, text: value });
         }
 
-        field.addEventListener('click', function (event) {
-            const option = event.target.closest('.prefix-option');
-            const chip = event.target.closest('.prefix-chip');
+        while ((match = pattern.exec(text)) !== null) {
+            push('text', text.slice(last, match.index));
+            const value = match[0];
 
-            if (option && chosen.indexOf(option.dataset.prefixText) === -1) {
-                chosen.push(option.dataset.prefixText);
-                update();
-            } else if (chip && event.target.closest('.chip-remove')) {
-                chosen.splice(parseInt(chip.dataset.index, 10), 1);
-                update();
-            } else if (chip && event.target.closest('.chip-move')) {
-                const i = parseInt(chip.dataset.index, 10);
-                chosen.splice(i - 1, 0, chosen.splice(i, 1)[0]);
-                update();
+            if (match[1]) {
+                const isPrefix = (lead && match.index < lead[0].length) || prefixes.indexOf(value) !== -1;
+                value.split(/(\{[a-z][a-z0-9_]{0,19}\})/).forEach(function (part) {
+                    if (part) push(/^\{/.test(part) ? 'counter' : (isPrefix ? 'prefix' : 'text'), part);
+                });
+            } else if (match[2]) {
+                push('counter', value);
+            } else if (match[3]) {
+                push('collab', value);
+            } else {
+                push(sponsors.indexOf(tagKey(value)) !== -1 ? 'sponsor' : 'devpub', value);
             }
+
+            last = match.index + value.length;
+        }
+
+        push('text', text.slice(last));
+        return tokens;
+    }
+
+    function titleEditor(wrap) {
+        const input = wrap.querySelector('[data-title-input]');
+        const layer = wrap.querySelector('[data-title-highlight]');
+        const hint = wrap.querySelector('[data-title-hint]');
+        const form = wrap.closest('form');
+        const prefixes = Array.from(wrap.querySelectorAll('.prefix-option')).map(function (b) { return b.dataset.prefixText; });
+        const sponsors = (window.STREAMORG_SPONSOR_NAMES || []).map(tagKey);
+        const labels = {};
+
+        wrap.querySelectorAll('.title-legend span').forEach(function (span) {
+            labels[span.className.replace('tok-', '')] = span.textContent;
         });
 
-        body.addEventListener('input', update);
+        function update() {
+            const text = input.value;
+            layer.innerHTML = '';
+
+            titleTokens(text, prefixes, sponsors).forEach(function (token) {
+                const span = document.createElement('span');
+                span.className = 'tok-' + token.kind;
+                span.textContent = token.text;
+                layer.append(span);
+            });
+            layer.append('​');
+
+            let rendered = text;
+            const numbers = [];
+
+            text.replace(COUNTER, function (whole, name) {
+                const n = counterNumber(name, wrap);
+                if (n !== null && numbers.indexOf(whole) === -1) {
+                    numbers.push(whole);
+                    rendered = rendered.split(whole).join(n);
+                    const part = document.createElement('span');
+                    part.className = 'tok-counter' + (n === '?' ? ' undated' : '');
+                    part.textContent = whole + ' = ' + n;
+                    if (n === '?') part.title = hint.dataset.undated;
+                    numbers.push(part);
+                }
+                return whole;
+            });
+
+            const length = rendered.replace(/\s+/g, ' ').trim().length;
+            const max = parseInt(hint.dataset.max, 10);
+            const platform = form && form.querySelector('[name="platform"]');
+            const over = (!platform || platform.value === 'twitch') && length > max;
+
+            hint.innerHTML = '';
+            numbers.filter(function (n) { return typeof n !== 'string'; }).forEach(function (n) { hint.append(n, ' '); });
+            const count = document.createElement('span');
+            count.className = 'title-count' + (over ? ' over' : '');
+            count.textContent = length + '/' + max + (over ? ' · ' + hint.dataset.over : '');
+            hint.append(count);
+            wrap.classList.toggle('over', over);
+
+            fit();
+        }
+
+        /** Grows the box to its text (only while visible: hidden forms measure nothing). */
+        function fit() {
+            if (!input.offsetParent) return;
+            input.style.height = 'auto';
+            input.style.height = input.scrollHeight + 'px';
+        }
+
+        if (window.ResizeObserver) new ResizeObserver(fit).observe(wrap);
+
+        input.addEventListener('input', update);
+        input.addEventListener('scroll', function () { layer.scrollTop = input.scrollTop; });
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') event.preventDefault();
+        });
+
+        wrap.addEventListener('click', function (event) {
+            const button = event.target.closest('.prefix-option');
+            if (!button) return;
+
+            const lead = /^(\s*\[[^\]]*\])*/.exec(input.value)[0];
+            const rest = input.value.slice(lead.length).replace(/^\s+/, '');
+            input.value = (lead.trim() ? lead.trim() + ' ' : '') + button.dataset.prefixText + ' ' + rest;
+            input.focus();
+            update();
+        });
 
         if (form) {
             form.addEventListener('change', function (event) {
@@ -1568,7 +1585,16 @@
     }
 
     onPage(function () {
-        document.querySelectorAll('[data-title-field]').forEach(titleField);
+        document.querySelectorAll('[data-title-editor]').forEach(titleEditor);
+    });
+
+    /** Profile defaults: the collab credit field shows how a credit will read. */
+    document.addEventListener('input', function (event) {
+        const field = event.target.closest('input[name="collab_prefix"]');
+        if (!field) return;
+
+        const example = field.closest('label').querySelector('[data-collab-example]');
+        if (example) example.textContent = (field.value.trim() + ' @hoku_xx, @eulink').trim();
     });
 
     /** Editable lists (title prefixes, counters): add a row from its template, remove one, move one up. */
@@ -2617,11 +2643,13 @@
                 titleField.dispatchEvent(new Event('input'));
             }
 
-            /** "ft. @A, @B" sits before the hashtags, where it reads naturally. */
+            /** "ft. @A, @B" (with the user's own word for "ft.") sits before the hashtags, where it reads naturally. */
             function featureText(names) {
                 if (!names.length) return '';
 
-                return 'ft. ' + names.map(function (n) {
+                const word = typeof window.STREAMORG_COLLAB_PREFIX === 'string' ? window.STREAMORG_COLLAB_PREFIX : 'ft.';
+
+                return (word ? word + ' ' : '') + names.map(function (n) {
                     return '@' + String(n).replace(/\s+/g, '');
                 }).join(', ');
             }

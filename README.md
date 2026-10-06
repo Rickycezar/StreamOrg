@@ -62,9 +62,11 @@ private preview. Preview access: streamorg@outlook.com.
   "[STREAM #{stream}]" are picked as chips (several, in any order, the usual
   ones preselected); a counter in braces numbers content in calendar order
   (undated content shows "?"), and the database renumbers whenever a plan is
-  moved, cancelled or deleted. The title field shows prefixes, automatic
-  numbers, your own text and added tags in different colours, and keeps the
-  whole title within Twitch's 140 characters.
+  moved, cancelled or deleted. The title field works like a small code
+  editor: typed freely, with prefixes, collab credits ("ft. @guest", the
+  word chosen in your defaults), developer/publisher
+  tags and sponsor tags coloured as you type, and the whole title kept
+  within Twitch's 140 characters.
 
 ### Catalogue
 - **Twitch first**: with Twitch connected, a game is added by picking its

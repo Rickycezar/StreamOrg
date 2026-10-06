@@ -118,7 +118,7 @@ final class ContentController
         $stmt->execute(['user' => $userId]);
         $backlog = $stmt->fetchAll();
 
-        $sql = "SELECT s.id, s.title, array_to_json(s.title_prefixes) AS title_prefixes, s.title_body, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
+        $sql = "SELECT s.id, s.title, s.title_template, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
                        s.category_id, s.category_name,
                        sp.code AS platform_code,
                        count(sg.game_id)                                     AS game_count,
@@ -239,6 +239,7 @@ final class ContentController
             'contentMinutes' => ContentDefaults::minutes((int) $userId),
             'prefixes'    => ContentDefaults::prefixes((int) $userId),
             'timeline'    => TitleCounters::timeline((int) $userId),
+            'collabPrefix' => ContentDefaults::collabPrefix((int) $userId),
             'twitchSchedule' => TwitchSchedule::status((int) $userId),
             'twitchCategories' => Twitch::isConfigured(),
             'content'     => $content,
@@ -266,9 +267,9 @@ final class ContentController
 
         $title    = self::oneLine((string) ($_POST['title'] ?? ''));
         $platform = trim((string) ($_POST['platform'] ?? ''));
-        $prefixes = TitleCounters::templates((int) Auth::id(), self::postedPrefixes());
+        $template = TitleCounters::templateFor((int) Auth::id(), $title);
 
-        if (($title === '' && $prefixes === []) || $platform === '') {
+        if ($title === '' || $platform === '') {
             flash('error', __('ui.message.invalid_input'));
             redirect('/content');
         }
@@ -306,16 +307,15 @@ final class ContentController
 
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO streams (user_id, streaming_platform_id, title, title_prefixes, title_body, status,
+                'INSERT INTO streams (user_id, streaming_platform_id, title, title_template, status,
                                       scheduled_start, deadline, notes, category_id, category_name)
-                 VALUES (?, ?, ?, ' . ($prefixes !== [] ? TitleCounters::FROM_JSON : 'CAST(? AS text[])') . ', ?, ?, ?, ?, ?, ?, ?) RETURNING id'
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
             );
             $stmt->execute([
                 Auth::id(),
                 $platformId,
                 $title,
-                $prefixes !== [] ? json_encode($prefixes) : null,
-                $prefixes !== [] ? $title : null,
+                $template,
                 $status,
                 $scheduled !== '' ? $scheduled : null,
                 $deadline,
@@ -392,14 +392,6 @@ final class ContentController
 
         flash('success', __('ui.message.saved'));
         redirect('/content');
-    }
-
-    /** The title prefixes the form chose, in order (a JSON list in "prefixes"). */
-    private static function postedPrefixes(): array
-    {
-        $list = json_decode((string) ($_POST['prefixes'] ?? '[]'), true);
-
-        return is_array($list) ? array_values(array_filter($list, 'is_string')) : [];
     }
 
     /**
@@ -674,12 +666,7 @@ final class ContentController
         $scheduled = trim((string) ($_POST['scheduled_start'] ?? '')) ?: null;
         $deadline  = trim((string) ($_POST['deadline'] ?? '')) ?: null;
 
-        $current = $pdo->prepare('SELECT array_to_json(title_prefixes) FROM streams WHERE id = ? AND user_id = ?');
-        $current->execute([$id, Auth::id()]);
-        $had      = json_decode((string) $current->fetchColumn(), true) ?: [];
-        $prefixes = array_key_exists('prefixes', $_POST)
-            ? TitleCounters::templates((int) Auth::id(), self::postedPrefixes(), $had)
-            : $had;
+        $template = TitleCounters::templateFor((int) Auth::id(), $title);
 
         $pdo->beginTransaction();
 
@@ -687,14 +674,12 @@ final class ContentController
             'UPDATE streams
                 SET title = :title, streaming_platform_id = :platform, status = :status,
                     scheduled_start = :scheduled, deadline = :deadline,
-                    vod_url = :vod, notes = :notes,
-                    title_prefixes = ' . ($prefixes !== [] ? 'ARRAY(SELECT jsonb_array_elements_text(CAST(:prefixes AS jsonb)))' : 'NULL') . ',
-                    title_body = :body
+                    vod_url = :vod, notes = :notes, title_template = :template
               WHERE id = :id AND user_id = :user'
         );
 
-        $stmt->execute(($prefixes !== [] ? ['prefixes' => json_encode($prefixes)] : []) + [
-            'body'      => $prefixes !== [] ? $title : null,
+        $stmt->execute([
+            'template'  => $template,
             'title'     => $title,
             'platform'  => $platformId,
             'status'    => $status,
