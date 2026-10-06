@@ -535,6 +535,7 @@ final class ProfileController
         }
 
         Viewers::linkMatchingUser((string) (TwitchUser::connection((int) Auth::id())['twitch_user_id'] ?? ''));
+        ChatBot::recheck((int) Auth::id());
 
         if (TwitchEventSub::isAvailable() && !TwitchEventSub::subscribe((int) Auth::id())) {
             error_log('StreamOrg EventSub subscribe: ' . TwitchEventSub::lastError());

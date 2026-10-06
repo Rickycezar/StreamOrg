@@ -171,6 +171,7 @@ $routes = [
         '/profile/defaults/content' => [ProfileController::class, 'saveContentDefaults'],
         '/profile/bot'       => [BotController::class, 'toggleChannel'],
         '/profile/bot/command' => [BotController::class, 'personalCommand'],
+        '/profile/bot/recheck' => [BotController::class, 'recheck'],
         '/admin/bot/settings' => [BotController::class, 'settings'],
         '/admin/bot/command' => [BotController::class, 'defaultCommand'],
         '/admin/bot/channel' => [BotController::class, 'block'],

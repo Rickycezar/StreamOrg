@@ -176,6 +176,18 @@ final class BotController
         redirect('/profile/bot');
     }
 
+    /** POST /profile/bot/recheck — the streamer just modded (or unmodded) the bot: look again now. */
+    public static function recheck(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        ChatBot::recheck((int) Auth::id());
+
+        flash('success', __('ui.message.bot_rechecking'));
+        redirect('/profile/bot');
+    }
+
     /** POST /profile/bot/command — the streamer's own version of a command, or back to the default. */
     public static function personalCommand(): void
     {

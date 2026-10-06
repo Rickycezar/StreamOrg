@@ -194,6 +194,23 @@ final class ChatBot
         self::notify();
     }
 
+    /**
+     * Asks the bot to check a channel's access again now, instead of at its
+     * next retry: after the streamer reconnected Twitch (new permissions)
+     * or made the bot a moderator, neither of which Twitch announces.
+     */
+    public static function recheck(int $userId): void
+    {
+        $stmt = Database::connection()->prepare(
+            "UPDATE bot_channels SET access = 'unknown', access_checked_at = NULL WHERE user_id = ? AND is_enabled"
+        );
+        $stmt->execute([$userId]);
+
+        if ($stmt->rowCount() > 0) {
+            self::notify();
+        }
+    }
+
     /** An admin keeps the bot out of a channel (or lets it back in). */
     public static function setBlocked(int $userId, bool $blocked): void
     {

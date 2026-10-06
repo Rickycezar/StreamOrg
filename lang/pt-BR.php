@@ -609,6 +609,7 @@ return [
         ],
 
         'action' => [
+            'bot_recheck' => 'Conferir agora',
             'bot_grant_permission' => 'Dar permissão na Twitch',
             'bot_add_channel' => 'Adicionar o bot',
             'bot_remove_channel' => 'Tirar o bot',
@@ -1067,6 +1068,7 @@ return [
         ],
 
         'message' => [
+            'bot_rechecking' => 'O bot está conferindo o seu canal de novo.',
             'bot_chatters_ok' => 'O bot consegue ver quem está no chat, então o tempo assistido é registrado.',
             'bot_chatters_missing' => 'O bot não consegue ver quem está no chat: só as mensagens são contadas. Dê permissão a ele ou torne-o moderador.',
             'bot_stats_hint' => 'Enquanto um canal com o bot está ao vivo, o StreamOrg registra por espectador, live, conteúdo ao vivo e categoria quantas mensagens ele mandou e por quanto tempo, aproximadamente, esteve no chat (verificado a cada minuto). Guardado por 12 meses.',
@@ -1074,7 +1076,7 @@ return [
             'bot_access_intro' => 'A Twitch deixa %s ler o seu chat (e aparecer como bot de chat) de duas formas. Uma basta.',
             'bot_way_permission' => 'Reconecte a Twitch uma vez e aprove as permissões do bot. Ele continua um participante comum, sem poderes de moderador, e também consegue ver quem está no chat para o tempo assistido.',
             'bot_way_moderator' => 'Digite isto no seu chat. Moderadores também passam pelo modo lento, só seguidores e só emotes.',
-            'bot_access_recheck' => 'O bot confere de novo em até cinco minutos depois que você mudar qualquer um dos dois.',
+            'bot_access_recheck' => 'Reconectar a Twitch é percebido na hora. Depois de dar ou tirar o moderador do bot, confira de novo (ou espere até cinco minutos).',
             'bot_channels_hint' => 'Todos com uma conta da Twitch conectada. O streamer adiciona o bot pelo próprio perfil, ou um administrador adiciona aqui; o streamer pode tirá-lo quando quiser. Um canal bloqueado fica sem o bot até ser desbloqueado.',
             'bot_user_needs_twitch' => 'Este usuário não conectou um canal da Twitch.',
             'bot_added_admin' => 'O bot está entrando naquele canal.',

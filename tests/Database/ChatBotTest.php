@@ -113,6 +113,21 @@ final class ChatBotTest extends DatabaseTestCase
         self::assertSame('unknown', ChatBot::channel($user)['access']);
     }
 
+    public function testRecheckForgetsWhatTheBotFoundOnlyWhereItIsAdded(): void
+    {
+        $user  = $this->createUser('phpunit_bot_recheck');
+        $other = $this->createUser('phpunit_bot_recheck_off');
+
+        ChatBot::setChannel($user, true);
+        $this->pdo->prepare("UPDATE bot_channels SET access = 'none', access_checked_at = now() WHERE user_id = ?")->execute([$user]);
+
+        ChatBot::recheck($user);
+        ChatBot::recheck($other);
+
+        self::assertSame('unknown', ChatBot::channel($user)['access']);
+        self::assertNull(ChatBot::channel($other));
+    }
+
     public function testPrefixMustBeASymbol(): void
     {
         $this->expectException(UserError::class);

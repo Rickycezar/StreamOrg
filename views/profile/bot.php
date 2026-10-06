@@ -68,7 +68,11 @@ $bot    = (string) $account['twitch_login'];
                 <code>/mod <?= e($bot) ?></code>
             </div>
         </div>
-        <p class="muted small"><?= e(__('ui.message.bot_access_recheck')) ?></p>
+        <form method="post" action="<?= e(url('/profile/bot/recheck')) ?>" class="inline-actions">
+            <?= Csrf::field() ?>
+            <span class="muted small"><?= e(__('ui.message.bot_access_recheck')) ?></span>
+            <button type="submit" class="btn small"><?= e(__('ui.action.bot_recheck')) ?></button>
+        </form>
     </section>
 
     <section class="card">

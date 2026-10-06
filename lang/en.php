@@ -610,6 +610,7 @@ return [
         ],
 
         'action' => [
+            'bot_recheck' => 'Check again now',
             'bot_grant_permission' => 'Give permission on Twitch',
             'bot_add_channel' => 'Add the bot',
             'bot_remove_channel' => 'Remove the bot',
@@ -1068,6 +1069,7 @@ return [
         ],
 
         'message' => [
+            'bot_rechecking' => 'The bot is checking your channel again.',
             'bot_chatters_ok' => 'The bot can see who is in chat, so watch time is recorded.',
             'bot_chatters_missing' => 'The bot cannot see who is in chat: only messages are counted. Give it permission, or make it a moderator.',
             'bot_stats_hint' => 'While a channel with the bot is live, StreamOrg records per viewer, broadcast, live content and category how many messages they sent and roughly how long they were in chat (sampled every minute). Kept for 12 months.',
@@ -1075,7 +1077,7 @@ return [
             'bot_access_intro' => 'Twitch lets %s read your chat (and show as a chat bot) in either of two ways. One is enough.',
             'bot_way_permission' => 'Reconnect Twitch once and approve the bot permissions. It stays a regular chatter, without moderator powers, and can also see who is in chat for watch time.',
             'bot_way_moderator' => 'Type this in your chat. Moderators also get past slow mode, followers-only and emote-only chat.',
-            'bot_access_recheck' => 'The bot checks again within five minutes after you change either.',
+            'bot_access_recheck' => 'Reconnecting Twitch is noticed at once. After you mod or unmod the bot, check again (or wait up to five minutes).',
             'bot_channels_hint' => 'Everyone with a connected Twitch account. Streamers add the bot from their profile, or an admin adds it here; they can remove it at any time. A blocked channel stays without the bot until unblocked.',
             'bot_user_needs_twitch' => 'This user has not connected a Twitch channel.',
             'bot_added_admin' => 'The bot is joining that channel.',
