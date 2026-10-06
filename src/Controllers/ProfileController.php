@@ -91,43 +91,36 @@ final class ProfileController
             'schedule'       => StreamSchedule::forUser((int) Auth::id()),
             'contentMinutes' => ContentDefaults::minutes((int) Auth::id()),
             'prefixes'       => ContentDefaults::prefixes((int) Auth::id()),
+            'counters'       => TitleCounters::forUser((int) Auth::id()),
         ]);
     }
 
-    /** Saves the content defaults: usual content length and title prefixes. */
+    /** Saves the content defaults: usual content length, title prefixes and their counters. */
     public static function saveContentDefaults(): void
     {
         Auth::requireLogin();
         Csrf::verify();
 
-        $minutes  = ContentDefaults::minutesFromInput((string) ($_POST['content_minutes'] ?? ''));
-        $prefixes = ContentDefaults::prefixesFromInput((array) ($_POST['prefix'] ?? []), (string) ($_POST['default_prefix'] ?? ''));
+        $userId  = (int) Auth::id();
+        $minutes = ContentDefaults::minutesFromInput((string) ($_POST['content_minutes'] ?? ''));
 
-        if ($minutes === null || $prefixes === null) {
-            flash('error', __('ui.message.content_defaults_invalid'));
+        try {
+            if ($minutes === null) {
+                throw new UserError(__('ui.message.content_length_invalid'));
+            }
+
+            $counters = TitleCounters::fromInput((array) ($_POST['counter'] ?? []));
+            $prefixes = ContentDefaults::prefixesFromInput(
+                (array) ($_POST['prefix'] ?? []),
+                array_column($counters, 'name'),
+                TitleCounters::renames(TitleCounters::forUser($userId), $counters)
+            );
+
+            ContentDefaults::save($userId, $minutes, $prefixes, $counters);
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
             redirect('/profile/defaults');
         }
-
-        ContentDefaults::save((int) Auth::id(), $minutes, $prefixes);
-
-        flash('success', __('ui.message.saved'));
-        redirect('/profile/defaults');
-    }
-
-    /** Saves the default stream schedule from the defaults tab. */
-    public static function saveDefaults(): void
-    {
-        Auth::requireLogin();
-        Csrf::verify();
-
-        $days = StreamSchedule::fromInput((array) ($_POST['day'] ?? []));
-
-        if ($days === null) {
-            flash('error', __('ui.message.schedule_invalid'));
-            redirect('/profile/defaults');
-        }
-
-        StreamSchedule::save((int) Auth::id(), $days);
 
         flash('success', __('ui.message.saved'));
         redirect('/profile/defaults');

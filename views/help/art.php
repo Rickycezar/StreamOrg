@@ -190,6 +190,167 @@ $arts = [
         . $path('M150 31h8v7h-3l-2 2v-2h-3z', 'ha-white-fill')
         . $bar(148, 56, 70, 'ha-text') . $r(148, 68, 46, 12, 'ha-twitchbg', 6) . $r(148, 86, 30, 10, 'ha-soft', 5) . $r(182, 86, 30, 10, 'ha-soft', 5)
         . $dot(156, 110, 4, 'ha-danger') . $bar(164, 107.5, 40, 'ha-danger'),
+
+    'defaults.schedule' =>
+        $r(30, 18, 180, 114, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="44" y="%d" width="12" height="12" rx="3" class="%s"/><rect x="64" y="%d" width="40" height="6" rx="3" class="ha-line"/><rect x="116" y="%d" width="36" height="12" rx="4" class="%s"/><rect x="158" y="%d" width="36" height="12" rx="4" class="ha-bg"/>',
+            30 + $i * 20, $i === 3 ? 'ha-line' : 'ha-accent', 33 + $i * 20, 30 + $i * 20, $i === 3 ? 'ha-bg' : 'ha-soft', 30 + $i * 20
+        ), range(0, 4))),
+
+    'defaults.length' =>
+        $r(26, 26, 188, 98, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<rect x="40" y="%d" width="160" height="1" class="ha-line"/>', 40 + $i * 20), range(0, 4)))
+        . $r(60, 44, 120, 52, 'ha-soft', 6) . $r(60, 44, 4, 52, 'ha-accent', 2) . $bar(72, 54, 70, 'ha-accent')
+        . $dot(196, 70, 14, 'ha-bg') . $path('M196 62v8l5 3', 'ha-stroke-accent')
+        . $path('M120 100v14', 'ha-stroke-accent') . $path('M114 108l6 7 6-7', 'ha-stroke-accent'),
+
+    'defaults.prefixes' =>
+        $r(14, 30, 212, 34, 'ha-panel', 8)
+        . $r(22, 38, 54, 18, 'ha-accent', 9) . $bar(30, 44.5, 38, 'ha-white-fill')
+        . $r(80, 38, 40, 18, 'ha-accent', 9) . $bar(88, 44.5, 24, 'ha-white-fill')
+        . $bar(128, 44.5, 80, 'ha-text')
+        . $r(22, 82, 62, 20, 'ha-bg', 10) . $bar(32, 89.5, 42)
+        . $r(90, 82, 50, 20, 'ha-bg', 10) . $bar(100, 89.5, 30)
+        . $r(146, 82, 72, 20, 'ha-bg', 10) . $bar(156, 89.5, 52)
+        . $path('M49 80v-14M100 80v-14', 'ha-stroke-accent-dash'),
+
+    'defaults.counters' =>
+        $r(26, 32, 188, 40, 'ha-panel', 8)
+        . $bar(40, 49.5, 30, 'ha-text') . $r(76, 42, 60, 20, 'ha-soft', 6) . $bar(84, 49.5, 44, 'ha-accent')
+        . $r(150, 40, 54, 24, 'ha-bg', 6) . $bar(160, 49.5, 34, 'ha-text')
+        . $r(60, 92, 120, 34, 'ha-accent', 10) . $bar(76, 106.5, 50, 'ha-white-fill') . $r(132, 100, 36, 18, 'ha-white-fill', 6) . $bar(140, 106.5, 20, 'ha-accent')
+        . $path('M177 72c0 12-10 14-20 20', 'ha-stroke-accent-dash'),
+
+    'defaults.numbers' =>
+        $r(16, 40, 64, 30, 'ha-panel', 6) . $bar(26, 52.5, 44, 'ha-text')
+        . $r(88, 40, 64, 30, 'ha-panel', 6) . $bar(98, 52.5, 44, 'ha-text')
+        . $r(160, 40, 64, 30, 'ha-soft', 6) . $bar(170, 52.5, 44, 'ha-accent')
+        . $dot(48, 32, 9, 'ha-bg') . $dot(120, 32, 9, 'ha-bg') . $dot(192, 32, 9, 'ha-accent')
+        . $path('M192 76v20', 'ha-stroke-danger') . $path('M186 90l6 7 6-7', 'ha-stroke-danger')
+        . $r(160, 100, 64, 30, 'ha-dangerbg', 6) . $path('M184 108l16 14M200 108l-16 14', 'ha-stroke-danger')
+        . $path('M160 115c-30 0-40-20-40-30', 'ha-stroke-accent-dash'),
+
+    'defaults.limit' =>
+        $r(14, 44, 212, 40, 'ha-panel', 8)
+        . $r(24, 55, 50, 18, 'ha-accent', 9) . $bar(84, 61.5, 110, 'ha-text')
+        . $r(14, 96, 160, 8, 'ha-bg', 4) . $r(14, 96, 132, 8, 'ha-ok', 4)
+        . $bar(182, 97.5, 44, 'ha-text')
+        . $r(14, 116, 160, 8, 'ha-bg', 4) . $r(14, 116, 160, 8, 'ha-danger', 4) . $bar(182, 117.5, 44, 'ha-danger'),
+
+    'giveaways.setup' =>
+        $r(26, 20, 188, 110, 'ha-panel', 10)
+        . $r(40, 34, 30, 30, 'ha-accent', 8) . $path('M47 49h16M55 41v16', 'ha-stroke-white')
+        . $bar(80, 38, 100, 'ha-text') . $bar(80, 52, 60)
+        . $r(40, 76, 70, 18, 'ha-soft', 9) . $bar(48, 82.5, 54, 'ha-accent')
+        . $r(116, 76, 84, 18, 'ha-twitchbg', 9) . $bar(124, 82.5, 68, 'ha-twitch')
+        . $r(40, 102, 160, 16, 'ha-bg', 4) . $bar(48, 107.5, 120),
+
+    'giveaways.prizes' =>
+        $r(14, 30, 92, 92, 'ha-bg', 8)
+        . $r(22, 38, 76, 22, 'ha-panel', 5) . $key(28, 43)
+        . $r(22, 64, 76, 22, 'ha-warnbg', 5) . $key(28, 69, 'ha-stroke')
+        . $r(22, 90, 76, 22, 'ha-panel', 5) . $key(28, 95)
+        . $path('M108 75h24', 'ha-stroke-accent') . $path('M126 69l7 6-7 6', 'ha-stroke-accent')
+        . $r(150, 56, 76, 60, 'ha-accent', 6) . $r(142, 44, 92, 18, 'ha-accent-dark', 5) . $r(182, 44, 12, 72, 'ha-white-fill', 0),
+
+    'giveaways.winners' =>
+        $r(22, 26, 196, 98, 'ha-panel', 10)
+        . $dot(44, 50, 10, 'ha-twitchbg') . $bar(62, 44, 80, 'ha-text') . $bar(62, 54, 50) . $r(170, 42, 36, 16, 'ha-okbg', 8) . $path('M182 50l4 4 7-7', 'ha-stroke-ok')
+        . $dot(44, 86, 10, 'ha-twitchbg') . $bar(62, 80, 70, 'ha-text') . $bar(62, 90, 40) . $r(170, 78, 36, 16, 'ha-soft', 8) . $bar(176, 83.5, 24, 'ha-accent')
+        . $r(36, 106, 70, 12, 'ha-bg', 6),
+
+    'giveaways.claim' =>
+        $r(14, 36, 96, 60, 'ha-panel', 8) . $r(24, 46, 76, 14, 'ha-soft', 7) . $path('M32 53h0', 'ha-stroke-accent') . $bar(40, 50.5, 52, 'ha-accent')
+        . $r(24, 68, 50, 16, 'ha-twitch', 8) . $bar(32, 73.5, 34, 'ha-white-fill')
+        . $path('M112 66h26', 'ha-stroke-accent') . $path('M132 60l7 6-7 6', 'ha-stroke-accent')
+        . $r(146, 24, 80, 104, 'ha-panel', 10) . $dot(186, 52, 14, 'ha-okbg') . $path('M180 52l4 4 8-9', 'ha-stroke-ok')
+        . $r(158, 76, 56, 14, 'ha-bg', 4) . $bar(164, 80.5, 44, 'ha-text') . $r(164, 98, 44, 14, 'ha-accent', 7),
+
+    'giveaways.private' =>
+        $r(18, 44, 70, 70, 'ha-accent', 10) . $path('M38 70v-8a15 15 0 0 1 30 0v8', 'ha-stroke-white') . $r(34, 70, 38, 30, 'ha-white-fill', 4) . $dot(53, 85, 3, 'ha-accent')
+        . $path('M92 64c20-20 40-20 60 0', 'ha-stroke-accent-dash') . $path('M146 58l6 6-8 3', 'ha-stroke-accent')
+        . $path('M152 100c-20 20-40 20-60 0', 'ha-stroke-dash') . $path('M98 106l-6-6 8-3', 'ha-stroke')
+        . $r(156, 52, 66, 56, 'ha-panel', 10) . $key(164, 62) . $key(164, 80) . $bar(196, 64, 18) . $bar(196, 82, 18),
+
+    'giveaways.finish' =>
+        $r(14, 60, 60, 24, 'ha-soft', 12) . $bar(26, 69.5, 36, 'ha-accent')
+        . $path('M76 72h12', 'ha-stroke') . $path('M84 68l5 4-5 4', 'ha-stroke')
+        . $r(92, 60, 60, 24, 'ha-bg', 12) . $bar(104, 69.5, 36, 'ha-text')
+        . $path('M154 72h12', 'ha-stroke') . $path('M162 68l5 4-5 4', 'ha-stroke')
+        . $r(170, 60, 58, 24, 'ha-okbg', 12) . $path('M182 72l4 4 7-8', 'ha-stroke-ok') . $bar(196, 69.5, 24, 'ha-ok')
+        . $key(186, 100) . $path('M199 98c0-8-6-12-14-12', 'ha-stroke-accent-dash'),
+
+    'embargoes.what' =>
+        $r(20, 24, 120, 104, 'ha-panel', 8) . $r(20, 24, 120, 22, 'ha-soft', 8) . $r(20, 38, 120, 8, 'ha-soft', 0)
+        . implode('', array_map(static fn (int $i): string => sprintf('<rect x="%d" y="%d" width="14" height="12" rx="3" class="%s"/>', 30 + ($i % 6) * 18, 56 + intdiv($i, 6) * 20, $i < 9 ? 'ha-dangerbg' : ($i === 9 ? 'ha-ok' : 'ha-bg')), range(0, 17)))
+        . $r(156, 46, 64, 60, 'ha-dangerbg', 10) . $path('M178 64h20v22h-20zM183 64v-5a5 5 0 0 1 10 0v5', 'ha-stroke-danger'),
+
+    'embargoes.kinds' =>
+        implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="%d" y="%d" width="96" height="24" rx="12" class="%s"/><rect x="%d" y="%d" width="60" height="5" rx="2.5" class="%s"/>',
+            20 + ($i % 2) * 104, 24 + intdiv($i, 2) * 34, ['ha-soft', 'ha-okbg', 'ha-warnbg', 'ha-twitchbg', 'ha-bg'][$i], 38 + ($i % 2) * 104, 33.5 + intdiv($i, 2) * 34, ['ha-accent', 'ha-ok', 'ha-warn', 'ha-twitch', 'ha-text'][$i]
+        ), range(0, 4))),
+
+    'embargoes.several' =>
+        $r(20, 30, 200, 92, 'ha-panel', 10) . $r(32, 42, 40, 30, 'ha-bg', 5)
+        . $bar(82, 46, 90, 'ha-text')
+        . $r(32, 84, 56, 16, 'ha-soft', 8) . $r(94, 84, 56, 16, 'ha-warnbg', 8) . $r(156, 84, 52, 16, 'ha-twitchbg', 8)
+        . $bar(40, 89.5, 40, 'ha-accent') . $bar(102, 89.5, 40, 'ha-warn') . $bar(164, 89.5, 36, 'ha-twitch'),
+
+    'embargoes.release' =>
+        $r(18, 40, 90, 70, 'ha-panel', 8) . $r(26, 48, 74, 26, 'ha-bg', 5) . $bar(26, 82, 60, 'ha-text') . $bar(26, 94, 40)
+        . $path('M110 75h22', 'ha-stroke-accent') . $path('M126 69l7 6-7 6', 'ha-stroke-accent')
+        . $r(140, 46, 84, 58, 'ha-soft', 10) . $r(152, 58, 22, 20, 'ha-panel', 4) . $bar(180, 62, 34, 'ha-accent') . $bar(152, 88, 60, 'ha-accent'),
+
+    'embargoes.warnings' =>
+        $card(20, 24, 200, 'ha-soft')
+        . $r(20, 70, 200, 24, 'ha-warnbg', 12) . $path('M34 76l6 11H28z', 'ha-warn-fill') . $bar(48, 79.5, 140, 'ha-warn')
+        . $r(20, 102, 200, 24, 'ha-dangerbg', 12) . $r(30, 108, 12, 12, 'ha-danger', 6) . $bar(48, 111.5, 120, 'ha-danger'),
+
+    'embargoes.uncovered' =>
+        $r(20, 24, 200, 104, 'ha-panel', 10)
+        . implode('', array_map(static fn (int $i): string => $key(34, 38 + $i * 26, $i === 1 ? 'ha-stroke' : 'ha-stroke-accent')
+            . sprintf('<rect x="66" y="%d" width="%d" height="5" rx="2.5" class="ha-text"/>', 44 + $i * 26, [90, 70, 100, 80][$i])
+            . sprintf('<rect x="172" y="%d" width="36" height="14" rx="7" class="%s"/>', 39 + $i * 26, $i === 1 ? 'ha-bg' : 'ha-warnbg'), range(0, 3))),
+
+    'collabs.streamers' =>
+        implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="%d" y="30" width="62" height="90" rx="10" class="ha-panel"/><circle cx="%d" cy="58" r="15" class="%s"/><rect x="%d" y="82" width="42" height="5" rx="2.5" class="ha-text"/><rect x="%d" y="94" width="30" height="10" rx="5" class="ha-twitchbg"/>',
+            16 + $i * 72, 47 + $i * 72, ['ha-soft', 'ha-twitchbg', 'ha-okbg'][$i], 26 + $i * 72, 32 + $i * 72
+        ), range(0, 2))),
+
+    'collabs.idea' =>
+        $r(12, 34, 62, 24, 'ha-bg', 12) . $dot(26, 46, 4, 'ha-warn') . $bar(36, 43.5, 30, 'ha-text')
+        . $path('M76 46h10', 'ha-stroke') . $path('M83 42l4 4-4 4', 'ha-stroke')
+        . $r(90, 34, 62, 24, 'ha-soft', 12) . $bar(102, 43.5, 38, 'ha-accent')
+        . $path('M154 46h10', 'ha-stroke') . $path('M161 42l4 4-4 4', 'ha-stroke')
+        . $r(168, 34, 62, 24, 'ha-soft', 12) . $bar(180, 43.5, 38, 'ha-accent')
+        . $path('M199 60c0 14-10 22-30 26', 'ha-stroke-dash')
+        . $r(90, 76, 76, 26, 'ha-twitchbg', 13) . $bar(102, 86.5, 52, 'ha-twitch')
+        . $path('M168 89h10', 'ha-stroke') . $path('M175 85l4 4-4 4', 'ha-stroke')
+        . $r(182, 76, 48, 26, 'ha-okbg', 13) . $path('M193 89l4 4 7-8', 'ha-stroke-ok') . $bar(208, 86.5, 14, 'ha-ok')
+        . $r(12, 112, 62, 22, 'ha-dangerbg', 11) . $path('M24 118l8 10M32 118l-8 10', 'ha-stroke-danger') . $bar(40, 120.5, 26, 'ha-danger'),
+
+    'collabs.cast' =>
+        $r(20, 20, 200, 110, 'ha-panel', 10)
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="32" y="%d" width="12" height="12" rx="3" class="%s"/><circle cx="62" cy="%d" r="9" class="ha-twitchbg"/><rect x="78" y="%d" width="56" height="5" rx="2.5" class="ha-text"/><rect x="148" y="%d" width="58" height="16" rx="8" class="%s"/>',
+            32 + $i * 32, $i === 2 ? 'ha-line' : 'ha-accent', 38 + $i * 32, 35.5 + $i * 32, 30 + $i * 32, ['ha-soft', 'ha-okbg', 'ha-bg'][$i]
+        ), range(0, 2))),
+
+    'collabs.plan' =>
+        $r(14, 34, 92, 80, 'ha-panel', 10) . $dot(38, 58, 10, 'ha-twitchbg') . $dot(56, 58, 10, 'ha-soft') . $dot(74, 58, 10, 'ha-okbg')
+        . $bar(26, 80, 64, 'ha-text') . $r(26, 92, 50, 12, 'ha-soft', 6)
+        . $path('M108 74h24', 'ha-stroke-accent') . $path('M126 68l7 6-7 6', 'ha-stroke-accent')
+        . $card(138, 40, 92, 'ha-soft')
+        . $r(138, 82, 92, 22, 'ha-bg', 11) . $bar(148, 90.5, 30) . $r(184, 87, 38, 12, 'ha-twitchbg', 6),
+
+    'collabs.title' =>
+        $r(14, 52, 212, 46, 'ha-panel', 8)
+        . $bar(26, 72.5, 70, 'ha-text')
+        . $r(104, 64, 66, 22, 'ha-twitchbg', 6) . $bar(112, 72.5, 50, 'ha-twitch')
+        . $r(176, 64, 40, 22, 'ha-okbg', 6) . $bar(182, 72.5, 28, 'ha-ok'),
 ];
 ?>
 <svg viewBox="0 0 240 150" class="ha" role="presentation"><?= $arts[$art] ?? '' ?></svg>

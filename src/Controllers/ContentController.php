@@ -13,6 +13,9 @@ final class ContentController
 {
     private const STATUSES = ['planned', 'live', 'done', 'cancelled'];
 
+    /** Twitch refuses longer stream titles. */
+    public const TWITCH_TITLE_MAX = 140;
+
     /**
      * Content with what the planner shows about it: games, the first game's
      * thumbnail, and the same warnings as the list (no key, before the
@@ -235,6 +238,7 @@ final class ContentController
             'schedule'    => StreamSchedule::forUser((int) $userId),
             'contentMinutes' => ContentDefaults::minutes((int) $userId),
             'prefixes'    => ContentDefaults::prefixes((int) $userId),
+            'counters'    => array_column(TitleCounters::forUser((int) $userId), 'value', 'name'),
             'twitchSchedule' => TwitchSchedule::status((int) $userId),
             'twitchCategories' => Twitch::isConfigured(),
             'content'     => $content,
@@ -260,10 +264,11 @@ final class ContentController
         Auth::requireLogin();
         Csrf::verify();
 
-        $title    = self::oneLine((string) ($_POST['title'] ?? ''));
-        $platform = trim((string) ($_POST['platform'] ?? ''));
+        $title     = self::oneLine((string) ($_POST['title'] ?? ''));
+        $platform  = trim((string) ($_POST['platform'] ?? ''));
+        $prefixIds = array_map('intval', (array) ($_POST['prefix_ids'] ?? []));
 
-        if ($title === '' || $platform === '') {
+        if (($title === '' && $prefixIds === []) || $platform === '') {
             flash('error', __('ui.message.invalid_input'));
             redirect('/content');
         }
@@ -300,6 +305,13 @@ final class ContentController
         $pdo->beginTransaction();
 
         try {
+            $prefix = TitleCounters::take($pdo, (int) Auth::id(), $prefixIds);
+            $title  = trim($prefix['text'] . ' ' . $title);
+
+            if ($platform === 'twitch' && mb_strlen($title) > self::TWITCH_TITLE_MAX) {
+                throw new UserError(sprintf(__('ui.message.twitch_title_too_long'), mb_strlen($title), self::TWITCH_TITLE_MAX));
+            }
+
             $stmt = $pdo->prepare(
                 'INSERT INTO streams (user_id, streaming_platform_id, title, status,
                                       scheduled_start, deadline, notes, category_id, category_name)
@@ -318,6 +330,8 @@ final class ContentController
             ]);
 
             $streamId = (int) $stmt->fetchColumn();
+
+            TitleCounters::record($pdo, $streamId, $prefix['uses']);
 
             $collabId = filter_input(INPUT_POST, 'collab_id', FILTER_VALIDATE_INT);
 
@@ -370,6 +384,10 @@ final class ContentController
             }
 
             $pdo->commit();
+        } catch (UserError $e) {
+            $pdo->rollBack();
+            flash('error', $e->getMessage());
+            redirect('/content');
         } catch (Throwable $e) {
             $pdo->rollBack();
             error_log('StreamOrg content: ' . $e->getMessage());
@@ -628,6 +646,10 @@ final class ContentController
             json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
         }
 
+        if (($_POST['platform'] ?? '') === 'twitch' && mb_strlen($title) > self::TWITCH_TITLE_MAX) {
+            json_response(['ok' => false, 'error' => sprintf(__('ui.message.twitch_title_too_long'), mb_strlen($title), self::TWITCH_TITLE_MAX)], 400);
+        }
+
         $status    = in_array($_POST['status'] ?? '', self::STATUSES, true) ? $_POST['status'] : 'planned';
         $scheduled = trim((string) ($_POST['scheduled_start'] ?? '')) ?: null;
         $deadline  = trim((string) ($_POST['deadline'] ?? '')) ?: null;
@@ -689,7 +711,8 @@ final class ContentController
      * AJAX: delete one piece of content.
      *
      * The games and collaborators attached to it cascade away with it;
-     * the keys themselves do not, they simply become unattached.
+     * the keys themselves do not, they simply become unattached. Numbers
+     * it took from title counters are given back while still the latest.
      */
     public static function delete(): void
     {
@@ -702,10 +725,21 @@ final class ContentController
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 400);
         }
 
-        $stmt = Database::connection()->prepare('DELETE FROM streams WHERE id = ? AND user_id = ?');
-        $stmt->execute([$id, Auth::id()]);
+        $deleted = Database::transaction(static function (PDO $pdo) use ($id): bool {
+            $own = $pdo->prepare('SELECT 1 FROM streams WHERE id = ? AND user_id = ? FOR UPDATE');
+            $own->execute([$id, Auth::id()]);
 
-        if ($stmt->rowCount() === 0) {
+            if ($own->fetchColumn() === false) {
+                return false;
+            }
+
+            TitleCounters::release($pdo, $id);
+            $pdo->prepare('DELETE FROM streams WHERE id = ? AND user_id = ?')->execute([$id, Auth::id()]);
+
+            return true;
+        });
+
+        if (!$deleted) {
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
         }
 

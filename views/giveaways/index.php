@@ -3,6 +3,7 @@
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.giveaways')) ?></h1>
+    <?php $helpPage = 'giveaways'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
     <button type="button" class="btn primary" data-new data-modal-form="#new-giveaway"
             data-modal-title="<?= e(__('ui.action.new_giveaway')) ?>"><?= e(__('ui.action.new_giveaway')) ?></button>
 </div>

@@ -2544,3 +2544,33 @@ a.note.unread:hover { background: var(--accent-soft); filter: brightness(.98); }
 .ha .ha-stroke-dash { stroke: var(--muted); stroke-dasharray: 4 4; opacity: .7; }
 .ha .ha-stroke-accent-dash { stroke: var(--accent); stroke-dasharray: 5 5; }
 .ha .ha-danger-ring { fill: none; stroke: var(--danger); stroke-width: 2; }
+
+.prefix-row { grid-template-columns: 1fr auto auto auto; }
+.counter-rows { display: grid; gap: .4rem; margin-bottom: .5rem; max-width: 520px; }
+.counter-row { display: grid; grid-template-columns: 1fr auto auto; gap: .6rem; align-items: center; }
+.counter-name { display: flex; align-items: center; gap: .15rem; font-family: ui-monospace, monospace; color: var(--muted); }
+.counter-name input { font-family: ui-monospace, monospace; }
+.counter-value { display: flex; flex-direction: row; align-items: center; gap: .4rem; margin: 0; }
+.counter-value span { text-transform: none; letter-spacing: 0; font-size: .82rem; font-weight: 500; color: var(--muted); margin: 0; }
+.counter-value input { width: 7rem; }
+
+.title-block { display: grid; gap: .45rem; }
+.prefix-picker { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.prefix-picker-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-right: .25rem; }
+.prefix-chosen, .prefix-options { display: contents; }
+.prefix-chip {
+    display: inline-flex; align-items: center; gap: .15rem; padding: .15rem .3rem .15rem .2rem;
+    border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: .82rem; font-weight: 600;
+}
+.prefix-chip > span { padding: 0 .2rem; }
+.prefix-chip button { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0 .25rem; opacity: .75; line-height: 1; }
+.prefix-chip button:hover { opacity: 1; }
+.prefix-chip:first-child .chip-move { display: none; }
+.prefix-option {
+    padding: .18rem .6rem; border-radius: 999px; border: 1px dashed var(--border-strong); background: none;
+    color: var(--text-2); font: inherit; font-size: .8rem; cursor: pointer;
+}
+.prefix-option:hover { border-color: var(--accent); color: var(--accent); }
+.prefix-option.chosen { display: none; }
+.title-preview { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.title-preview.over { color: var(--danger); font-weight: 600; }

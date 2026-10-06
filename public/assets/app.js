@@ -1417,29 +1417,38 @@
         if (status) status.textContent = result.message + ' ' + result.status;
     });
 
-    /** Profile defaults: adds and removes title prefix rows. */
+    /** Editable lists (title prefixes, counters): add a row from its template, remove one, move one up. */
     document.addEventListener('click', function (event) {
-        const add = event.target.closest('[data-prefix-add]');
-        const remove = event.target.closest('[data-prefix-remove]');
+        const add = event.target.closest('[data-row-add]');
+        const remove = event.target.closest('[data-row-remove]');
+        const up = event.target.closest('[data-row-up]');
 
         if (add) {
-            const form = add.closest('[data-prefix-form]');
-            const template = form.querySelector('[data-prefix-template]');
+            const scope = add.closest('[data-rows-scope]') || document;
+            const kind = add.dataset.rowAdd;
+            const template = scope.querySelector('[data-row-template="' + kind + '"]');
             const holder = document.createElement('div');
             holder.innerHTML = template.innerHTML.replace(/__KEY__/g, 'n' + Date.now());
             const row = holder.firstElementChild;
-            form.querySelector('[data-prefix-rows]').append(row);
-            row.querySelector('input[type="text"]').focus();
+            scope.querySelector('[data-rows="' + kind + '"]').append(row);
+            const first = row.querySelector('input:not([type=hidden]):not([type=checkbox])');
+            if (first) first.focus();
         } else if (remove) {
-            const row = remove.closest('.prefix-row');
-            const rows = row.parentElement;
+            const row = remove.closest('.row-item');
 
-            if (rows.children.length > 1) {
+            if (row.parentElement.children.length > 1) {
                 row.remove();
             } else {
-                row.querySelector('input[type="text"]').value = '';
-                row.querySelector('input[type="radio"]').checked = false;
+                row.querySelectorAll('input').forEach(function (input) {
+                    if (input.type === 'checkbox') input.checked = false;
+                    else if (input.type === 'number') input.value = '0';
+                    else if (input.type !== 'hidden') input.value = '';
+                    else input.remove();
+                });
             }
+        } else if (up) {
+            const row = up.closest('.row-item');
+            if (row.previousElementSibling) row.parentElement.insertBefore(row, row.previousElementSibling);
         }
     });
 
@@ -2451,6 +2460,7 @@
                 removeTokens(applied[slot]);
                 appendTags(tags);
                 applied[slot] = tags.filter(Boolean);
+                titleField.dispatchEvent(new Event('input'));
             }
 
             /** "ft. @A, @B" sits before the hashtags, where it reads naturally. */
@@ -2490,32 +2500,96 @@
                     : (text.replace(/\s+$/, '') + (text ? ' ' : '') + feature);
 
                 applied.collab = [feature];
+                titleField.dispatchEvent(new Event('input'));
             }
 
             const gameSelect    = document.getElementById('content-game');
             const sponsorSelect = document.getElementById('content-sponsor');
             const collabSelect  = document.getElementById('content-collab');
-            const prefixSelect  = document.getElementById('content-prefix');
+            const picker = document.querySelector('#add-content [data-prefix-picker]');
+            const preview = document.querySelector('#add-content [data-title-preview]');
+            const platformSelect = document.querySelector('#add-content select[name="platform"]');
+            const counters = picker ? JSON.parse(picker.dataset.counters || '{}') : {};
 
-            if (prefixSelect) {
-                let appliedPrefix = '';
-
-                /** Swaps the chosen prefix at the start of the title, never stacking them. */
-                const applyPrefix = function () {
-                    let text = titleField.value;
-
-                    if (appliedPrefix && text.indexOf(appliedPrefix) === 0) {
-                        text = text.slice(appliedPrefix.length).replace(/^\s+/, '');
-                    }
-
-                    appliedPrefix = prefixSelect.value;
-                    titleField.value = appliedPrefix ? appliedPrefix + (text ? ' ' + text : ' ') : text;
-                };
-
-                prefixSelect.addEventListener('change', applyPrefix);
-
-                if (!titleField.value.trim() && prefixSelect.value) applyPrefix();
+            /** A prefix as it will read: each {counter} shows its next number. */
+            function renderPrefix(text) {
+                return text.replace(/\{([a-z][a-z0-9_]{0,19})\}/g, function (whole, name) {
+                    return Object.prototype.hasOwnProperty.call(counters, name) ? String(counters[name] + 1) : whole;
+                });
             }
+
+            /** The title as it will be saved and sent to Twitch, with its length against Twitch's limit. */
+            function updatePreview() {
+                if (!preview) return;
+
+                const chosen = picker ? Array.from(picker.querySelectorAll('[data-prefix-chosen] .prefix-chip')) : [];
+                const prefix = chosen.map(function (chip) { return renderPrefix(chip.dataset.prefixText); }).join(' ');
+                const full = (prefix + ' ' + titleField.value.replace(/\s+/g, ' ').trim()).trim();
+                const max = parseInt(preview.dataset.max, 10);
+                const twitch = !platformSelect || platformSelect.value === 'twitch';
+                const over = twitch && full.length > max;
+
+                preview.textContent = full ? preview.dataset.label + ' ' + full + ' · ' + full.length + '/' + max + (over ? ' · ' + preview.dataset.over : '') : '';
+                preview.classList.toggle('over', over);
+            }
+
+            function addPrefix(option) {
+                if (option.classList.contains('chosen')) return;
+
+                const chip = document.createElement('span');
+                chip.className = 'prefix-chip';
+                chip.dataset.prefixText = option.dataset.prefixText;
+                chip.dataset.prefixId = option.dataset.prefixId;
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'prefix_ids[]';
+                input.value = option.dataset.prefixId;
+
+                const left = document.createElement('button');
+                left.type = 'button';
+                left.className = 'chip-move';
+                left.textContent = '‹';
+                left.setAttribute('aria-label', '←');
+
+                const label = document.createElement('span');
+                label.textContent = renderPrefix(option.dataset.prefixText);
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'chip-remove';
+                remove.textContent = '×';
+                remove.setAttribute('aria-label', '×');
+
+                chip.append(input, left, label, remove);
+                picker.querySelector('[data-prefix-chosen]').append(chip);
+                option.classList.add('chosen');
+                updatePreview();
+            }
+
+            if (picker) {
+                picker.addEventListener('click', function (event) {
+                    const option = event.target.closest('.prefix-option');
+                    const chip = event.target.closest('.prefix-chip');
+
+                    if (option) {
+                        addPrefix(option);
+                    } else if (chip && event.target.closest('.chip-remove')) {
+                        picker.querySelector('.prefix-option[data-prefix-id="' + chip.dataset.prefixId + '"]').classList.remove('chosen');
+                        chip.remove();
+                        updatePreview();
+                    } else if (chip && event.target.closest('.chip-move') && chip.previousElementSibling) {
+                        chip.parentElement.insertBefore(chip, chip.previousElementSibling);
+                        updatePreview();
+                    }
+                });
+
+                picker.querySelectorAll('.prefix-option[data-default="1"]').forEach(addPrefix);
+            }
+
+            titleField.addEventListener('input', updatePreview);
+            if (platformSelect) platformSelect.addEventListener('change', updatePreview);
+            updatePreview();
 
             if (gameSelect) {
                 gameSelect.addEventListener('change', function () {

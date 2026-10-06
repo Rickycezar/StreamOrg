@@ -24,31 +24,33 @@ final class ContentDefaultsTest extends DatabaseTestCase
 
     public function testPrefixesKeepOrderDropBlanksAndRepeats(): void
     {
-        $rows = ['0' => ['text' => '[STEAM DECK]'], '1' => ['text' => '  '], 'n9' => ['text' => '[PT-BR]'], '2' => ['text' => '[steam deck]']];
+        $rows = [['text' => '[STEAM DECK]'], ['text' => '  '], ['text' => '[PT-BR]', 'default' => '1'], ['text' => '[steam deck]', 'default' => '1']];
 
         self::assertSame(
             [['prefix' => '[STEAM DECK]', 'is_default' => false], ['prefix' => '[PT-BR]', 'is_default' => true]],
-            ContentDefaults::prefixesFromInput($rows, 'n9')
+            ContentDefaults::prefixesFromInput($rows)
         );
     }
 
     public function testTooLongPrefixIsRefused(): void
     {
-        self::assertNull(ContentDefaults::prefixesFromInput([['text' => str_repeat('x', 61)]], ''));
+        $this->expectException(UserError::class);
+        ContentDefaults::prefixesFromInput([['text' => str_repeat('x', 61)]]);
     }
 
-    public function testOnlyOneDefaultIsKept(): void
+    public function testSeveralDefaultsKeepTheirOrder(): void
     {
         $user = $this->createUser('phpunit_prefixes');
 
         ContentDefaults::save($user, 120, [
             ['prefix' => '[A]', 'is_default' => true],
             ['prefix' => '[B]', 'is_default' => true],
+            ['prefix' => '[C]', 'is_default' => false],
         ]);
 
         self::assertSame(
-            [['prefix' => '[A]', 'is_default' => true], ['prefix' => '[B]', 'is_default' => false]],
-            ContentDefaults::prefixes($user)
+            [['[A]', true], ['[B]', true], ['[C]', false]],
+            array_map(static fn (array $p): array => [$p['prefix'], $p['is_default']], ContentDefaults::prefixes($user))
         );
     }
 }

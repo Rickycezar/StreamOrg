@@ -2,7 +2,10 @@
 /** @var array $collabs @var array $counts @var array $cast @var array $filters
  *  @var array $statuses @var array $roles @var array $streamers @var array $platforms */
 ?>
-<h1><?= e(__('ui.nav.collabs')) ?></h1>
+<div class="page-head">
+    <h1><?= e(__('ui.nav.collabs')) ?></h1>
+    <?php $helpPage = 'collabs'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+</div>
 <p class="muted"><?= e(__('ui.message.collabs_intro')) ?></p>
 
 <section class="tiles">

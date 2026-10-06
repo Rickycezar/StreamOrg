@@ -3,7 +3,10 @@
  *  @var array $games @var array $platforms */
 $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['active']);
 ?>
-<h1><?= e(__('ui.nav.embargoes')) ?></h1>
+<div class="page-head">
+    <h1><?= e(__('ui.nav.embargoes')) ?></h1>
+    <?php $helpPage = 'embargoes'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+</div>
 <p class="muted"><?= e(__('ui.message.embargoes_intro')) ?></p>
 
 <section class="tiles">

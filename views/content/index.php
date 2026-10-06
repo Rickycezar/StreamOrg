@@ -3,7 +3,8 @@
  *  @var array $content @var array $filters @var array $statuses @var array $platforms
  *  @var array $keys @var array $keySources @var array $gamePlatforms
  *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
- *  @var int $contentMinutes @var list<array{prefix:string, is_default:bool}> $prefixes
+ *  @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
+ *  @var array<string, int> $counters counter name => last number given out
  *  @var array{state:string, synced:int, last:?string} $twitchSchedule */
 ?>
 <div class="page-head">
@@ -177,21 +178,26 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
     <form id="add-content" class="subform hidden" method="post" action="<?= e(url('/content')) ?>">
         <?= Csrf::field() ?>
         <div class="grid">
-            <?php if ($prefixes !== []): ?>
+            <div class="grow title-block">
+                <?php if ($prefixes !== []): ?>
+                    <div class="prefix-picker" data-prefix-picker data-counters="<?= e((string) json_encode((object) $counters)) ?>">
+                        <span class="prefix-picker-label"><?= e(__('ui.field.title_prefixes')) ?></span>
+                        <span class="prefix-chosen" data-prefix-chosen></span>
+                        <span class="prefix-options">
+                            <?php foreach ($prefixes as $p): ?>
+                                <button type="button" class="prefix-option" data-prefix-id="<?= (int) $p['id'] ?>"
+                                        data-prefix-text="<?= e($p['prefix']) ?>" data-default="<?= $p['is_default'] ? '1' : '0' ?>">+ <?= e($p['prefix']) ?></button>
+                            <?php endforeach; ?>
+                        </span>
+                    </div>
+                <?php endif; ?>
                 <label>
-                    <span><?= e(__('ui.field.title_prefix')) ?></span>
-                    <select id="content-prefix">
-                        <option value=""><?= e(__('ui.label.none')) ?></option>
-                        <?php foreach ($prefixes as $p): ?>
-                            <option value="<?= e($p['prefix']) ?>" <?= $p['is_default'] ? 'selected' : '' ?>><?= e($p['prefix']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <span><?= e(__('ui.field.title')) ?></span>
+                    <textarea name="title" rows="2" required class="title-area"></textarea>
                 </label>
-            <?php endif; ?>
-            <label class="grow">
-                <span><?= e(__('ui.field.title')) ?></span>
-                <textarea name="title" rows="2" required class="title-area"></textarea>
-            </label>
+                <small class="title-preview" data-title-preview data-max="<?= ContentController::TWITCH_TITLE_MAX ?>"
+                       data-label="<?= e(__('ui.label.twitch_title_preview')) ?>" data-over="<?= e(__('ui.label.twitch_title_over')) ?>"></small>
+            </div>
             <label>
                 <span><?= e(__('ui.field.platform')) ?></span>
                 <select name="platform" required>

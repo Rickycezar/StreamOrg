@@ -58,8 +58,11 @@ private preview. Preview access: streamorg@outlook.com.
 - **Content length**: how long you usually give sponsored content, set once
   under *Profile → Defaults*; resize an item on the calendar to change just
   that one.
-- **Title prefixes** ("[STEAM DECK]", "[PT-BR]"…) to pick from when writing a
-  title, with one preselected.
+- **Title prefixes and counters**: prefixes such as "[STEAM DECK]" or
+  "[STREAM #{stream}]" are picked as chips (several, in any order, the usual
+  ones preselected); a counter in braces takes its next number when the
+  content is saved and gives it back when the latest one is deleted. The form
+  previews the whole title and keeps it within Twitch's 140 characters.
 
 ### Catalogue
 - **Twitch first**: with Twitch connected, a game is added by picking its
@@ -165,7 +168,8 @@ private preview. Preview access: streamorg@outlook.com.
 - **Notifications**: a bell in the top bar with the unread count, a panel
   with the latest messages and a page with all of them, each in the user's
   own language.
-- **"How it works" guides** for the dashboard, the key vault and content:
+- **"How it works" guides** for the dashboard, the key vault, content, the
+  content defaults, giveaways, embargoes and collabs:
   plain-language walkthroughs with small drawings, opened in their own window
   from a button beside the page title.
 - **See and end your sessions**: every sign-in is listed with its browser,

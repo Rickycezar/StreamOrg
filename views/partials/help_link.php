@@ -3,7 +3,7 @@
  * The "How it works" button beside a page's title: opens that page's
  * guide in its own window (see app.js, [data-popup]).
  *
- * @var string $helpPage dashboard, keys or content
+ * @var string $helpPage one of HelpController::PAGES
  */
 ?>
 <a class="help-link" href="<?= e(url('/help/' . $helpPage)) ?>" target="streamorg-help" rel="noopener" data-popup data-turbo="false"

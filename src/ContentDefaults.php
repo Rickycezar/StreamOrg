@@ -2,9 +2,10 @@
 declare(strict_types=1);
 
 /**
- * A user's defaults for new content (see 031_content_length_prefixes_twitch_schedule.sql):
- * how long sponsored content usually runs, and the title prefixes offered
- * when writing a title, one of them preselected.
+ * A user's defaults for new content (see 031_content_length_prefixes_twitch_schedule.sql
+ * and 036_title_counters.sql): how long sponsored content usually runs,
+ * the title prefixes offered when writing a title (several may be
+ * preselected, in order), and the counters those prefixes can use.
  */
 final class ContentDefaults
 {
@@ -37,40 +38,56 @@ final class ContentDefaults
         return $minutes >= self::MIN_MINUTES && $minutes <= self::MAX_MINUTES ? $minutes : null;
     }
 
-    /** @return list<array{prefix:string, is_default:bool}> in the user's order */
+    /** @return list<array{id:int, prefix:string, is_default:bool}> in the user's order */
     public static function prefixes(int $userId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT prefix, is_default FROM user_title_prefixes WHERE user_id = ? ORDER BY position, id'
+            'SELECT id, prefix, is_default FROM user_title_prefixes WHERE user_id = ? ORDER BY position, id'
         );
         $stmt->execute([$userId]);
 
         return array_map(
-            static fn (array $row): array => ['prefix' => (string) $row['prefix'], 'is_default' => (bool) $row['is_default']],
+            static fn (array $row): array => ['id' => (int) $row['id'], 'prefix' => (string) $row['prefix'], 'is_default' => (bool) $row['is_default']],
             $stmt->fetchAll()
         );
     }
 
     /**
-     * Reads the defaults form: prefix[n][text] rows and the "default" radio
-     * naming one row. Blank rows are dropped, repeats kept once.
+     * Reads the prefix rows of the defaults form: prefix[n][text] and
+     * prefix[n][default]. Blank rows are dropped, repeats kept once.
+     * Counters renamed in the same form are renamed here too, and every
+     * {name} must be one of the counters.
      *
-     * @return list<array{prefix:string, is_default:bool}>|null null when a prefix is too long or there are too many
+     * @param list<string> $counterNames
+     * @param array<string, string> $renames old counter name => new
+     * @return list<array{prefix:string, is_default:bool}>
+     * @throws UserError naming what is wrong
      */
-    public static function prefixesFromInput(array $rows, string $default): ?array
+    public static function prefixesFromInput(array $rows, array $counterNames = [], array $renames = []): array
     {
         $prefixes = [];
         $seen     = [];
 
-        foreach ($rows as $key => $row) {
-            $text = trim((string) preg_replace('/\s+/u', ' ', (string) (is_array($row) ? ($row['text'] ?? '') : '')));
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $text = trim((string) preg_replace('/\s+/u', ' ', (string) ($row['text'] ?? '')));
+            $text = TitleCounters::rename($text, $renames);
 
             if ($text === '') {
                 continue;
             }
 
             if (mb_strlen($text) > self::PREFIX_MAX) {
-                return null;
+                throw new UserError(sprintf(__('ui.message.prefix_too_long'), $text, self::PREFIX_MAX));
+            }
+
+            $unknown = array_diff(TitleCounters::variables($text), $counterNames);
+
+            if ($unknown !== []) {
+                throw new UserError(sprintf(__('ui.message.prefix_unknown_counter'), $text, '{' . reset($unknown) . '}'));
             }
 
             if (isset($seen[mb_strtolower($text)])) {
@@ -78,32 +95,35 @@ final class ContentDefaults
             }
 
             $seen[mb_strtolower($text)] = true;
-            $prefixes[] = ['prefix' => $text, 'is_default' => (string) $key === $default];
+            $prefixes[] = ['prefix' => $text, 'is_default' => !empty($row['default'])];
         }
 
-        return count($prefixes) > self::MAX_PREFIXES ? null : $prefixes;
+        if (count($prefixes) > self::MAX_PREFIXES) {
+            throw new UserError(sprintf(__('ui.message.prefixes_full'), self::MAX_PREFIXES));
+        }
+
+        return $prefixes;
     }
 
     /**
-     * Saves the length and replaces the prefixes.
+     * Saves the length, the counters and the prefixes.
      *
      * @param list<array{prefix:string, is_default:bool}> $prefixes
+     * @param list<array{id:?int, name:string, value:int}> $counters
      */
-    public static function save(int $userId, int $minutes, array $prefixes): void
+    public static function save(int $userId, int $minutes, array $prefixes, array $counters = []): void
     {
-        Database::transaction(static function (PDO $pdo) use ($userId, $minutes, $prefixes): void {
+        Database::transaction(static function (PDO $pdo) use ($userId, $minutes, $prefixes, $counters): void {
             $pdo->prepare('UPDATE users SET content_minutes = ? WHERE id = ?')->execute([$minutes, $userId]);
+            TitleCounters::save($pdo, $userId, $counters);
             $pdo->prepare('DELETE FROM user_title_prefixes WHERE user_id = ?')->execute([$userId]);
 
             $insert = $pdo->prepare(
                 'INSERT INTO user_title_prefixes (user_id, prefix, is_default, position) VALUES (?, ?, ?, ?)'
             );
-            $hasDefault = false;
 
             foreach ($prefixes as $position => $row) {
-                $isDefault  = $row['is_default'] && !$hasDefault;
-                $hasDefault = $hasDefault || $isDefault;
-                $insert->execute([$userId, $row['prefix'], $isDefault ? 'true' : 'false', $position]);
+                $insert->execute([$userId, $row['prefix'], $row['is_default'] ? 'true' : 'false', $position]);
             }
         });
     }

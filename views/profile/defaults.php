@@ -1,13 +1,26 @@
 <?php
 /**
  * @var array $user @var array<int, array{start: string, end: ?string}> $schedule
- * @var int $contentMinutes @var list<array{prefix:string, is_default:bool}> $prefixes
+ * @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
+ * @var list<array{id:int, name:string, value:int}> $counters
  */
-$prefixRow = static function (string $key, string $text, bool $default): string {
-    return '<div class="prefix-row">'
-        . '<input type="text" name="prefix[' . e($key) . '][text]" value="' . e($text) . '" maxlength="' . ContentDefaults::PREFIX_MAX . '" placeholder="[STEAM DECK]" aria-label="' . e(__('ui.field.title_prefix')) . '">'
-        . '<label class="prefix-default"><input type="radio" name="default_prefix" value="' . e($key) . '"' . ($default ? ' checked' : '') . '> ' . e(__('ui.label.default')) . '</label>'
-        . '<button type="button" class="btn small" data-prefix-remove aria-label="' . e(__('ui.action.delete')) . '">×</button>'
+$remove = '<button type="button" class="btn small" data-row-remove aria-label="' . e(__('ui.action.delete')) . '">×</button>';
+
+$prefixRow = static function (string $key, string $text, bool $default) use ($remove): string {
+    return '<div class="prefix-row row-item">'
+        . '<input type="text" name="prefix[' . e($key) . '][text]" value="' . e($text) . '" maxlength="' . ContentDefaults::PREFIX_MAX . '" placeholder="[STREAM #{stream}]" aria-label="' . e(__('ui.field.title_prefix')) . '">'
+        . '<label class="prefix-default"><input type="checkbox" name="prefix[' . e($key) . '][default]" value="1"' . ($default ? ' checked' : '') . '> ' . e(__('ui.label.use_by_default')) . '</label>'
+        . '<button type="button" class="btn small" data-row-up title="' . e(__('ui.action.move_up')) . '" aria-label="' . e(__('ui.action.move_up')) . '">↑</button>'
+        . $remove
+        . '</div>';
+};
+
+$counterRow = static function (string $key, ?array $counter) use ($remove): string {
+    return '<div class="counter-row row-item">'
+        . ($counter !== null ? '<input type="hidden" name="counter[' . e($key) . '][id]" value="' . (int) $counter['id'] . '">' : '')
+        . '<span class="counter-name"><span>{</span><input type="text" name="counter[' . e($key) . '][name]" value="' . e($counter['name'] ?? '') . '" maxlength="20" pattern="[a-z][a-z0-9_]{0,19}" placeholder="stream" autocomplete="off" aria-label="' . e(__('ui.field.counter_name')) . '"><span>}</span></span>'
+        . '<label class="counter-value"><span>' . e(__('ui.field.counter_value')) . '</span><input type="number" name="counter[' . e($key) . '][value]" value="' . (int) ($counter['value'] ?? 0) . '" min="0" max="' . TitleCounters::VALUE_MAX . '"></label>'
+        . $remove
         . '</div>';
 };
 ?>
@@ -51,6 +64,7 @@ $prefixRow = static function (string $key, string $text, bool $default): string 
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.label.content_defaults')) ?></h2>
+        <?php $helpPage = 'defaults'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
     </div>
 
     <form method="post" action="<?= e(url('/profile/defaults/content')) ?>" class="subform" data-prefix-form>
@@ -66,20 +80,30 @@ $prefixRow = static function (string $key, string $text, bool $default): string 
             <small class="muted"><?= e(__('ui.message.content_length_hint')) ?></small>
         </label>
 
-        <fieldset class="inset">
+        <fieldset class="inset" data-rows-scope>
             <legend><?= e(__('ui.field.title_prefixes')) ?></legend>
             <p class="muted small"><?= e(__('ui.message.title_prefixes_hint')) ?></p>
-            <div class="prefix-rows" data-prefix-rows>
+            <div class="prefix-rows" data-rows="prefix">
                 <?php foreach ($prefixes as $i => $p): ?>
                     <?= $prefixRow((string) $i, $p['prefix'], $p['is_default']) ?>
                 <?php endforeach; ?>
                 <?= $prefixRow((string) count($prefixes), '', false) ?>
             </div>
-            <template data-prefix-template><?= $prefixRow('__KEY__', '', false) ?></template>
-            <div class="inline-actions">
-                <button type="button" class="btn small" data-prefix-add>+ <?= e(__('ui.action.add_prefix')) ?></button>
-                <label class="prefix-default"><input type="radio" name="default_prefix" value="" <?= array_filter($prefixes, static fn ($p) => $p['is_default']) === [] ? 'checked' : '' ?>> <?= e(__('ui.label.no_default_prefix')) ?></label>
+            <template data-row-template="prefix"><?= $prefixRow('__KEY__', '', false) ?></template>
+            <button type="button" class="btn small" data-row-add="prefix">+ <?= e(__('ui.action.add_prefix')) ?></button>
+        </fieldset>
+
+        <fieldset class="inset" data-rows-scope>
+            <legend><?= e(__('ui.field.counters')) ?></legend>
+            <p class="muted small"><?= e(__('ui.message.counters_hint')) ?></p>
+            <div class="counter-rows" data-rows="counter">
+                <?php foreach ($counters as $i => $c): ?>
+                    <?= $counterRow((string) $i, $c) ?>
+                <?php endforeach; ?>
+                <?php if ($counters === []): ?><?= $counterRow('0', null) ?><?php endif; ?>
             </div>
+            <template data-row-template="counter"><?= $counterRow('__KEY__', null) ?></template>
+            <button type="button" class="btn small" data-row-add="counter">+ <?= e(__('ui.action.add_counter')) ?></button>
         </fieldset>
 
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
