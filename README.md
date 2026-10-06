@@ -162,6 +162,12 @@ private preview. Preview access: streamorg@outlook.com.
 - **Seven themes, each with a light and a dark version**, and a light / dark /
   auto switch that can follow the device — also in the account menu.
 - **Profile picture**: upload one, or copy it from your Twitch channel.
+- **Notifications**: a bell in the top bar with the unread count, a panel
+  with the latest messages and a page with all of them, each in the user's
+  own language.
+- **"How it works" guides** for the dashboard, the key vault and content:
+  plain-language walkthroughs with small drawings, opened in their own window
+  from a button beside the page title.
 - **See and end your sessions**: every sign-in is listed with its browser,
   address and last activity; sign any of them out, or all the others.
 - Password changes sign out every other session; sessions expire after a
@@ -178,6 +184,9 @@ private preview. Preview access: streamorg@outlook.com.
   as session lifetime.
 - **Languages**: the interface strings, and labels per language for key
   sites, platforms and genres added at runtime.
+- **Notifications**: write one in each language, choose its kind and an
+  optional link, send it to everyone or to chosen users, see how many read
+  it, and take it back at any time.
 - **Testimonials** for the landing page, managed as a JSON file that can be
   uploaded, edited or downloaded, with a switch per testimonial and for the
   whole section.

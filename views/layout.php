@@ -95,6 +95,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     '/admin/import'     => __('ui.nav.import'),
                     '/admin/api'        => __('ui.nav.api_settings'),
                     '/admin/bot'        => __('ui.nav.chat_bot'),
+                    '/admin/notifications' => __('ui.nav.notifications'),
                     '/admin/settings'   => __('ui.nav.settings'),
                     '/admin/testimonials' => __('ui.nav.testimonials'),
                     '/admin/lang'       => __('ui.nav.languages'),
@@ -131,6 +132,17 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
             </div>
         <?php endforeach; ?>
     </nav>
+
+    <?php $unreadNotes = Notifications::unreadCount((int) $user['id']); ?>
+    <div class="notify" id="notify">
+        <button type="button" class="notify-button" id="notify-button" aria-expanded="false" aria-controls="notify-panel"
+                aria-haspopup="true" aria-label="<?= e(__('ui.nav.notifications')) ?>" title="<?= e(__('ui.nav.notifications')) ?>"
+                data-panel="<?= e(url('/notifications/panel')) ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span class="notify-count" id="notify-count" <?= $unreadNotes > 0 ? '' : 'hidden' ?>><?= $unreadNotes > 99 ? '99+' : $unreadNotes ?></span>
+        </button>
+        <div class="notify-panel" id="notify-panel" hidden></div>
+    </div>
 
     <div class="usermenu" id="usermenu">
         <button type="button" class="usermenu-button" id="usermenu-button"

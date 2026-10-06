@@ -6,6 +6,7 @@
 <div class="page-head">
     <h1><?= e(__('ui.nav.vault')) ?></h1>
     <?php require dirname(__DIR__) . '/partials/vault_security_link.php'; ?>
+    <?php $helpPage = 'keys'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
 </div>
 
 <?php if ($vaultLocked): ?>

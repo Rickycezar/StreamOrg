@@ -33,6 +33,7 @@ $kindLabel = [
         <h1><?= e(sprintf(__('ui.dashboard.greeting_' . $greeting), $name)) ?></h1>
         <p class="muted"><?= e($dateLabel) ?></p>
     </div>
+    <?php $helpPage = 'dashboard'; require __DIR__ . '/partials/help_link.php'; ?>
 </header>
 
 <nav class="shortcuts" aria-label="<?= e(__('ui.dashboard.shortcuts')) ?>">

@@ -59,6 +59,24 @@ final class PickerController
         json_response(['ok' => true, 'items' => Twitch::searchCategories((string) ($_GET['q'] ?? ''))]);
     }
 
+    /** GET /pickers/users?q=…  or  ?ids=1,2 — for administrators choosing recipients. */
+    public static function users(): void
+    {
+        Auth::requireAdmin();
+
+        [$where, $params, $order] = self::filter("coalesce(u.display_name, '') || ' ' || u.username", 'u.id');
+
+        $stmt = Database::connection()->prepare(
+            "SELECT u.id, u.username, u.display_name FROM users u {$where} {$order} LIMIT " . self::LIMIT
+        );
+        $stmt->execute($params);
+
+        json_response(['ok' => true, 'items' => array_map(static fn (array $u): array => [
+            'id'   => (int) $u['id'],
+            'name' => ($u['display_name'] ?: $u['username']) . ' (@' . $u['username'] . ')',
+        ], $stmt->fetchAll())]);
+    }
+
     /** GET /pickers/companies?type=publishers|developers&q=… */
     public static function companies(): void
     {

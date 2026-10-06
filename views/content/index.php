@@ -6,7 +6,10 @@
  *  @var int $contentMinutes @var list<array{prefix:string, is_default:bool}> $prefixes
  *  @var array{state:string, synced:int, last:?string} $twitchSchedule */
 ?>
-<h1><?= e(__('ui.nav.content')) ?></h1>
+<div class="page-head">
+    <h1><?= e(__('ui.nav.content')) ?></h1>
+    <?php $helpPage = 'content'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+</div>
 
 <section class="tiles">
     <?php foreach ($statuses as $status): ?>

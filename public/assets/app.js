@@ -50,6 +50,7 @@
         publishers: { endpoint: '/pickers/companies?type=publishers', label: 'name' },
         developers: { endpoint: '/pickers/companies?type=developers', label: 'name' },
         categories: { endpoint: '/pickers/twitch-categories', label: 'name' },
+        users:      { endpoint: '/pickers/users', label: 'name' },
     };
 
     /** Lets the content form's title helper tag a game the picker loaded. */
@@ -108,7 +109,7 @@
             preload: 'focus',
             loadThrottle: 250,
             allowEmptyOption: false,
-            plugins: select.required ? [] : { clear_button: { title: L.picker_clear || '' } },
+            plugins: select.multiple ? ['remove_button'] : (select.required ? [] : { clear_button: { title: L.picker_clear || '' } }),
             placeholder: select.dataset.placeholder || L.picker_search || '',
             setFirstOptionActive: true,
             onType: function (text) {
@@ -2578,6 +2579,96 @@
         if (navToggle) navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (backdrop) backdrop.hidden = !open;
     }
+
+    /** The bell: its panel is fetched each time it opens, so it is never stale. */
+    async function notifyMenu(open) {
+        const button = document.getElementById('notify-button');
+        const panel = document.getElementById('notify-panel');
+        if (!button || !panel) return;
+
+        const show = open === undefined ? panel.hidden : open;
+        panel.hidden = !show;
+        button.setAttribute('aria-expanded', show ? 'true' : 'false');
+
+        if (!show) return;
+
+        panel.innerHTML = '<div class="notify-loading"><span class="spinner"></span></div>';
+        const response = await fetch(button.dataset.panel, { headers: { 'Accept': 'text/html' } }).catch(function () { return null; });
+        if (response && response.ok && !panel.hidden) panel.innerHTML = await response.text();
+    }
+
+    function setNotifyCount(count) {
+        const badge = document.getElementById('notify-count');
+        if (!badge) return;
+
+        badge.hidden = count <= 0;
+        badge.textContent = count > 99 ? '99+' : String(count);
+    }
+
+    document.addEventListener('click', async function (event) {
+        if (event.target.closest('#notify-button')) {
+            userMenu(false);
+            notifyMenu();
+            return;
+        }
+
+        const readAll = event.target.closest('[data-notify-read-all]');
+
+        if (readAll) {
+            readAll.disabled = true;
+            const result = await postJson('/notifications/read-all', {});
+
+            if (result.ok) {
+                setNotifyCount(0);
+                document.querySelectorAll('#notify-panel .note.unread').forEach(function (n) { n.classList.remove('unread'); });
+                document.querySelectorAll('#notify-panel .note-dot').forEach(function (d) { d.remove(); });
+                readAll.remove();
+            }
+            return;
+        }
+
+        if (!event.target.closest('#notify-panel')) notifyMenu(false);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') notifyMenu(false);
+    });
+
+    /** Admin composer: one tab per language (ticked once written) and the choice of recipients. */
+    onPage(function () {
+        const form = document.querySelector('[data-notify-compose]');
+        if (!form) return;
+
+        const tabs = form.querySelectorAll('[data-lang-tab]');
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                tabs.forEach(function (t) {
+                    const on = t === tab;
+                    t.classList.toggle('active', on);
+                    t.setAttribute('aria-selected', on ? 'true' : 'false');
+                    form.querySelector('[data-lang-panel="' + t.dataset.langTab + '"]').hidden = !on;
+                });
+            });
+        });
+
+        form.addEventListener('input', function (event) {
+            const panel = event.target.closest('[data-lang-panel]');
+            if (!panel) return;
+
+            const filled = panel.querySelector('input').value.trim() !== '';
+            form.querySelector('[data-lang-tab="' + panel.dataset.langPanel + '"] .lang-filled').hidden = !filled;
+        });
+
+        const users = form.querySelector('[data-audience-users]');
+
+        form.querySelectorAll('[data-audience]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                users.hidden = radio.value !== 'users' || !radio.checked;
+                if (!users.hidden) users.querySelectorAll('select[data-picker]').forEach(initPicker);
+            });
+        });
+    });
 
     function userMenu(open) {
         const button = document.getElementById('usermenu-button');
