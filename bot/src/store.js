@@ -303,6 +303,45 @@ export class Store {
         }));
     }
 
+    /** Every streamer's own commands. */
+    async customCommands() {
+        const { rows } = await this.pool.query(
+            'SELECT user_id, trigger, response, is_enabled, permission, cooldown_seconds FROM bot_custom_commands WHERE is_enabled'
+        );
+
+        return rows.map((row) => ({
+            userId: Number(row.user_id),
+            code: 'custom',
+            trigger: row.trigger,
+            response: row.response,
+            enabled: row.is_enabled,
+            permission: row.permission,
+            cooldown: row.cooldown_seconds,
+        }));
+    }
+
+    /** Every enabled timed message, with when it was last posted. */
+    async timers() {
+        const { rows } = await this.pool.query(
+            `SELECT id, user_id, message, interval_minutes, min_messages,
+                    coalesce(extract(epoch FROM last_sent_at) * 1000, 0) AS last_ms
+               FROM bot_timers WHERE is_enabled`
+        );
+
+        return rows.map((row) => ({
+            id: Number(row.id),
+            userId: Number(row.user_id),
+            message: row.message,
+            intervalMs: row.interval_minutes * 60_000,
+            minMessages: row.min_messages,
+            lastSentAt: Number(row.last_ms),
+        }));
+    }
+
+    async timerSent(id) {
+        await this.pool.query('UPDATE bot_timers SET last_sent_at = now() WHERE id = $1', [id]);
+    }
+
     async joined(userId) {
         await this.pool.query('UPDATE bot_channels SET joined_at = now(), last_error = NULL WHERE user_id = $1', [userId]);
     }

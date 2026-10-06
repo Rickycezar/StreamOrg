@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CommandBook, Cooldowns, allowed, render, formatUptime } from '../src/commands.js';
+import { CommandBook, Cooldowns, allowed, render, formatUptime, targetOf } from '../src/commands.js';
 
 const heartbeat = { userId: null, code: 'heartbeat', trigger: 'heartbeat', response: 'Here, @{user}! {uptime}', enabled: true, permission: 'everyone', cooldown: 10 };
 
@@ -53,4 +53,19 @@ test('cooldowns are per key', () => {
     assert.ok(cooldowns.take('2:heartbeat', 10, 5000));
     assert.ok(cooldowns.take('1:heartbeat', 10, 11_001));
     assert.ok(cooldowns.take('1:heartbeat', 0, 11_002));
+});
+
+test('custom commands sit next to the built-in ones, per channel', () => {
+    const book = new CommandBook();
+    book.load([heartbeat], [{ userId: 7, code: 'custom', trigger: 'discord', response: 'x', enabled: true, permission: 'everyone', cooldown: 0 }]);
+
+    assert.equal(book.match(7, '!', '!discord')?.code, 'custom');
+    assert.equal(book.match(7, '!', '!heartbeat')?.code, 'heartbeat');
+    assert.equal(book.match(1, '!', '!discord'), null);
+});
+
+test('{target} is the first word after the command, without @, or the user', () => {
+    assert.equal(targetOf('!so @Hoku_xx great stream', 'Ana'), 'Hoku_xx');
+    assert.equal(targetOf('!hug', 'Ana'), 'Ana');
+    assert.equal(targetOf('!hug @@<script>', 'Ana'), 'script');
 });

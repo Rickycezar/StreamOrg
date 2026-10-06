@@ -6,7 +6,9 @@
  *   channel (app token; allowed when the streamer granted channel:bot or
  *   made the bot a moderator);
  * - it replies with Send Chat Message, also with the app token;
- * - it records simple viewer statistics while channels are live (Tracker).
+ * - it posts the streamers' timed messages while they are live (Timers);
+ * - it records simple viewer statistics while channels are live (Tracker),
+ *   only in channels whose chat it can read.
  *
  * Everything follows the database: it reloads when the app announces a
  * change (NOTIFY streamorg_bot) and every pollSeconds, and reports its
@@ -16,6 +18,7 @@
 import { CommandBook, Cooldowns, BUILTINS, allowed, render } from './commands.js';
 import { EventSubSocket } from './eventsub.js';
 import { Helix } from './helix.js';
+import { Timers } from './timers.js';
 import { Tracker } from './tracker.js';
 import { refreshToken, validateToken } from './twitch.js';
 
@@ -26,6 +29,7 @@ const RETRY_ACCESS_AFTER = 5 * 60_000;
 const SEND_LIMIT = 20;
 const SEND_WINDOW = 30_000;
 const MESSAGE_MAX = 500;
+const TIMERS_EVERY = 30_000;
 
 /** EventSub chat badges -> {broadcaster: '1', moderator: '1', …} */
 export function badgesOf(event) {
@@ -53,9 +57,10 @@ export class Bot {
         this.access = new Map();
         this.commands = new CommandBook();
         this.cooldowns = new Cooldowns();
+        this.timers = new Timers();
         this.sent = new Map();
         this.validatedAt = 0;
-        this.timers = [];
+        this.intervals = [];
         this.reloading = null;
         this.reloadAgain = false;
         this.helix = helix || new Helix({ app: () => this.store.twitchApp(), fetchImpl });
@@ -78,14 +83,15 @@ export class Bot {
         await this.reload();
         await this.report();
 
-        this.timers.push(setInterval(() => this.reload(), this.config.pollSeconds * 1000));
-        this.timers.push(setInterval(() => this.report(), REPORT_EVERY));
-        this.timers.push(setInterval(() => this.track(), this.trackEveryMs));
-        this.timers.push(setInterval(() => this.store.prune().catch(() => {}), 60 * 60_000));
+        this.intervals.push(setInterval(() => this.reload(), this.config.pollSeconds * 1000));
+        this.intervals.push(setInterval(() => this.report(), REPORT_EVERY));
+        this.intervals.push(setInterval(() => this.track(), this.trackEveryMs));
+        this.intervals.push(setInterval(() => this.postTimers(), TIMERS_EVERY));
+        this.intervals.push(setInterval(() => this.store.prune().catch(() => {}), 60 * 60_000));
     }
 
     async stop() {
-        this.timers.forEach(clearInterval);
+        this.intervals.forEach(clearInterval);
         this.socket.stop();
         this.state = 'stopped';
         this.detail = '';
@@ -131,11 +137,12 @@ export class Bot {
         if (!this.account.enabled) return this.idle('Switched off');
         if (!(await this.store.twitchApp())) return this.idle('Twitch is not configured in API settings');
 
-        this.commands.load(await this.store.commands());
+        this.commands.load(await this.store.commands(), await this.store.customCommands());
+        this.timers.load(await this.store.timers());
 
         const channels = await this.store.channels();
         this.channels = new Map(channels.map((c) => [c.twitchId, c]));
-        this.tracker.setChannels(channels);
+        this.followReadable();
 
         if (previous && previous.userId !== this.account.userId) this.subscriptions.clear();
 
@@ -228,7 +235,13 @@ export class Bot {
             await this.subscribe(channel, conduitId);
         }
 
+        this.followReadable();
         this.setState('connected', this.summary());
+    }
+
+    /** Statistics and timers only concern channels whose chat the bot can read. */
+    followReadable() {
+        this.tracker.setChannels([...this.channels.values()].filter((c) => this.subscriptions.has(c.twitchId)));
     }
 
     /** @returns {Promise<Map<string, {id: string, botId: string}>>} this conduit's chat subscriptions, by broadcaster */
@@ -364,6 +377,7 @@ export class Bot {
             const broadcasterId = String(subscription.condition?.broadcaster_user_id || '');
             const channel = this.channels.get(broadcasterId);
             this.subscriptions.delete(broadcasterId);
+            this.followReadable();
 
             if (channel) {
                 channel.access = 'none';
@@ -393,6 +407,7 @@ export class Bot {
         };
 
         this.tracker.countMessage(channel.twitchId, { id: user.id, login: user.login, name: user.displayName });
+        if (this.tracker.isLive(channel.twitchId)) this.timers.countMessage(channel.userId);
 
         await this.answer({ channel, id: event.message_id, text: event.message?.text || '', user });
     }
@@ -405,16 +420,37 @@ export class Bot {
         if (!command || !allowed(command.permission, user.badges)) return;
 
         const privileged = 'broadcaster' in user.badges || 'moderator' in user.badges;
-        if (!privileged && !this.cooldowns.take(`${channel.userId}:${command.code}`, command.cooldown)) return;
+        if (!privileged && !this.cooldowns.take(`${channel.userId}:${command.code}:${command.trigger}`, command.cooldown)) return;
 
         const values = BUILTINS[command.code]({
             channel: channel.login,
             user,
+            text,
             uptimeMs: Date.now() - this.startedAt.getTime(),
         });
 
         if (await this.say(channel, render(command.response, values), id)) {
             await this.store.log(channel.userId, 'info', `Answered ${this.account.prefix}${command.trigger}`);
+        }
+    }
+
+    /** Posts the timed messages that are due in live channels the bot can read. */
+    async postTimers(now = Date.now()) {
+        if (!this.account?.enabled || !this.socket.connected) return;
+
+        const byUser = new Map([...this.channels.values()].map((c) => [c.userId, c]));
+        const live = (userId) => {
+            const channel = byUser.get(userId);
+            return Boolean(channel && this.subscriptions.has(channel.twitchId) && this.tracker.isLive(channel.twitchId));
+        };
+
+        for (const timer of this.timers.due(live, now)) {
+            const channel = byUser.get(timer.userId);
+
+            if (await this.say(channel, render(timer.message, { channel: channel.login }))) {
+                await this.store.timerSent(timer.id).catch(() => {});
+                await this.store.log(channel.userId, 'info', 'Posted a timed message').catch(() => {});
+            }
         }
     }
 

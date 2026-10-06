@@ -44,6 +44,7 @@ function fakeHelix(overrides = {}) {
 function fakeStore() {
     const logs = [];
     const access = {};
+    const sentTimers = [];
     return {
         logs,
         access,
@@ -60,6 +61,13 @@ function fakeStore() {
             { userId: 9, login: 'hoku_xx', twitchId: '200', scopes: [], access: 'unknown', checkedAt: 0 },
             { userId: 7, login: 'nobody', twitchId: '300', scopes: [], access: 'unknown', checkedAt: 0 },
         ],
+        customCommands: async () => [
+            { userId: 5, code: 'custom', trigger: 'so', response: 'Go follow @{target}!', enabled: true, permission: 'moderator', cooldown: 0 },
+            { userId: 5, code: 'custom', trigger: 'discord', response: 'Discord: example.gg', enabled: true, permission: 'everyone', cooldown: 30 },
+        ],
+        timers: async () => [{ id: 1, userId: 5, message: 'Welcome to {channel}!', intervalMs: 10 * 60_000, minMessages: 2, lastSentAt: 0 }],
+        timerSent: async (id) => { sentTimers.push(id); },
+        sentTimers,
         setAccess: async (userId, value) => { access[userId] = value; },
         report: async () => {},
         log: async (userId, level, message) => { logs.push({ userId, level, message }); },
@@ -157,4 +165,50 @@ test('stays out of chat while switched off', async () => {
 
 test('badges from EventSub become a lookup', () => {
     assert.deepEqual(badgesOf({ badges: [{ set_id: 'subscriber', id: '12' }, { set_id: 'vip', id: '1' }] }), { subscriber: '12', vip: '1' });
+});
+
+test('custom commands answer with {target}, within their own permission and cooldown', async () => {
+    const { bot, helix } = await started();
+    const mod = [{ set_id: 'moderator', id: '1' }];
+
+    await bot.onChat(chat('100', '!so @Hoku_xx great stream', mod, 'Mod', 'u3'));
+    await bot.onChat(chat('100', '!so', mod, 'Mod', 'u3'));
+    await bot.onChat(chat('100', '!so @someone'));
+    await bot.onChat(chat('100', '!discord'));
+    await bot.onChat(chat('100', '!discord', [], 'Other', 'u2'));
+    await bot.onChat(chat('200', '!discord'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message),
+        ['Go follow @Hoku_xx!', 'Go follow @Mod!', 'Discord: example.gg']);
+});
+
+test('statistics only follow channels whose chat the bot can read', async () => {
+    const { bot } = await started();
+
+    assert.deepEqual([...bot.tracker.channels.keys()].sort(), ['100', '200']);
+});
+
+test('timed messages wait for their interval and enough chat, and only while live', async () => {
+    const { bot, store, helix } = await started();
+    const start = Date.now();
+    const posted = () => helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message);
+
+    await bot.postTimers(start);
+    assert.deepEqual(posted(), []);
+
+    bot.tracker.live.set('100', { at: {}, sampledAt: start });
+    await bot.postTimers(start);
+    await bot.onChat(chat('100', 'hello'));
+    await bot.postTimers(start + 11 * 60_000);
+    assert.deepEqual(posted(), [], 'one message is not enough');
+
+    await bot.onChat(chat('100', 'hi again', [], 'Other', 'u2'));
+    await bot.postTimers(start + 11 * 60_000);
+    assert.deepEqual(posted(), ['Welcome to museu_do_cass!']);
+    assert.deepEqual(store.sentTimers, [1]);
+
+    await bot.onChat(chat('100', 'a'));
+    await bot.onChat(chat('100', 'b'));
+    await bot.postTimers(start + 15 * 60_000);
+    assert.equal(posted().length, 1, 'the interval restarts after posting');
 });

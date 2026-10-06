@@ -121,14 +121,20 @@ private preview. Preview access: streamorg@outlook.com.
   conduit, replies with the app token), so it carries the Chat Bot badge and
   is listed under *Chat Bots*. The streamer either gives it permission (one
   reconnect, no moderator powers) or makes it a moderator; either works.
-- **Viewer statistics while live**: per broadcast, viewer, live content and
-  stream category, the messages sent and the time spent in chat (from the
+- **Viewer statistics while live** (in channels whose chat the bot can read):
+  per broadcast, viewer, live content and stream category, the messages sent and the time spent in chat (from the
   chatter list, once a minute). Counted in memory and written in one batch
   per channel per minute; kept for 12 months.
 - **Commands made your own**: each streamer can rename a command, rewrite its
   reply (with placeholders such as `{user}`), choose who may use it
   (everyone, subscribers, VIPs, moderators or only the streamer), set a
   cooldown, switch it off, or go back to the default.
+- **Custom commands and timed messages**: streamers write their own commands
+  (`{target}` is the first word after the command, for shout-outs) and
+  messages the bot posts while they are live, each at most every so many
+  minutes and only after so many viewer messages, so it never talks into an
+  empty chat. Profile → Chat bot is organised in tabs: overview, commands,
+  timed messages and the bot's log for that channel.
 - **Managed from the administration**: the Twitch account the bot speaks as,
   on/off, the command prefix, the default commands, blocking a channel, and
   the bot's live status and recent activity. Changes reach the bot within

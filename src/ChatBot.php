@@ -30,6 +30,18 @@ final class ChatBot
 
     public const PERMISSIONS = ['everyone', 'subscriber', 'vip', 'moderator', 'broadcaster'];
 
+    /** Placeholders a streamer's own commands may use: {target} is the first word after the command, or the user. */
+    public const CUSTOM_PLACEHOLDERS = ['user', 'channel', 'target'];
+
+    /** Placeholders a timed message may use. */
+    public const TIMER_PLACEHOLDERS = ['channel'];
+
+    public const CUSTOM_MAX = 50;
+    public const TIMERS_MAX = 20;
+    public const TIMER_MINUTES_MIN = 5;
+    public const TIMER_MINUTES_MAX = 1440;
+    public const TIMER_MESSAGES_MAX = 1000;
+
     public const RESPONSE_MAX = 450;
     public const COOLDOWN_MAX = 3600;
 
@@ -292,6 +304,15 @@ final class ChatBot
             throw new UserError(__('ui.message.not_found'));
         }
 
+        return self::parseCommand($input);
+    }
+
+    /**
+     * @return array{trigger:string, response:string, is_enabled:bool, permission:string, cooldown_seconds:int}
+     * @throws UserError naming what is wrong
+     */
+    private static function parseCommand(array $input): array
+    {
         $trigger    = strtolower(ltrim(trim((string) ($input['trigger'] ?? '')), '!?.#$%&*+~-'));
         $response   = trim((string) preg_replace('/\s+/u', ' ', (string) ($input['response'] ?? '')));
         $permission = (string) ($input['permission'] ?? 'everyone');
@@ -334,6 +355,10 @@ final class ChatBot
             }
         }
 
+        if ($userId !== null) {
+            self::assertTriggerFree($userId, $command['trigger'], null, $code);
+        }
+
         $pdo = Database::connection();
 
         $pdo->prepare(
@@ -360,9 +385,205 @@ final class ChatBot
         self::notify();
     }
 
+    /**
+     * Refuses a trigger another command already answers to in this
+     * channel: a built-in one (as the channel uses it) or a custom one.
+     *
+     * @throws UserError
+     */
+    private static function assertTriggerFree(int $userId, string $trigger, ?int $customId, ?string $code = null): void
+    {
+        foreach (self::commandsFor($userId) as $otherCode => $other) {
+            if ($otherCode !== $code && $other['trigger'] === $trigger) {
+                throw new UserError(sprintf(__('ui.message.bot_trigger_taken'), $trigger));
+            }
+        }
+
+        $stmt = Database::connection()->prepare(
+            'SELECT 1 FROM bot_custom_commands WHERE user_id = ? AND trigger = ? AND id IS DISTINCT FROM CAST(? AS bigint)'
+        );
+        $stmt->execute([$userId, $trigger, $customId]);
+
+        if ($stmt->fetchColumn() !== false) {
+            throw new UserError(sprintf(__('ui.message.bot_trigger_taken'), $trigger));
+        }
+    }
+
+    /** @return list<array<string,mixed>> a streamer's own commands, by trigger */
+    public static function customCommands(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT id, trigger, response, is_enabled, permission, cooldown_seconds
+               FROM bot_custom_commands WHERE user_id = ? ORDER BY trigger'
+        );
+        $stmt->execute([$userId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * @return array{trigger:string, response:string, is_enabled:bool, permission:string, cooldown_seconds:int}
+     * @throws UserError naming what is wrong
+     */
+    public static function customFromInput(array $input): array
+    {
+        return self::parseCommand($input);
+    }
+
+    /**
+     * Adds a custom command (no id) or changes one of the streamer's.
+     *
+     * @throws UserError on a taken trigger, a full list, or someone else's command
+     */
+    public static function saveCustom(int $userId, ?int $id, array $command): void
+    {
+        self::assertTriggerFree($userId, $command['trigger'], $id);
+
+        $pdo  = Database::connection();
+        $data = [
+            'user'       => $userId,
+            'trigger'    => $command['trigger'],
+            'response'   => $command['response'],
+            'enabled'    => $command['is_enabled'] ? 'true' : 'false',
+            'permission' => $command['permission'],
+            'cooldown'   => $command['cooldown_seconds'],
+        ];
+
+        if ($id === null) {
+            if (count(self::customCommands($userId)) >= self::CUSTOM_MAX) {
+                throw new UserError(sprintf(__('ui.message.bot_custom_full'), self::CUSTOM_MAX));
+            }
+
+            $pdo->prepare(
+                'INSERT INTO bot_custom_commands (user_id, trigger, response, is_enabled, permission, cooldown_seconds)
+                 VALUES (:user, :trigger, :response, :enabled, :permission, :cooldown)'
+            )->execute($data);
+        } else {
+            $stmt = $pdo->prepare(
+                'UPDATE bot_custom_commands
+                    SET trigger = :trigger, response = :response, is_enabled = :enabled, permission = :permission,
+                        cooldown_seconds = :cooldown, updated_at = now()
+                  WHERE id = :id AND user_id = :user'
+            );
+            $stmt->execute($data + ['id' => $id]);
+
+            if ($stmt->rowCount() === 0) {
+                throw new UserError(__('ui.message.not_found'));
+            }
+        }
+
+        self::log($userId, 'info', ($id === null ? 'Command added: ' : 'Command changed: ') . $command['trigger']);
+        self::notify();
+    }
+
+    public static function deleteCustom(int $userId, int $id): void
+    {
+        $stmt = Database::connection()->prepare('DELETE FROM bot_custom_commands WHERE id = ? AND user_id = ? RETURNING trigger');
+        $stmt->execute([$id, $userId]);
+        $trigger = $stmt->fetchColumn();
+
+        if ($trigger !== false) {
+            self::log($userId, 'info', 'Command deleted: ' . $trigger);
+            self::notify();
+        }
+    }
+
+    /** @return list<array<string,mixed>> a streamer's timed messages, oldest first */
+    public static function timers(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT id, message, interval_minutes, min_messages, is_enabled, last_sent_at
+               FROM bot_timers WHERE user_id = ? ORDER BY id'
+        );
+        $stmt->execute([$userId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Reads a timed message form.
+     *
+     * @return array{message:string, interval_minutes:int, min_messages:int, is_enabled:bool}
+     * @throws UserError naming what is wrong
+     */
+    public static function timerFromInput(array $input): array
+    {
+        $message  = trim((string) preg_replace('/\s+/u', ' ', (string) ($input['message'] ?? '')));
+        $interval = filter_var($input['interval_minutes'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => self::TIMER_MINUTES_MIN, 'max_range' => self::TIMER_MINUTES_MAX]]);
+        $messages = filter_var($input['min_messages'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => self::TIMER_MESSAGES_MAX]]);
+
+        if ($message === '' || mb_strlen($message) > self::RESPONSE_MAX) {
+            throw new UserError(sprintf(__('ui.message.bot_response_invalid'), self::RESPONSE_MAX));
+        }
+
+        if ($interval === false || $messages === false) {
+            throw new UserError(sprintf(__('ui.message.bot_timer_invalid'), self::TIMER_MINUTES_MIN, self::TIMER_MINUTES_MAX, self::TIMER_MESSAGES_MAX));
+        }
+
+        return ['message' => $message, 'interval_minutes' => $interval, 'min_messages' => $messages, 'is_enabled' => !empty($input['is_enabled'])];
+    }
+
+    /** @throws UserError on a full list or someone else's timer */
+    public static function saveTimer(int $userId, ?int $id, array $timer): void
+    {
+        $pdo  = Database::connection();
+        $data = [
+            'user'     => $userId,
+            'message'  => $timer['message'],
+            'interval' => $timer['interval_minutes'],
+            'messages' => $timer['min_messages'],
+            'enabled'  => $timer['is_enabled'] ? 'true' : 'false',
+        ];
+
+        if ($id === null) {
+            if (count(self::timers($userId)) >= self::TIMERS_MAX) {
+                throw new UserError(sprintf(__('ui.message.bot_timers_full'), self::TIMERS_MAX));
+            }
+
+            $pdo->prepare(
+                'INSERT INTO bot_timers (user_id, message, interval_minutes, min_messages, is_enabled)
+                 VALUES (:user, :message, :interval, :messages, :enabled)'
+            )->execute($data);
+        } else {
+            $stmt = $pdo->prepare(
+                'UPDATE bot_timers
+                    SET message = :message, interval_minutes = :interval, min_messages = :messages,
+                        is_enabled = :enabled, updated_at = now()
+                  WHERE id = :id AND user_id = :user'
+            );
+            $stmt->execute($data + ['id' => $id]);
+
+            if ($stmt->rowCount() === 0) {
+                throw new UserError(__('ui.message.not_found'));
+            }
+        }
+
+        self::log($userId, 'info', $id === null ? 'Timed message added' : 'Timed message changed');
+        self::notify();
+    }
+
+    public static function deleteTimer(int $userId, int $id): void
+    {
+        $stmt = Database::connection()->prepare('DELETE FROM bot_timers WHERE id = ? AND user_id = ?');
+        $stmt->execute([$id, $userId]);
+
+        if ($stmt->rowCount() > 0) {
+            self::log($userId, 'info', 'Timed message deleted');
+            self::notify();
+        }
+    }
+
     /** Drops a streamer's own version of a command: their channel uses the default again. */
     public static function resetCommand(int $userId, string $code): void
     {
+        $default = self::defaults()[$code]['trigger'] ?? null;
+        $stmt    = Database::connection()->prepare('SELECT 1 FROM bot_custom_commands WHERE user_id = ? AND trigger = ?');
+        $stmt->execute([$userId, $default]);
+
+        if ($stmt->fetchColumn() !== false) {
+            throw new UserError(sprintf(__('ui.message.bot_trigger_taken'), $default));
+        }
+
         Database::connection()->prepare('DELETE FROM bot_commands WHERE user_id = ? AND code = ?')->execute([$userId, $code]);
 
         self::log($userId, 'info', 'Command back to default: ' . $code);

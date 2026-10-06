@@ -2,7 +2,8 @@
  * The commands the bot answers. Each command is a built-in behaviour
  * (BUILTINS, keyed by code) with a trigger and a reply template; every
  * channel uses the default version of each command unless its streamer
- * made their own, which then replaces it in their channel only.
+ * made their own, which then replaces it in their channel only. Streamers
+ * also write custom commands (code "custom"): a trigger and a reply.
  */
 
 /** What each built-in fills its reply's {placeholders} with. */
@@ -12,7 +13,20 @@ export const BUILTINS = {
         channel: ctx.channel,
         uptime: formatUptime(ctx.uptimeMs),
     }),
+    custom: (ctx) => ({
+        user: ctx.user.displayName,
+        channel: ctx.channel,
+        target: targetOf(ctx.text, ctx.user.displayName),
+    }),
 };
+
+/** "!so @Hoku_xx great stream" -> "Hoku_xx"; no word after the command -> whoever typed it. */
+export function targetOf(text, fallback) {
+    const word = String(text || '').trim().split(/\s+/)[1] || '';
+    const clean = word.replace(/^@+/, '').replace(/[^\p{L}\p{N}_]/gu, '').slice(0, 25);
+
+    return clean || fallback;
+}
 
 const RANKS = { everyone: 0, subscriber: 1, vip: 2, moderator: 3, broadcaster: 4 };
 
@@ -53,13 +67,16 @@ export class CommandBook {
         this.defaults = new Map();
     }
 
-    /** @param {Array<{userId: ?number, code: string, trigger: string, response: string, enabled: boolean, permission: string, cooldown: number}>} rows */
-    load(rows) {
+    /**
+     * @param {Array<{userId: ?number, code: string, trigger: string, response: string, enabled: boolean, permission: string, cooldown: number}>} rows
+     * @param {Array<object>} custom the streamers' own commands, same shape with code "custom"
+     */
+    load(rows, custom = []) {
         this.defaults = new Map();
         const personal = new Map();
 
         for (const row of rows) {
-            if (!(row.code in BUILTINS)) continue;
+            if (!(row.code in BUILTINS) || row.code === 'custom') continue;
 
             if (row.userId === null) {
                 this.defaults.set(row.code, row);
@@ -70,6 +87,13 @@ export class CommandBook {
         }
 
         this.personal = personal;
+        this.custom = new Map();
+
+        for (const command of custom) {
+            if (!this.custom.has(command.userId)) this.custom.set(command.userId, []);
+            this.custom.get(command.userId).push(command);
+        }
+
         this.byUser = new Map();
     }
 
@@ -78,6 +102,10 @@ export class CommandBook {
         if (!this.byUser.has(userId)) {
             const own = this.personal?.get(userId) || new Map();
             const triggers = new Map();
+
+            for (const command of this.custom?.get(userId) || []) {
+                if (command.enabled) triggers.set(command.trigger, command);
+            }
 
             for (const [code, command] of this.defaults) {
                 const effective = own.get(code) || command;

@@ -610,6 +610,8 @@ return [
         ],
 
         'action' => [
+            'bot_add_command' => 'Add a command',
+            'bot_add_timer' => 'Add a timed message',
             'bot_recheck' => 'Check again now',
             'bot_grant_permission' => 'Give permission on Twitch',
             'bot_add_channel' => 'Add the bot',
@@ -709,6 +711,9 @@ return [
         ],
 
         'field' => [
+            'bot_timer_message' => 'Message',
+            'bot_timer_interval' => 'Repeat every',
+            'bot_timer_messages' => 'Wait for',
             'bot_enabled' => 'Bot running',
             'bot_prefix' => 'Command prefix',
             'channel' => 'Channel',
@@ -819,6 +824,16 @@ return [
         ],
 
         'label' => [
+            'bot_overview' => 'Overview',
+            'bot_timers' => 'Timed messages',
+            'bot_logs' => 'Logs',
+            'bot_custom_commands' => 'Your commands',
+            'bot_builtin_commands' => 'Built-in commands',
+            'bot_timer_example' => 'Enjoying the stream? Follow so you know when I go live!',
+            'bot_chat_messages' => 'chat messages',
+            'bot_timer_rule' => 'When',
+            'bot_timer_rule_value' => 'every %d min, after %d messages',
+            'bot_timer_last' => 'Last posted',
             'bot_access' => 'Reads chat',
             'bot_watch_time' => 'Watch time',
             'bot_messages_only' => 'Messages only',
@@ -1069,6 +1084,19 @@ return [
         ],
 
         'message' => [
+            'bot_target_hint' => '{target} is the first word after the command (for !so @name, it is name), or whoever typed it.',
+            'bot_custom_hint' => 'Commands you write yourself, for your chat only: links, shout-outs, reminders. They cannot use a name a built-in command already answers to.',
+            'bot_no_custom' => 'No commands of your own yet.',
+            'bot_delete_command' => '%s stops answering in your chat.',
+            'bot_logs_kept' => 'Kept for two weeks.',
+            'bot_timers_hint' => 'Messages the bot posts on its own while you are live. Each waits at least the time you set since it last posted, and for that many chat messages from viewers in between, so it never talks into an empty chat.',
+            'bot_no_timers' => 'No timed messages yet.',
+            'bot_delete_timer' => 'The bot stops posting this message.',
+            'bot_timer_interval_hint' => 'At least this long between two posts (and after you go live).',
+            'bot_timer_messages_hint' => 'Viewers must send at least this many chat messages before it posts again. 0 posts on time alone.',
+            'bot_custom_full' => 'You can have up to %d commands of your own.',
+            'bot_timers_full' => 'You can have up to %d timed messages.',
+            'bot_timer_invalid' => 'Repeat every %d to %d minutes, and wait for 0 to %d messages.',
             'bot_rechecking' => 'The bot is checking your channel again.',
             'bot_chatters_ok' => 'The bot can see who is in chat, so watch time is recorded.',
             'bot_chatters_missing' => 'The bot cannot see who is in chat: only messages are counted. Give it permission, or make it a moderator.',

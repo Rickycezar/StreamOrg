@@ -609,6 +609,8 @@ return [
         ],
 
         'action' => [
+            'bot_add_command' => 'Adicionar comando',
+            'bot_add_timer' => 'Adicionar mensagem automática',
             'bot_recheck' => 'Conferir agora',
             'bot_grant_permission' => 'Dar permissão na Twitch',
             'bot_add_channel' => 'Adicionar o bot',
@@ -708,6 +710,9 @@ return [
         ],
 
         'field' => [
+            'bot_timer_message' => 'Mensagem',
+            'bot_timer_interval' => 'Repetir a cada',
+            'bot_timer_messages' => 'Esperar por',
             'bot_enabled' => 'Bot ligado',
             'bot_prefix' => 'Prefixo dos comandos',
             'channel' => 'Canal',
@@ -818,6 +823,16 @@ return [
         ],
 
         'label' => [
+            'bot_overview' => 'Visão geral',
+            'bot_timers' => 'Mensagens automáticas',
+            'bot_logs' => 'Registros',
+            'bot_custom_commands' => 'Seus comandos',
+            'bot_builtin_commands' => 'Comandos prontos',
+            'bot_timer_example' => 'Curtindo a live? Me segue para saber quando eu entrar ao vivo!',
+            'bot_chat_messages' => 'mensagens no chat',
+            'bot_timer_rule' => 'Quando',
+            'bot_timer_rule_value' => 'a cada %d min, depois de %d mensagens',
+            'bot_timer_last' => 'Último envio',
             'bot_access' => 'Lê o chat',
             'bot_watch_time' => 'Tempo assistido',
             'bot_messages_only' => 'Só mensagens',
@@ -1068,6 +1083,19 @@ return [
         ],
 
         'message' => [
+            'bot_target_hint' => '{target} é a primeira palavra depois do comando (em !so @nome, é nome), ou quem digitou.',
+            'bot_custom_hint' => 'Comandos que você mesmo escreve, só para o seu chat: links, divulgações, lembretes. Eles não podem usar um nome ao qual um comando pronto já responde.',
+            'bot_no_custom' => 'Nenhum comando seu ainda.',
+            'bot_delete_command' => '%s deixa de responder no seu chat.',
+            'bot_logs_kept' => 'Guardados por duas semanas.',
+            'bot_timers_hint' => 'Mensagens que o bot posta sozinho enquanto você está ao vivo. Cada uma espera pelo menos o tempo que você definir desde o último envio, e por essa quantidade de mensagens de espectadores no meio, para nunca falar num chat vazio.',
+            'bot_no_timers' => 'Nenhuma mensagem automática ainda.',
+            'bot_delete_timer' => 'O bot deixa de postar esta mensagem.',
+            'bot_timer_interval_hint' => 'Pelo menos este tempo entre dois envios (e depois que você entra ao vivo).',
+            'bot_timer_messages_hint' => 'Os espectadores precisam mandar pelo menos esta quantidade de mensagens antes de ela ser postada de novo. 0 posta só pelo tempo.',
+            'bot_custom_full' => 'Você pode ter até %d comandos seus.',
+            'bot_timers_full' => 'Você pode ter até %d mensagens automáticas.',
+            'bot_timer_invalid' => 'Repita a cada %d a %d minutos, e espere por 0 a %d mensagens.',
             'bot_rechecking' => 'O bot está conferindo o seu canal de novo.',
             'bot_chatters_ok' => 'O bot consegue ver quem está no chat, então o tempo assistido é registrado.',
             'bot_chatters_missing' => 'O bot não consegue ver quem está no chat: só as mensagens são contadas. Dê permissão a ele ou torne-o moderador.',

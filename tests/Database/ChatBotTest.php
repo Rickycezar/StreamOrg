@@ -128,6 +128,75 @@ final class ChatBotTest extends DatabaseTestCase
         self::assertNull(ChatBot::channel($other));
     }
 
+    public function testCustomCommandsAreTheStreamersAndNeverShareATrigger(): void
+    {
+        $user  = $this->createUser('phpunit_bot_custom');
+        $other = $this->createUser('phpunit_bot_custom_other');
+        $input = ['trigger' => 'discord', 'response' => 'Join us', 'permission' => 'everyone', 'cooldown_seconds' => '30', 'is_enabled' => '1'];
+
+        ChatBot::saveCustom($user, null, ChatBot::customFromInput($input));
+        $mine = ChatBot::customCommands($user);
+        self::assertSame('discord', $mine[0]['trigger']);
+
+        foreach ([['trigger' => 'heartbeat'], ['trigger' => 'discord']] as $clash) {
+            try {
+                ChatBot::saveCustom($user, null, ChatBot::customFromInput($clash + $input));
+                self::fail('Accepted a taken trigger: ' . $clash['trigger']);
+            } catch (UserError) {
+                self::assertTrue(true);
+            }
+        }
+
+        ChatBot::saveCustom($user, (int) $mine[0]['id'], ChatBot::customFromInput(['response' => 'Join the server'] + $input));
+        self::assertSame('Join the server', ChatBot::customCommands($user)[0]['response']);
+
+        try {
+            ChatBot::saveCustom($other, (int) $mine[0]['id'], ChatBot::customFromInput(['trigger' => 'mine'] + $input));
+            self::fail('Changed someone else\'s command');
+        } catch (UserError) {
+            self::assertSame('discord', ChatBot::customCommands($user)[0]['trigger']);
+        }
+
+        ChatBot::deleteCustom($other, (int) $mine[0]['id']);
+        self::assertCount(1, ChatBot::customCommands($user));
+        ChatBot::deleteCustom($user, (int) $mine[0]['id']);
+        self::assertSame([], ChatBot::customCommands($user));
+    }
+
+    public function testRenamingABuiltInCommandCannotTakeACustomTrigger(): void
+    {
+        $user = $this->createUser('phpunit_bot_clash');
+        ChatBot::saveCustom($user, null, ChatBot::customFromInput(self::INPUT));
+
+        $this->expectException(UserError::class);
+        ChatBot::saveCommand($user, 'heartbeat', ChatBot::commandFromInput('heartbeat', self::INPUT));
+    }
+
+    public function testTimedMessagesAreValidatedAndOwned(): void
+    {
+        $user  = $this->createUser('phpunit_bot_timer');
+        $timer = ChatBot::timerFromInput(['message' => ' Follow   me! ', 'interval_minutes' => '15', 'min_messages' => '5', 'is_enabled' => '1']);
+
+        self::assertSame(['message' => 'Follow me!', 'interval_minutes' => 15, 'min_messages' => 5, 'is_enabled' => true], $timer);
+
+        foreach ([['interval_minutes' => '4'], ['interval_minutes' => '1441'], ['min_messages' => '-1'], ['message' => '']] as $bad) {
+            try {
+                ChatBot::timerFromInput($bad + ['message' => 'x', 'interval_minutes' => '15', 'min_messages' => '5']);
+                self::fail('Accepted ' . json_encode($bad));
+            } catch (UserError) {
+                self::assertTrue(true);
+            }
+        }
+
+        ChatBot::saveTimer($user, null, $timer);
+        $saved = ChatBot::timers($user)[0];
+        ChatBot::saveTimer($user, (int) $saved['id'], ['interval_minutes' => 30] + $timer);
+        self::assertSame(30, (int) ChatBot::timers($user)[0]['interval_minutes']);
+
+        ChatBot::deleteTimer($user, (int) $saved['id']);
+        self::assertSame([], ChatBot::timers($user));
+    }
+
     public function testPrefixMustBeASymbol(): void
     {
         $this->expectException(UserError::class);

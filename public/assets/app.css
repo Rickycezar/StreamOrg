@@ -2388,3 +2388,9 @@ td.user-cell .avatar-initials { font-size: .66rem; }
 .bot-way.done { border-color: var(--ok-border, var(--border)); }
 .bot-way h3 { margin: 0 0 .35rem; font-size: .95rem; }
 .bot-way p { margin: 0 0 .6rem; }
+.bot-tabs { display: flex; gap: .25rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.bot-tabs a { padding: .5rem .9rem; border-bottom: 2px solid transparent; color: var(--muted); text-decoration: none; margin-bottom: -1px; }
+.bot-tabs a:hover { color: var(--text); }
+.bot-tabs a.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.bot-reply { max-width: 32rem; overflow-wrap: anywhere; }
+td.nowrap { white-space: nowrap; }
