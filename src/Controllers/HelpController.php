@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 /**
  * "How it works" pages for the dashboard, the key vault, content, the
- * content defaults (prefixes and counters), giveaways, embargoes and collabs,
- * opened in their own small window like the vault security explainer:
+ * content defaults (prefixes and counters), giveaways, embargoes, collabs
+ * and planning a collab together, opened in their own small window like the vault security explainer:
  * what the person can do there, in plain words, with small drawings.
  * The words live in the language files (ui.help.<page>.*).
  */
@@ -18,7 +18,8 @@ final class HelpController
         'defaults'  => ['schedule', 'length', 'prefixes', 'counters', 'numbers', 'limit'],
         'giveaways' => ['setup', 'prizes', 'winners', 'claim', 'private', 'finish'],
         'embargoes' => ['what', 'kinds', 'several', 'release', 'warnings', 'uncovered'],
-        'collabs'   => ['streamers', 'idea', 'cast', 'plan', 'title'],
+        'collabs'   => ['streamers', 'idea', 'cast', 'plan', 'together', 'title'],
+        'together'  => ['invite', 'join', 'own', 'time', 'agree', 'leave'],
     ];
 
     public static function dashboard(): void
@@ -54,6 +55,11 @@ final class HelpController
     public static function collabs(): void
     {
         self::show('collabs');
+    }
+
+    public static function together(): void
+    {
+        self::show('together');
     }
 
     private static function show(string $page): void

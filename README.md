@@ -101,6 +101,11 @@ private preview. Preview access: streamorg@outlook.com.
   never happened to the undated backlog. Every step is shown in a recent
   activity list.
 - Look up streamers on Twitch to plan **collabs** and credit guests.
+- **Plan collabs together**: guests who use StreamOrg (matched by their
+  connected Twitch account) are invited through notifications. Each joins
+  with their own linked content — own title, games, keys and sponsors —
+  while the time is shared: moving it proposes the change to the others,
+  and it applies to everyone once they all agree.
 
 ### Giveaways
 - **Named giveaways** with a short keyword for the chat, rules, an entry
@@ -173,7 +178,8 @@ private preview. Preview access: streamorg@outlook.com.
   with the latest messages and a page with all of them, each in the user's
   own language.
 - **"How it works" guides** for the dashboard, the key vault, content, the
-  content defaults, giveaways, embargoes and collabs:
+  content defaults, giveaways, embargoes, collabs and planning a collab
+  together:
   plain-language walkthroughs with small drawings, opened in their own window
   from a button beside the page title.
 - **See and end your sessions**: every sign-in is listed with its browser,
@@ -192,8 +198,9 @@ private preview. Preview access: streamorg@outlook.com.
   as session lifetime.
 - **Languages**: the interface strings, and labels per language for key
   sites, platforms and genres added at runtime.
-- **Notifications**: write one in each language, choose its kind and an
-  optional link, send it to everyone or to chosen users, see how many read
+- **Notifications**: write one in each language — with light formatting
+  (bold, italic, links, lists, headings, highlights) from a toolbar or
+  shortcuts, and a preview — choose its kind and an optional link, send it to everyone or to chosen users, see how many read
   it, and take it back at any time.
 - **Testimonials** for the landing page, managed as a JSON file that can be
   uploaded, edited or downloaded, with a switch per testimonial and for the

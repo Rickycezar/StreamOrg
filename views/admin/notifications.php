@@ -7,6 +7,18 @@
  * @var list<string> $locales @var list<array> $sent
  */
 $current = Lang::locale();
+$icon    = static fn (string $d): string => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' . $d . '"/></svg>';
+$tools   = [
+    'bold'    => '<b>B</b>',
+    'italic'  => '<i>I</i>',
+    'strike'  => '<s>S</s>',
+    'heading' => '<b>H</b>',
+    'link'    => $icon('M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7'),
+    'list'    => $icon('M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01'),
+    'numbers' => $icon('M10 6h10M10 12h10M10 18h10M4 5l1.5-1v5M3.5 14.5a1.5 1.5 0 1 1 2.5 1.2L3.5 19H6'),
+    'quote'   => $icon('M7 7h3v4c0 3-1.5 5-4 6M15 7h3v4c0 3-1.5 5-4 6'),
+    'code'    => $icon('M9 8l-4 4 4 4M15 8l4 4-4 4'),
+];
 ?>
 <h1><?= e(__('ui.nav.notifications')) ?></h1>
 <p class="muted"><?= e(__('ui.message.notifications_admin_intro')) ?></p>
@@ -34,10 +46,24 @@ $current = Lang::locale();
                     <span><?= e(__('ui.field.title')) ?></span>
                     <input type="text" name="title[<?= e($locale) ?>]" maxlength="<?= Notifications::TITLE_MAX ?>" lang="<?= e($locale) ?>">
                 </label>
-                <label>
-                    <span><?= e(__('ui.field.notification_body')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                    <textarea name="body[<?= e($locale) ?>]" rows="4" maxlength="<?= Notifications::BODY_MAX ?>" lang="<?= e($locale) ?>"></textarea>
-                </label>
+                <div class="field rich-field" data-rich-editor>
+                    <span class="field-label"><?= e(__('ui.field.notification_body')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                    <div class="rich-toolbar" role="toolbar" aria-label="<?= e(__('ui.label.formatting')) ?>">
+                        <?php foreach ($tools as $tool => $icon): ?>
+                            <button type="button" class="rich-tool" data-format="<?= e($tool) ?>" title="<?= e(__('ui.format.' . $tool)) ?>" aria-label="<?= e(__('ui.format.' . $tool)) ?>"><?= $icon ?></button>
+                        <?php endforeach; ?>
+                        <span class="rich-tabs">
+                            <button type="button" class="active" data-rich-mode="write"><?= e(__('ui.format.write')) ?></button>
+                            <button type="button" data-rich-mode="preview"><?= e(__('ui.format.preview')) ?></button>
+                        </span>
+                    </div>
+                    <textarea name="body[<?= e($locale) ?>]" rows="7" maxlength="<?= Notifications::BODY_MAX ?>" lang="<?= e($locale) ?>"
+                              aria-label="<?= e(__('ui.field.notification_body')) ?>"
+                              data-bold-words="<?= e(__('ui.format.bold_words')) ?>" data-italic-words="<?= e(__('ui.format.italic_words')) ?>"
+                              data-strike-words="<?= e(__('ui.format.strike_words')) ?>" data-link-words="<?= e(__('ui.format.link_words')) ?>"></textarea>
+                    <div class="rich-preview note-body rich" data-rich-preview data-empty="<?= e(__('ui.format.empty')) ?>" hidden></div>
+                    <small class="muted rich-hint"><?= e(__('ui.message.format_hint')) ?></small>
+                </div>
             </div>
         <?php endforeach; ?>
         <p class="muted small"><?= e(__('ui.message.notification_languages_hint')) ?></p>

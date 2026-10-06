@@ -96,7 +96,7 @@ final class LiveTracker
 
         $stmt = $pdo->prepare(
             "UPDATE streams SET scheduled_start = NULL, updated_at = now()
-              WHERE user_id = ? AND status = 'planned'
+              WHERE user_id = ? AND status = 'planned' AND collab_session_id IS NULL
                 AND scheduled_start >= ? AND scheduled_start <= ?
           RETURNING id, title"
         );

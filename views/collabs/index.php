@@ -1,6 +1,8 @@
 <?php
 /** @var array $collabs @var array $counts @var array $cast @var array $filters
- *  @var array $statuses @var array $roles @var array $streamers @var array $platforms */
+ *  @var array $statuses @var array $roles @var array $streamers @var array $platforms
+ *  @var list<array> $together joint plans the user is in @var array<int,int> $onStreamOrg cast members on StreamOrg, by collab
+ *  @var array<int,int> $sessions active joint plan, by collab */
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.collabs')) ?></h1>
@@ -17,6 +19,39 @@
         </a>
     <?php endforeach; ?>
 </section>
+
+<?php if ($together !== []): ?>
+    <section class="card together-list">
+        <div class="card-head">
+            <h2><?= e(__('ui.label.together_title')) ?> (<?= count($together) ?>)</h2>
+            <?php $helpPage = 'together'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+        </div>
+        <ul>
+            <?php foreach ($together as $t):
+                $invited  = $t['member_state'] === 'invited';
+                $toAnswer = !$invited && $t['proposed_at'] !== null && !$t['approves']; ?>
+                <li class="<?= $invited || $toAnswer ? 'needs-you' : '' ?>">
+                    <a class="together-link" href="<?= e(url(CollabSessions::LINK . (int) $t['id'])) ?>">
+                        <strong><?= e($t['title']) ?></strong>
+                        <small class="muted">
+                            <?= e($t['member_role'] === 'host' ? __('ui.label.together_you_host') : sprintf(__('ui.label.together_hosted_by'), $t['host_name'])) ?>
+                            <?php if ($t['others']): ?> · <?= e($t['others']) ?><?php endif; ?>
+                        </small>
+                    </a>
+                    <span class="together-time"><?= e($t['agreed_start'] ? fmt_datetime($t['agreed_start']) : __('ui.label.together_no_time')) ?></span>
+                    <?php if ($invited): ?>
+                        <span class="badge warn"><?= e(__('ui.label.together_invitation')) ?></span>
+                    <?php elseif ($toAnswer): ?>
+                        <span class="badge warn"><?= e(__('ui.label.together_new_time')) ?></span>
+                    <?php elseif ($t['proposed_at'] !== null): ?>
+                        <span class="badge"><?= e(__('ui.label.together_waiting_others')) ?></span>
+                    <?php endif; ?>
+                    <a class="btn small<?= $invited || $toAnswer ? ' primary' : '' ?>" href="<?= e(url(CollabSessions::LINK . (int) $t['id'])) ?>"><?= e(__($invited ? 'ui.action.together_see_invite' : ($toAnswer ? 'ui.action.together_answer' : 'ui.action.together_open'))) ?></a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+<?php endif; ?>
 
 <section class="card">
     <div class="card-head">
@@ -134,7 +169,18 @@
                         <?php endif; ?>
                     </td>
                     <td class="rowactions">
-                        <button type="button" class="btn small primary collab-plan" data-id="<?= (int) $row['id'] ?>"
+                        <?php if (isset($sessions[(int) $row['id']])): ?>
+                            <a class="btn small primary" href="<?= e(url(CollabSessions::LINK . (int) $sessions[(int) $row['id']])) ?>"><?= e(__('ui.action.together_open')) ?></a>
+                        <?php elseif (($onStreamOrg[(int) $row['id']] ?? 0) > 0): ?>
+                            <form method="post" action="<?= e(url('/collabs/together')) ?>">
+                                <?= Csrf::field() ?>
+                                <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                <button type="submit" class="btn small primary" title="<?= e(__('ui.action.together_plan_hint')) ?>">
+                                    <?= e(sprintf(__('ui.action.together_plan'), (int) $onStreamOrg[(int) $row['id']])) ?>
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                        <button type="button" class="btn small<?= isset($sessions[(int) $row['id']]) || ($onStreamOrg[(int) $row['id']] ?? 0) > 0 ? '' : ' primary' ?> collab-plan" data-id="<?= (int) $row['id'] ?>"
                                 title="<?= e(__('ui.action.plan_stream_hint')) ?>">
                             <?= e(__('ui.action.plan_stream')) ?>
                         </button>

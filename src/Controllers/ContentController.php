@@ -23,7 +23,7 @@ final class ContentController
      */
     private static function plannerSql(): string
     {
-        return "SELECT s.id, s.title, s.status, s.scheduled_start, s.deadline, sp.code AS platform_code,
+        return "SELECT s.id, s.title, s.status, s.scheduled_start, s.deadline, s.collab_session_id, sp.code AS platform_code,
                     coalesce(s.planned_minutes, (SELECT u.content_minutes FROM users u WHERE u.id = s.user_id)) AS minutes,
                     string_agg(g.title, ', ' ORDER BY sg.play_order) AS games,
                     (array_agg(t.path ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_path,
@@ -118,7 +118,7 @@ final class ContentController
         $stmt->execute(['user' => $userId]);
         $backlog = $stmt->fetchAll();
 
-        $sql = "SELECT s.id, s.title, s.title_template, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
+        $sql = "SELECT s.id, s.title, s.title_template, s.collab_session_id, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
                        s.category_id, s.category_name,
                        sp.code AS platform_code,
                        count(sg.game_id)                                     AS game_count,
@@ -667,6 +667,28 @@ final class ContentController
         $deadline  = trim((string) ($_POST['deadline'] ?? '')) ?: null;
 
         $template = TitleCounters::templateFor((int) Auth::id(), $title);
+        $notice   = null;
+
+        $current = $pdo->prepare('SELECT scheduled_start, collab_session_id FROM streams WHERE id = ? AND user_id = ?');
+        $current->execute([$id, Auth::id()]);
+        $before = $current->fetch();
+
+        if ($before !== false && $before['collab_session_id'] !== null) {
+            $was = $before['scheduled_start'] !== null ? (new DateTimeImmutable($before['scheduled_start']))->getTimestamp() : null;
+            $now = $scheduled !== null ? (new DateTimeImmutable($scheduled))->getTimestamp() : null;
+
+            if ($was !== $now) {
+                try {
+                    $notice = CollabSessions::guardTimeChange((int) Auth::id(), $id, $scheduled !== null ? new DateTimeImmutable($scheduled) : null, null);
+                } catch (UserError $e) {
+                    json_response(['ok' => false, 'error' => $e->getMessage()], 409);
+                }
+
+                if ($notice !== null) {
+                    $scheduled = $before['scheduled_start'];
+                }
+            }
+        }
 
         $pdo->beginTransaction();
 
@@ -730,7 +752,7 @@ final class ContentController
             }
         }
 
-        json_response(['ok' => true, 'message' => __('ui.message.saved')]);
+        json_response(['ok' => true, 'message' => $notice !== null ? __('ui.message.saved') . ' ' . $notice : __('ui.message.saved')]);
     }
 
     /**
@@ -739,6 +761,8 @@ final class ContentController
      * The games and collaborators attached to it cascade away with it;
      * the keys themselves do not, they simply become unattached. Title
      * numbers after it move down on their own (streamorg_renumber_titles).
+     * Content planned together with others leaves that joint plan first
+     * (the host's cancels it), so the others are told.
      */
     public static function delete(): void
     {
@@ -749,6 +773,17 @@ final class ContentController
 
         if ($id === false || $id === null) {
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 400);
+        }
+
+        $linked = Database::connection()->prepare('SELECT collab_session_id FROM streams WHERE id = ? AND user_id = ?');
+        $linked->execute([$id, Auth::id()]);
+        $sessionId = $linked->fetchColumn();
+
+        if ($sessionId) {
+            try {
+                CollabSessions::leave((int) Auth::id(), (int) $sessionId);
+            } catch (UserError) {
+            }
         }
 
         $deleted = Database::transaction(static function (PDO $pdo) use ($id): bool {
@@ -904,9 +939,10 @@ final class ContentController
             'end'        => $start === null ? null
                 : (new DateTimeImmutable($start))->modify('+' . (int) $row['minutes'] . ' minutes')->format('Y-m-d\TH:i:s'),
             'editable'   => $row['status'] === 'planned',
-            'classNames' => array_merge(['status-' . $row['status']], $warnings !== [] ? ['has-warning'] : []),
+            'classNames' => array_merge(['status-' . $row['status']], $warnings !== [] ? ['has-warning'] : [], $row['collab_session_id'] ? ['is-together'] : []),
             'extendedProps' => [
                 'status'      => $row['status'],
+                'together'    => $row['collab_session_id'] ? (int) $row['collab_session_id'] : null,
                 'minutes'     => (int) $row['minutes'],
                 'statusLabel' => code_label('stream_status', $row['status']),
                 'games'       => $row['games'],
@@ -963,6 +999,16 @@ final class ContentController
 
         if (!$id || ($wall !== '' && $when === null) || ($rawLen !== '' && $minutes === null)) {
             json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
+        }
+
+        try {
+            $proposed = CollabSessions::guardTimeChange((int) Auth::id(), $id, $when, $minutes);
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 409);
+        }
+
+        if ($proposed !== null) {
+            json_response(['ok' => false, 'error' => $proposed], 409);
         }
 
         $pdo  = Database::connection();

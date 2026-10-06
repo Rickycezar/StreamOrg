@@ -62,10 +62,23 @@ final class CollabController
             $cast[(int) $row['collab_id']][] = (int) $row['streamer_id'];
         }
 
+        $linked = CollabSessions::linkedUsers((int) $userId, array_merge([], ...array_values($cast)));
+        $onStreamOrg = [];
+
+        foreach ($cast as $collabId => $ids) {
+            $onStreamOrg[$collabId] = count(array_intersect_key($linked, array_flip($ids)));
+        }
+
+        $active = $pdo->prepare("SELECT collab_id, id FROM collab_sessions WHERE host_user_id = ? AND status = 'active' AND collab_id IS NOT NULL");
+        $active->execute([$userId]);
+
         $stmt = $pdo->prepare('SELECT id, name FROM streamers WHERE user_id = ? ORDER BY is_favorite DESC, name');
         $stmt->execute([$userId]);
 
         View::render('collabs/index', [
+            'together'    => CollabSessions::forUser((int) $userId),
+            'onStreamOrg' => $onStreamOrg,
+            'sessions'    => array_column($active->fetchAll(), 'id', 'collab_id'),
             'collabs'   => $collabs,
             'counts'    => $counts,
             'cast'      => $cast,
@@ -278,6 +291,92 @@ final class CollabController
             'stream_id' => $streamId,
             'message'   => __('ui.message.collab_planned'),
         ]);
+    }
+
+    /** POST /collabs/together — starts planning a collab with the StreamOrg users in its cast. */
+    public static function together(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        try {
+            $sessionId = CollabSessions::invite((int) Auth::id(), filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0);
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect('/collabs');
+        }
+
+        flash('success', __('ui.message.together_invites_sent'));
+        redirect(CollabSessions::LINK . $sessionId);
+    }
+
+    /** GET /collabs/session?id= — a joint plan, as one of its participants sees it. */
+    public static function session(): void
+    {
+        Auth::requireLogin();
+
+        try {
+            $session = CollabSessions::show((int) Auth::id(), filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 0);
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect('/collabs');
+        }
+
+        View::render('collabs/session', ['session' => $session, 'userId' => (int) Auth::id()], $session['title']);
+    }
+
+    /** POST /collabs/session/respond — accept or decline an invitation. */
+    public static function respond(): void
+    {
+        self::sessionAction(static fn (int $user, int $id) => CollabSessions::respond($user, $id, ($_POST['accept'] ?? '') === '1'),
+            ($_POST['accept'] ?? '') === '1' ? 'ui.message.together_joined' : 'ui.message.together_declined_done');
+    }
+
+    /** POST /collabs/session/propose — put another time on the table. */
+    public static function propose(): void
+    {
+        $raw     = trim((string) ($_POST['start'] ?? ''));
+        $start   = $raw === '' ? null : (DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $raw, new DateTimeZone(date_default_timezone_get())) ?: null);
+        $minutes = ContentDefaults::minutesFromInput((string) ($_POST['minutes'] ?? '')) ?? 0;
+
+        self::sessionAction(static function (int $user, int $id) use ($start, $minutes, $raw): string {
+            if ($raw !== '' && $start === null) {
+                throw new UserError(__('ui.message.invalid_input'));
+            }
+
+            return CollabSessions::propose($user, $id, $start, $minutes) ? 'ui.message.together_time_set' : 'ui.message.together_time_proposed';
+        });
+    }
+
+    /** POST /collabs/session/answer — agree to, or turn down, the proposed time. */
+    public static function answer(): void
+    {
+        self::sessionAction(static fn (int $user, int $id) => CollabSessions::answerProposal($user, $id, ($_POST['agree'] ?? '') === '1'),
+            ($_POST['agree'] ?? '') === '1' ? 'ui.message.together_agreed_done' : 'ui.message.together_rejected_done');
+    }
+
+    /** POST /collabs/session/leave — leave the plan (the host cancels it). */
+    public static function leave(): void
+    {
+        self::sessionAction(static fn (int $user, int $id) => CollabSessions::leave($user, $id), 'ui.message.together_left_done', '/collabs');
+    }
+
+    /** Runs one step on a joint plan and goes back to it with what happened. */
+    private static function sessionAction(callable $step, ?string $message = null, ?string $back = null): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0;
+
+        try {
+            $result = $step((int) Auth::id(), $id);
+            flash('success', __(is_string($result) ? $result : (string) $message));
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+        }
+
+        redirect($back ?? CollabSessions::LINK . $id);
     }
 
     private static function platformId(PDO $pdo, string $code): ?int

@@ -778,7 +778,7 @@
 
         const title = document.createElement('span');
         title.className = 'planner-event-title';
-        title.textContent = (arg.timeText ? arg.timeText + ' ' : '') + arg.event.title;
+        title.textContent = (props.together ? '👥 ' : '') + (arg.timeText ? arg.timeText + ' ' : '') + arg.event.title;
         text.append(title);
 
         if (arg.view.type !== 'dayGridMonth' && props.games) {
@@ -2838,6 +2838,123 @@
             radio.addEventListener('change', function () {
                 users.hidden = radio.value !== 'users' || !radio.checked;
                 if (!users.hidden) users.querySelectorAll('select[data-picker]').forEach(initPicker);
+            });
+        });
+    });
+
+    /**
+     * The notification text editor: toolbar buttons (and Ctrl+B / Ctrl+I /
+     * Ctrl+K) that put NoteFormat's marks around the selection or at the
+     * start of the selected lines, and a preview drawn by the server.
+     */
+    function richReplace(area, start, end, text, selectFrom, selectTo) {
+        area.focus();
+        area.setSelectionRange(start, end);
+        if (!document.execCommand || !document.execCommand('insertText', false, text)) {
+            area.setRangeText(text, start, end, 'end');
+            area.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        area.setSelectionRange(start + selectFrom, start + selectTo);
+    }
+
+    function richWrap(area, mark, placeholder) {
+        const start = area.selectionStart;
+        const end = area.selectionEnd;
+        const chosen = area.value.slice(start, end);
+        const before = area.value.slice(Math.max(0, start - mark.length), start);
+        const after = area.value.slice(end, end + mark.length);
+
+        if (chosen && before === mark && after === mark) {
+            richReplace(area, start - mark.length, end + mark.length, chosen, 0, chosen.length);
+            return;
+        }
+
+        const inner = chosen || placeholder;
+        richReplace(area, start, end, mark + inner + mark, mark.length, mark.length + inner.length);
+    }
+
+    function richLines(area, kind) {
+        const value = area.value;
+        const start = value.lastIndexOf('\n', area.selectionStart - 1) + 1;
+        let end = value.indexOf('\n', area.selectionEnd);
+        if (end === -1 || (area.selectionEnd > area.selectionStart && value[area.selectionEnd - 1] === '\n')) {
+            end = end === -1 ? value.length : area.selectionEnd - 1;
+        }
+
+        const patterns = { heading: /^##\s+/, list: /^[-*•]\s+/, numbers: /^\d+[.)]\s+/, quote: /^>\s?/ };
+        const lines = value.slice(start, end).split('\n');
+        const all = lines.every(function (line) { return patterns[kind].test(line); });
+        const result = lines.map(function (line, i) {
+            const bare = line.replace(/^(##\s+|[-*•]\s+|\d+[.)]\s+|>\s?)/, '');
+            if (all) return bare;
+            const mark = kind === 'heading' ? '## ' : kind === 'list' ? '- ' : kind === 'numbers' ? (i + 1) + '. ' : '> ';
+            return mark + bare;
+        }).join('\n');
+
+        richReplace(area, start, end, result, result.length, result.length);
+    }
+
+    function richLink(area) {
+        const start = area.selectionStart;
+        const end = area.selectionEnd;
+        const chosen = area.value.slice(start, end);
+
+        if (/^(https?:\/\/|\/)\S*$/.test(chosen)) {
+            const words = area.dataset.linkWords || 'link';
+            richReplace(area, start, end, '[' + words + '](' + chosen + ')', 1, 1 + words.length);
+            return;
+        }
+
+        const words = chosen || area.dataset.linkWords || 'link';
+        const text = '[' + words + '](https://)';
+        richReplace(area, start, end, text, words.length + 3, text.length - 1);
+    }
+
+    function richFormat(area, tool) {
+        if (tool === 'bold') richWrap(area, '**', area.dataset.boldWords || 'bold');
+        else if (tool === 'italic') richWrap(area, '*', area.dataset.italicWords || 'italic');
+        else if (tool === 'strike') richWrap(area, '~~', area.dataset.strikeWords || 'text');
+        else if (tool === 'code') richWrap(area, '`', 'code');
+        else if (tool === 'link') richLink(area);
+        else richLines(area, tool);
+    }
+
+    onPage(function () {
+        document.querySelectorAll('[data-rich-editor]').forEach(function (editor) {
+            const area = editor.querySelector('textarea');
+            const preview = editor.querySelector('[data-rich-preview]');
+            const tools = editor.querySelectorAll('[data-format]');
+
+            tools.forEach(function (button) {
+                button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+                button.addEventListener('click', function () { richFormat(area, button.dataset.format); });
+            });
+
+            area.addEventListener('keydown', function (event) {
+                if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+                const tool = { b: 'bold', i: 'italic', k: 'link' }[event.key.toLowerCase()];
+                if (!tool) return;
+                event.preventDefault();
+                richFormat(area, tool);
+            });
+
+            editor.querySelectorAll('[data-rich-mode]').forEach(function (tab) {
+                tab.addEventListener('click', async function () {
+                    const showing = tab.dataset.richMode === 'preview';
+                    editor.querySelectorAll('[data-rich-mode]').forEach(function (t) { t.classList.toggle('active', t === tab); });
+                    tools.forEach(function (b) { b.disabled = showing; });
+                    area.hidden = showing;
+                    preview.hidden = !showing;
+                    if (!showing) {
+                        area.focus();
+                        return;
+                    }
+
+                    preview.innerHTML = '<span class="spinner"></span>';
+                    const result = await postJson('/admin/notifications/preview', { text: area.value });
+                    preview.innerHTML = result.ok ? result.html : '';
+                    if (!result.ok) preview.textContent = result.error || '';
+                });
             });
         });
     });

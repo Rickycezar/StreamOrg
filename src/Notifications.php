@@ -106,6 +106,42 @@ final class Notifications
         });
     }
 
+    /**
+     * A notification from StreamOrg itself (no admin wrote it): its title
+     * and text come from ui.notify.<key>.title / .body in every language,
+     * filled with $params (sprintf), so each recipient reads their own.
+     *
+     * @param list<int> $userIds
+     * @return int|null the notification id, or null when nobody is left to tell
+     */
+    public static function system(array $userIds, string $key, array $params = [], ?string $link = null, string $level = 'info'): ?int
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+
+        if ($userIds === []) {
+            return null;
+        }
+
+        $texts = [];
+
+        foreach (Lang::available() as $locale) {
+            $title = Lang::t("ui.notify.{$key}.title", $locale);
+
+            if ($title === "ui.notify.{$key}.title") {
+                continue;
+            }
+
+            $body = Lang::t("ui.notify.{$key}.body", $locale);
+
+            $texts[$locale] = [
+                'title' => mb_substr(vsprintf($title, $params), 0, self::TITLE_MAX),
+                'body'  => $body === "ui.notify.{$key}.body" ? '' : mb_substr(vsprintf($body, array_map(static fn ($p): string => NoteFormat::escape((string) $p), $params)), 0, self::BODY_MAX),
+            ];
+        }
+
+        return self::send(['texts' => $texts, 'level' => $level, 'link' => $link, 'users' => $userIds], null);
+    }
+
     /** The SQL that picks a user's notifications, with the text in their language. */
     private static function visibleSql(): string
     {

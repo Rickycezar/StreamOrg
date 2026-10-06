@@ -392,7 +392,9 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                     </td>
                     <td data-col="title">
                         <?= e($row['title']) ?>
-                        <?php if ($row['is_collab']): ?>
+                        <?php if ($row['collab_session_id']): ?>
+                            <a class="badge together-badge" href="<?= e(url(CollabSessions::LINK . (int) $row['collab_session_id'])) ?>">👥 <?= e(__('ui.label.together_badge')) ?></a>
+                        <?php elseif ($row['is_collab']): ?>
                             <span class="badge"><?= e(__('ui.label.collab')) ?></span>
                         <?php endif; ?>
                         <?php if (!empty($row['notes'])): ?>
@@ -467,6 +469,10 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                     <td colspan="8">
                         <form class="inline-edit" data-endpoint="/content/update" data-id="<?= (int) $row['id'] ?>">
                             <div class="grid">
+                                <?php if ($row['collab_session_id']): ?>
+                                    <p class="notice together-note"><?= e(__('ui.message.together_edit_note')) ?>
+                                        <a href="<?= e(url(CollabSessions::LINK . (int) $row['collab_session_id'])) ?>"><?= e(__('ui.action.together_open')) ?></a></p>
+                                <?php endif; ?>
                                 <div class="title-block">
                                     <?= View::partial('content/title_field', [
                                         'prefixes' => $prefixes,

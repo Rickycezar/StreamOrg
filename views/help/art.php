@@ -346,6 +346,57 @@ $arts = [
         . $card(138, 40, 92, 'ha-soft')
         . $r(138, 82, 92, 22, 'ha-bg', 11) . $bar(148, 90.5, 30) . $r(184, 87, 38, 12, 'ha-twitchbg', 6),
 
+    'collabs.together' =>
+        $r(12, 30, 92, 90, 'ha-panel', 10) . $dot(32, 50, 9, 'ha-twitchbg') . $bar(46, 47.5, 46, 'ha-text')
+        . $r(22, 70, 72, 18, 'ha-soft', 6) . $bar(30, 76.5, 40) . $r(22, 94, 50, 10, 'ha-bg', 5)
+        . $r(136, 30, 92, 90, 'ha-panel', 10) . $dot(156, 50, 9, 'ha-okbg') . $bar(170, 47.5, 46, 'ha-text')
+        . $r(146, 70, 72, 18, 'ha-soft', 6) . $bar(154, 76.5, 40) . $r(146, 94, 40, 10, 'ha-bg', 5)
+        . $path('M98 79h44', 'ha-stroke-accent') . $dot(120, 79, 11, 'ha-okbg') . $path('M114.5 79l4 4 7-8', 'ha-stroke-ok'),
+
+    'together.invite' =>
+        $r(12, 30, 112, 90, 'ha-panel', 10) . $bar(24, 44, 60, 'ha-text')
+        . $dot(32, 66, 9, 'ha-twitchbg') . $dot(50, 66, 9, 'ha-okbg') . $dot(68, 66, 9, 'ha-soft')
+        . $r(24, 90, 88, 18, 'ha-accent', 9) . $bar(38, 96.5, 60, 'ha-white-fill')
+        . $path('M128 99c22 0 26-38 50-38', 'ha-stroke-accent-dash')
+        . $path('M190 40a14 14 0 0 1 14 14c0 14 6 18 6 18h-40s6-4 6-18a14 14 0 0 1 14-14zM186 78a5 5 0 0 0 8 0', 'ha-stroke')
+        . $dot(204, 42, 7, 'ha-accent') . $r(162, 96, 64, 22, 'ha-bg', 11) . $dot(174, 107, 6, 'ha-okbg') . $bar(184, 104.5, 34, 'ha-text'),
+
+    'together.join' =>
+        $r(16, 22, 208, 106, 'ha-panel', 10) . $r(16, 22, 208, 106, 'ha-soft', 10)
+        . $dot(40, 50, 11, 'ha-twitchbg') . $bar(58, 44, 110, 'ha-text') . $bar(58, 55, 80)
+        . $bar(32, 76, 170) . $bar(32, 86, 130)
+        . $r(32, 100, 70, 18, 'ha-accent', 6) . $bar(44, 106.5, 46, 'ha-white-fill')
+        . $r(110, 100, 54, 18, 'ha-panel', 6) . $bar(122, 106.5, 30, 'ha-text')
+        . $dot(204, 46, 10, 'ha-okbg') . $path('M199 46l4 4 6-7', 'ha-stroke-ok'),
+
+    'together.own' =>
+        $card(10, 36, 104, 'ha-twitchbg') . $bar(52, 76, 50, 'ha-text')
+        . $card(126, 36, 104, 'ha-okbg') . $bar(168, 76, 34, 'ha-text')
+        . $path('M62 86v10h40M178 86v10h-40', 'ha-stroke-dash')
+        . $path('M104 90h12a6 6 0 0 1 0 12h-12a6 6 0 0 1 0-12z', 'ha-stroke-accent') . $path('M124 90h12a6 6 0 0 1 0 12h-12a6 6 0 0 1 0-12z', 'ha-stroke-accent')
+        . $r(52, 120, 136, 16, 'ha-bg', 8) . $dot(64, 128, 3, 'ha-accent') . $bar(72, 125.5, 100, 'ha-text'),
+
+    'together.time' =>
+        $r(14, 18, 212, 116, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<rect x="%d" y="30" width="1" height="96" class="ha-line"/>', 44 + $i * 30), range(0, 5)))
+        . $r(48, 46, 24, 30, 'ha-soft', 4) . $r(48, 46, 3, 30, 'ha-accent', 1.5)
+        . $r(138, 78, 24, 30, 'ha-bg', 4) . $path('M138 78h24v30h-24z', 'ha-stroke-accent-dash')
+        . $path('M74 62c30 0 40 20 60 26', 'ha-stroke-accent-dash') . $path('M128 84l7 4-8 4', 'ha-stroke-accent')
+        . $r(168, 40, 50, 24, 'ha-warnbg', 12) . $bar(178, 49.5, 30, 'ha-warn'),
+
+    'together.agree' =>
+        $r(16, 18, 208, 116, 'ha-warnbg', 10) . $bar(30, 32, 90, 'ha-text') . $bar(30, 44, 60, 'ha-warn')
+        . $dot(38, 66, 6, 'ha-okbg') . $path('M35 66l2.5 2.5 4-4.5', 'ha-stroke-ok') . $bar(50, 63.5, 80, 'ha-text')
+        . $dot(38, 84, 6, 'ha-panel') . $bar(50, 81.5, 64, 'ha-text')
+        . $r(30, 102, 64, 20, 'ha-accent', 6) . $bar(42, 109.5, 40, 'ha-white-fill')
+        . $r(102, 102, 56, 20, 'ha-panel', 6) . $bar(114, 109.5, 32, 'ha-text')
+        . $dot(196, 72, 18, 'ha-okbg') . $path('M187 72l6 6 11-12', 'ha-stroke-ok'),
+
+    'together.leave' =>
+        $card(10, 50, 100, 'ha-twitchbg') . $card(130, 50, 100, 'ha-okbg')
+        . $path('M106 67h8M126 67h8', 'ha-stroke') . $path('M114 60l4 7-4 7M126 60l-4 7 4 7', 'ha-stroke-dash')
+        . $r(64, 104, 112, 20, 'ha-bg', 10) . $path('M112 114h16', 'ha-stroke-danger'),
+
     'collabs.title' =>
         $r(14, 52, 212, 46, 'ha-panel', 8)
         . $bar(26, 72.5, 70, 'ha-text')

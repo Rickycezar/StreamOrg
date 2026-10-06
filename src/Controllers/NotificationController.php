@@ -117,6 +117,15 @@ final class NotificationController
     }
 
     /** POST /admin/notifications/delete — takes a notification back. */
+    /** POST /admin/notifications/preview: a text as it will read, formatted. */
+    public static function preview(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify(json: true);
+
+        json_response(['ok' => true, 'html' => NoteFormat::html(mb_substr((string) ($_POST['text'] ?? ''), 0, Notifications::BODY_MAX))]);
+    }
+
     public static function delete(): void
     {
         Auth::requireAdmin();

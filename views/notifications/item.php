@@ -1,7 +1,7 @@
 <?php
 /**
- * One notification: its kind's icon, title, body (line breaks kept, web
- * addresses made links) and when it was sent.
+ * One notification: its kind's icon, title, body (formatted, see
+ * NoteFormat; a plain line of it in the bell) and when it was sent.
  *
  * @var array $item @var bool $full whether to show the whole body (the page) or a line of it (the bell)
  */
@@ -14,15 +14,15 @@ $icons = [
 $level = isset($icons[$item['level']]) ? $item['level'] : 'info';
 $body  = (string) $item['body'];
 $text  = $full
-    ? preg_replace('~(https?://[^\s<]+[^\s<.,;:!?)\]])~u', '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>', nl2br(e($body)))
-    : e(mb_strimwidth((string) preg_replace('/\s+/u', ' ', $body), 0, 110, '…'));
+    ? NoteFormat::html($body)
+    : e(mb_strimwidth(NoteFormat::plain($body), 0, 110, '…'));
 ?>
 <span class="note-icon level-<?= e($level) ?>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<?= e($icons[$level]) ?>"/></svg>
 </span>
-<span class="note-text">
+<<?= $full ? 'div' : 'span' ?> class="note-text">
     <strong><?= e($item['title']) ?></strong>
-    <?php if ($body !== ''): ?><span class="note-body"><?= $text ?></span><?php endif; ?>
+    <?php if ($body !== ''): ?><<?= $full ? 'div' : 'span' ?> class="note-body<?= $full ? ' rich' : '' ?>"><?= $text ?></<?= $full ? 'div' : 'span' ?>><?php endif; ?>
     <time datetime="<?= e($item['created_at']) ?>"><?= e(fmt_datetime($item['created_at'])) ?></time>
-</span>
+</<?= $full ? 'div' : 'span' ?>>
 <?php if (!empty($item['unread'])): ?><span class="note-dot" aria-label="<?= e(__('ui.label.unread')) ?>"></span><?php endif; ?>
