@@ -2574,3 +2574,35 @@ a.note.unread:hover { background: var(--accent-soft); filter: brightness(.98); }
 .prefix-option.chosen { display: none; }
 .title-preview { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
 .title-preview.over { color: var(--danger); font-weight: 600; }
+
+.title-field { display: grid; gap: .4rem; }
+.title-field-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.title-compose {
+    display: flex; flex-wrap: wrap; align-items: flex-start; gap: .35rem; padding: .35rem;
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+}
+.title-compose:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.title-field.over .title-compose { border-color: var(--danger); }
+.title-compose .prefix-chosen { display: contents; }
+.title-compose .title-body {
+    flex: 1 1 14rem; min-width: 10rem; border: 0; padding: .3rem .35rem; background: none; box-shadow: none; resize: vertical;
+}
+.title-compose .title-body:focus { outline: none; box-shadow: none; }
+.title-compose .prefix-chip { margin-top: .15rem; }
+.prefix-options { display: flex; flex-wrap: wrap; gap: .35rem; }
+.title-preview {
+    padding: .5rem .65rem; border-radius: var(--radius); background: var(--surface-2);
+    font-size: .88rem; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.title-preview:empty { display: none; }
+.title-preview .seg-count { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+.title-preview .seg-count.over { color: var(--danger); font-weight: 600; }
+.seg-prefix { color: var(--accent); font-weight: 600; }
+.seg-number { color: var(--warn); background: var(--warn-bg); border-radius: 3px; padding: 0 .1rem; font-weight: 700; cursor: help; }
+.seg-number.undated { border: 1px dashed var(--warn-border); }
+.seg-text { color: var(--text); }
+.seg-tag { color: var(--ok); }
+.title-legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .72rem; }
+.title-legend span { display: inline-flex; align-items: center; gap: .3rem; padding: 0; background: none; border: 0; font-weight: 500; }
+.title-legend span::before { content: ""; width: .65rem; height: .65rem; border-radius: 3px; background: currentColor; }
+.title-legend .seg-number::before { background: var(--warn); }

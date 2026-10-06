@@ -110,12 +110,14 @@ final class ContentDefaults
      *
      * @param list<array{prefix:string, is_default:bool}> $prefixes
      * @param list<array{id:?int, name:string, value:int}> $counters
+     * @param array<string, string> $renames old counter name => new
+     * @throws UserError when a counter still used by content would be deleted
      */
-    public static function save(int $userId, int $minutes, array $prefixes, array $counters = []): void
+    public static function save(int $userId, int $minutes, array $prefixes, array $counters = [], array $renames = []): void
     {
-        Database::transaction(static function (PDO $pdo) use ($userId, $minutes, $prefixes, $counters): void {
+        Database::transaction(static function (PDO $pdo) use ($userId, $minutes, $prefixes, $counters, $renames): void {
             $pdo->prepare('UPDATE users SET content_minutes = ? WHERE id = ?')->execute([$minutes, $userId]);
-            TitleCounters::save($pdo, $userId, $counters);
+            TitleCounters::save($pdo, $userId, $counters, $renames);
             $pdo->prepare('DELETE FROM user_title_prefixes WHERE user_id = ?')->execute([$userId]);
 
             $insert = $pdo->prepare(

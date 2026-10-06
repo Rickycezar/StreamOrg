@@ -110,13 +110,10 @@ final class ProfileController
             }
 
             $counters = TitleCounters::fromInput((array) ($_POST['counter'] ?? []));
-            $prefixes = ContentDefaults::prefixesFromInput(
-                (array) ($_POST['prefix'] ?? []),
-                array_column($counters, 'name'),
-                TitleCounters::renames(TitleCounters::forUser($userId), $counters)
-            );
+            $renames  = TitleCounters::renames(TitleCounters::forUser($userId), $counters);
+            $prefixes = ContentDefaults::prefixesFromInput((array) ($_POST['prefix'] ?? []), array_column($counters, 'name'), $renames);
 
-            ContentDefaults::save($userId, $minutes, $prefixes, $counters);
+            ContentDefaults::save($userId, $minutes, $prefixes, $counters, $renames);
         } catch (UserError $e) {
             flash('error', $e->getMessage());
             redirect('/profile/defaults');

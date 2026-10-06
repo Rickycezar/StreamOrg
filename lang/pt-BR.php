@@ -595,12 +595,12 @@ return [
                 'prefixes_title' => 'Prefixos de título',
                 'prefixes_text' => "Etiquetas curtas que abrem os seus títulos, como [STEAM DECK] ou [PT-BR].\nAo planejar um conteúdo, adicione quantos quiser, na ordem que quiser: clique para adicionar, ‹ para mover para a esquerda, × para tirar.\nMarque \"Por padrão\" nos que você sempre usa: eles já vêm escolhidos, na ordem desta lista (↑ sobe um).",
                 'counters_title' => 'Contadores',
-                'counters_text' => "Um contador guarda um número que vai subindo, como a contagem de lives do canal ou o dia de uma jogatina longa.\nDê um nome e escreva entre chaves dentro de um prefixo: [LIVE #{live}] ou [CONTROL DIA {control}].\nO número mostrado é o último usado; mude à mão quando precisar.",
+                'counters_text' => "Um contador guarda um número que vai subindo, como a contagem de lives do canal ou o dia de uma jogatina longa.\nDê um nome e escreva entre chaves dentro de um prefixo: [LIVE #{live}] ou [CONTROL DIA {control}].\nDefina depois de qual número a contagem começa: com 152, o primeiro plano ganha 153.",
                 'numbers_title' => 'Como os números andam',
-                'numbers_text' => "Cada plano novo que usa um contador pega o próximo número ao ser salvo, então dois planos nunca dividem um.\nExclua o mais recente deles e o número dele volta.\nExclua um mais antigo e o número continua usado: o título dele pode já estar na Twitch.\nRenomear um contador renomeia também nos seus prefixos.",
+                'numbers_text' => "Os números seguem o calendário: o plano com data mais antiga que usa um contador ganha o primeiro número, o próximo ganha o seguinte, e assim por diante.\nUm plano sem data mostra \"?\" até ganhar um lugar no calendário.\nMova um plano para outro dia, cancele ou exclua, e todos os planos depois dele são renumerados sozinhos.\nNo campo de título, prefixos, números automáticos, o seu texto e as tags adicionadas têm cada um a sua cor.",
                 'limit_title' => 'Dentro dos 140 caracteres da Twitch',
                 'limit_text' => "Enquanto você escreve, o formulário mostra o título inteiro como vai ser salvo, com prefixos e próximos números, e o tamanho dele.\nA Twitch recusa títulos com mais de 140 caracteres, então o StreamOrg não salva um maior para a Twitch: encurte o título ou tire um prefixo.",
-                'tips' => "Prefixos e contadores são só seus: os títulos das outras pessoas não mudam.\nUm contador pode aparecer em vários prefixos; um título que o usa duas vezes pega um só número.\nPlanos criados a partir de uma collab usam o título da collab, sem prefixos.",
+                'tips' => "Prefixos e contadores são só seus: os títulos das outras pessoas não mudam.\nUm contador pode aparecer em vários prefixos; um título que o usa duas vezes mostra o mesmo número duas vezes.\nUm prefixo que você mudar ou excluir depois continua como era nos conteúdos que já o usam.",
             ],
             'giveaways' => [
                 'title' => 'Sorteios',
@@ -854,7 +854,7 @@ return [
         'field' => [
             'counters' => 'Contadores',
             'counter_name' => 'Nome do contador',
-            'counter_value' => 'Último número',
+            'counter_value' => 'Os números começam depois de',
             'notification_body' => 'Texto',
             'notification_level' => 'Tipo',
             'notification_link' => 'Link',
@@ -972,8 +972,14 @@ return [
         ],
 
         'label' => [
+            'title_body_hint' => 'Seu título…',
+            'number_when_dated' => 'Ganha o número quando tiver uma data no calendário',
+            'number_by_calendar' => 'Automático: a posição no calendário entre os planos que usam este contador',
+            'legend_prefix' => 'Prefixo',
+            'legend_number' => 'Número automático',
+            'legend_text' => 'Seu texto',
+            'legend_tags' => 'Tags adicionadas',
             'use_by_default' => 'Por padrão',
-            'twitch_title_preview' => 'Título:',
             'twitch_title_over' => 'longo demais para a Twitch',
             'unread' => 'Não lida',
             'notification_new' => 'Nova notificação',
@@ -1241,7 +1247,8 @@ return [
         ],
 
         'message' => [
-            'counters_hint' => 'Um contador numera os seus conteúdos: escreva {nome} num prefixo, como [LIVE #{live}]. Cada conteúdo novo que o usa pega o próximo número, e excluir o mais recente devolve o número dele. Ajuste o último número à mão quando quiser.',
+            'counter_in_use' => 'O contador {%s} é usado por conteúdos seus, então não pode ser removido. Renomeie em vez disso.',
+            'counters_hint' => 'Um contador numera os seus conteúdos na ordem do calendário: escreva {nome} num prefixo, como [LIVE #{live}]. O plano com data mais antiga que o usa pega o número seguinte ao de baixo, o próximo pega o seguinte, e assim por diante; planos sem data mostram "?". Mover, cancelar ou excluir um conteúdo renumera o resto sozinho.',
             'counter_name_invalid' => '"%s": o nome de um contador começa com uma letra e só tem letras minúsculas, números e _ (até 20).',
             'counter_value_invalid' => '{%s}: o último número vai de 0 a %d.',
             'counter_name_taken' => 'Há dois contadores chamados {%s}.',

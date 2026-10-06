@@ -4,7 +4,7 @@
  *  @var array $keys @var array $keySources @var array $gamePlatforms
  *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
  *  @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
- *  @var array<string, int> $counters counter name => last number given out
+ *  @var array<string, array{base:int, dates:list<array{0:int, 1:int}>}> $timeline counters and the content they number
  *  @var array{state:string, synced:int, last:?string} $twitchSchedule */
 ?>
 <div class="page-head">
@@ -179,24 +179,12 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
         <?= Csrf::field() ?>
         <div class="grid">
             <div class="grow title-block">
-                <?php if ($prefixes !== []): ?>
-                    <div class="prefix-picker" data-prefix-picker data-counters="<?= e((string) json_encode((object) $counters)) ?>">
-                        <span class="prefix-picker-label"><?= e(__('ui.field.title_prefixes')) ?></span>
-                        <span class="prefix-chosen" data-prefix-chosen></span>
-                        <span class="prefix-options">
-                            <?php foreach ($prefixes as $p): ?>
-                                <button type="button" class="prefix-option" data-prefix-id="<?= (int) $p['id'] ?>"
-                                        data-prefix-text="<?= e($p['prefix']) ?>" data-default="<?= $p['is_default'] ? '1' : '0' ?>">+ <?= e($p['prefix']) ?></button>
-                            <?php endforeach; ?>
-                        </span>
-                    </div>
-                <?php endif; ?>
-                <label>
-                    <span><?= e(__('ui.field.title')) ?></span>
-                    <textarea name="title" rows="2" required class="title-area"></textarea>
-                </label>
-                <small class="title-preview" data-title-preview data-max="<?= ContentController::TWITCH_TITLE_MAX ?>"
-                       data-label="<?= e(__('ui.label.twitch_title_preview')) ?>" data-over="<?= e(__('ui.label.twitch_title_over')) ?>"></small>
+                <?= View::partial('content/title_field', [
+                    'prefixes' => $prefixes,
+                    'chosen'   => array_column(array_filter($prefixes, static fn (array $p): bool => $p['is_default']), 'prefix'),
+                    'body'     => '',
+                    'streamId' => null,
+                ]) ?>
             </div>
             <label>
                 <span><?= e(__('ui.field.platform')) ?></span>
@@ -479,10 +467,14 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                     <td colspan="8">
                         <form class="inline-edit" data-endpoint="/content/update" data-id="<?= (int) $row['id'] ?>">
                             <div class="grid">
-                                <label class="grow">
-                                    <span><?= e(__('ui.field.title')) ?></span>
-                                    <textarea name="title" rows="2" required class="title-area"><?= e($row['title']) ?></textarea>
-                                </label>
+                                <div class="grow title-block">
+                                    <?= View::partial('content/title_field', [
+                                        'prefixes' => $prefixes,
+                                        'chosen'   => json_decode((string) $row['title_prefixes'], true) ?: [],
+                                        'body'     => (string) ($row['title_prefixes'] !== null ? $row['title_body'] : $row['title']),
+                                        'streamId' => (int) $row['id'],
+                                    ]) ?>
+                                </div>
                                 <label>
                                     <span><?= e(__('ui.field.platform')) ?></span>
                                     <select name="platform">
@@ -560,6 +552,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
 
 <?php
 $pageGlobals = [
+    'STREAMORG_TITLE_TIMELINE' => (object) $timeline,
     'STREAMORG_KEYS' => array_map(static fn (array $k): array => [
         'id'      => (int) $k['id'],
         'game_id' => (int) $k['game_id'],

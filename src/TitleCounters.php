@@ -2,21 +2,25 @@
 declare(strict_types=1);
 
 /**
- * Counters for title prefixes (see 036_title_counters.sql): a prefix such
- * as "[STREAM #{stream}]" names a counter in braces, and each content
- * created with it takes that counter's next number.
+ * Counters for title prefixes (see 036_title_counters.sql and
+ * 037_timeline_title_numbers.sql): a prefix such as "[STREAM #{stream}]"
+ * names a counter in braces.
  *
- * A counter's value is the last number given out, and can be set by hand.
- * The number is taken when the content is saved, under a row lock, so two
- * plans never get the same one; deleting a content gives its number back
- * while it is still the counter's latest (an older one stays used: its
- * title may already be on Twitch).
+ * Content keeps its prefixes as templates, and its number is its place in
+ * time: a counter's value is where numbering starts after, and each dated,
+ * not cancelled content using it counts up from there, earliest first.
+ * Undated content shows "?". The database works the titles out again
+ * whenever content or counters change (streamorg_renumber_titles), so the
+ * order stays chronological however a date moved.
  */
 final class TitleCounters
 {
     public const MAX = 20;
     public const VALUE_MAX = 999999;
     public const NAME = '[a-z][a-z0-9_]{0,19}';
+
+    /** SQL turning a JSON list parameter into the text[] stored on content. */
+    public const FROM_JSON = 'ARRAY(SELECT jsonb_array_elements_text(CAST(? AS jsonb)))';
 
     /** @return list<array{id:int, name:string, value:int}> */
     public static function forUser(int $userId): array
@@ -133,16 +137,47 @@ final class TitleCounters
     /**
      * Writes the user's counters as posted: updates kept ones (by id),
      * adds new ones and deletes the rest. Kept ones pass through a
-     * temporary name first, so two counters can swap names.
+     * temporary name first, so two counters can swap names. Renamed
+     * counters are renamed in the content that uses them too.
      *
      * @param list<array{id:?int, name:string, value:int}> $counters
+     * @param array<string, string> $renames old name => new
+     * @throws UserError when a counter to delete is still used by content
      */
-    public static function save(PDO $pdo, int $userId, array $counters): void
+    public static function save(PDO $pdo, int $userId, array $counters, array $renames = []): void
     {
-        $keep = array_values(array_filter(array_column($counters, 'id')));
+        $existing = array_column(self::forUser($userId), 'name', 'id');
+        $kept     = array_values(array_filter(array_column($counters, 'id')));
+        $removed  = array_diff_key($existing, array_flip($kept));
+
+        foreach ($removed as $name) {
+            $stmt = $pdo->prepare(
+                "SELECT 1 FROM streams WHERE user_id = ? AND position(? IN array_to_string(title_prefixes, ' ')) > 0 LIMIT 1"
+            );
+            $stmt->execute([$userId, '{' . $name . '}']);
+
+            if ($stmt->fetchColumn() !== false) {
+                throw new UserError(sprintf(__('ui.message.counter_in_use'), $name));
+            }
+        }
 
         $pdo->prepare('DELETE FROM user_counters WHERE user_id = ? AND NOT (id = ANY(CAST(? AS bigint[])))')
-            ->execute([$userId, '{' . implode(',', $keep) . '}']);
+            ->execute([$userId, '{' . implode(',', $kept) . '}']);
+
+        if ($renames !== []) {
+            $rows = $pdo->prepare('SELECT id, array_to_json(title_prefixes) AS prefixes FROM streams WHERE user_id = ? AND title_prefixes IS NOT NULL');
+            $rows->execute([$userId]);
+            $set = $pdo->prepare('UPDATE streams SET title_prefixes = ' . self::FROM_JSON . ' WHERE id = ?');
+
+            foreach ($rows->fetchAll() as $row) {
+                $list    = json_decode((string) $row['prefixes'], true) ?: [];
+                $renamed = array_map(static fn (string $p): string => self::rename($p, $renames), $list);
+
+                if ($renamed !== $list) {
+                    $set->execute([json_encode($renamed), $row['id']]);
+                }
+            }
+        }
 
         $update = $pdo->prepare('UPDATE user_counters SET name = ?, value = ?, updated_at = now() WHERE id = ? AND user_id = ?');
         $insert = $pdo->prepare('INSERT INTO user_counters (user_id, name, value) VALUES (?, ?, ?)');
@@ -163,69 +198,63 @@ final class TitleCounters
     }
 
     /**
-     * The chosen prefixes, in the chosen order, with their counters' next
-     * numbers taken: the counters move on (within the caller's transaction)
-     * and the numbers are returned to be recorded on the content.
+     * The prefixes chosen for a content, as templates in the chosen order:
+     * each must be one of the user's prefixes, or one the content already
+     * had (a prefix deleted since stays on the content that used it).
      *
-     * @param list<int> $prefixIds
-     * @return array{text:string, uses: array<int, int>} uses: counter id => number taken
+     * @param list<string> $chosen
+     * @param list<string> $alreadyOn
+     * @return list<string>
      */
-    public static function take(PDO $pdo, int $userId, array $prefixIds): array
+    public static function templates(int $userId, array $chosen, array $alreadyOn = []): array
     {
-        $prefixIds = array_values(array_unique(array_filter(array_map('intval', $prefixIds))));
+        $allowed = array_merge(array_column(ContentDefaults::prefixes($userId), 'prefix'), $alreadyOn);
+        $picked  = [];
 
-        if ($prefixIds === []) {
-            return ['text' => '', 'uses' => []];
-        }
+        foreach ($chosen as $text) {
+            $text = trim((string) $text);
 
-        $stmt = $pdo->prepare('SELECT id, prefix FROM user_title_prefixes WHERE user_id = ? AND id = ANY(CAST(? AS bigint[]))');
-        $stmt->execute([$userId, '{' . implode(',', $prefixIds) . '}']);
-        $byId = array_column($stmt->fetchAll(), 'prefix', 'id');
-
-        $chosen = array_values(array_filter(array_map(static fn (int $id): ?string => $byId[$id] ?? null, $prefixIds)));
-        $names  = array_values(array_unique(array_merge(...array_map([self::class, 'variables'], $chosen ?: ['']))));
-
-        $values = [];
-        $uses   = [];
-
-        if ($names !== []) {
-            $stmt = $pdo->prepare(
-                'UPDATE user_counters SET value = value + 1, updated_at = now()
-                  WHERE user_id = ? AND name = ANY(CAST(? AS text[]))
-              RETURNING id, name, value'
-            );
-            $stmt->execute([$userId, '{' . implode(',', $names) . '}']);
-
-            foreach ($stmt->fetchAll() as $row) {
-                $values[(string) $row['name']] = (int) $row['value'];
-                $uses[(int) $row['id']]        = (int) $row['value'];
+            if ($text !== '' && in_array($text, $allowed, true) && !in_array($text, $picked, true)) {
+                $picked[] = $text;
             }
         }
 
-        return [
-            'text' => implode(' ', array_map(static fn (string $p): string => self::render($p, $values), $chosen)),
-            'uses' => $uses,
-        ];
+        return $picked;
     }
 
-    /** Records the numbers a new content took. */
-    public static function record(PDO $pdo, int $streamId, array $uses): void
+    /**
+     * What the content form needs to preview numbers: per counter, where
+     * numbering starts and when each dated content using it happens.
+     *
+     * @return array<string, array{base:int, dates: list<array{0:int, 1:int}>}> name => base and [epoch ms, content id]
+     */
+    public static function timeline(int $userId): array
     {
-        $insert = $pdo->prepare('INSERT INTO stream_counter_uses (stream_id, counter_id, value) VALUES (?, ?, ?)');
+        $timeline = [];
 
-        foreach ($uses as $counterId => $value) {
-            $insert->execute([$streamId, $counterId, $value]);
+        foreach (self::forUser($userId) as $counter) {
+            $timeline[$counter['name']] = ['base' => $counter['value'], 'dates' => []];
         }
-    }
 
-    /** Before a content is deleted: gives back each number it took that is still its counter's latest. */
-    public static function release(PDO $pdo, int $streamId): void
-    {
-        $pdo->prepare(
-            'UPDATE user_counters c
-                SET value = c.value - 1, updated_at = now()
-               FROM stream_counter_uses u
-              WHERE u.stream_id = ? AND u.counter_id = c.id AND c.value = u.value AND c.value > 0'
-        )->execute([$streamId]);
+        if ($timeline === []) {
+            return $timeline;
+        }
+
+        $stmt = Database::connection()->prepare(
+            "SELECT id, array_to_string(title_prefixes, ' ') AS prefixes, (extract(epoch FROM scheduled_start) * 1000)::bigint AS at
+               FROM streams
+              WHERE user_id = ? AND title_prefixes IS NOT NULL AND scheduled_start IS NOT NULL AND status <> 'cancelled'"
+        );
+        $stmt->execute([$userId]);
+
+        foreach ($stmt->fetchAll() as $row) {
+            foreach (self::variables((string) $row['prefixes']) as $name) {
+                if (isset($timeline[$name])) {
+                    $timeline[$name]['dates'][] = [(int) $row['at'], (int) $row['id']];
+                }
+            }
+        }
+
+        return $timeline;
     }
 }

@@ -1,94 +1,104 @@
 <?php
 declare(strict_types=1);
 
-/** Title prefixes with counters: numbers taken on save, given back on delete, renames followed. */
+/** Title counters number content in calendar order, and keep up with every change. */
 final class TitleCountersTest extends DatabaseTestCase
 {
-    private function setUpUser(array $prefixes, array $counters): int
-    {
-        $user = $this->createUser('phpunit_counters_' . bin2hex(random_bytes(3)));
-        $rows = TitleCounters::fromInput($counters);
-        ContentDefaults::save($user, 120, ContentDefaults::prefixesFromInput($prefixes, array_column($rows, 'name')), $rows);
+    private int $user;
 
-        return $user;
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = $this->createUser('phpunit_counters_' . bin2hex(random_bytes(3)));
+        $counters   = TitleCounters::fromInput([['name' => 'stream', 'value' => '152'], ['name' => 'day', 'value' => '0']]);
+        ContentDefaults::save($this->user, 120, ContentDefaults::prefixesFromInput(
+            [['text' => '[STREAM #{stream}]'], ['text' => '[PT-BR]'], ['text' => '[DAY {day} · #{stream}]']],
+            ['stream', 'day']
+        ), $counters);
     }
 
-    private function stream(int $user, string $title): int
+    private function stream(?string $at, array $prefixes, string $body = 'Playing'): int
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO streams (user_id, streaming_platform_id, title, status)
-             VALUES (?, (SELECT id FROM streaming_platforms WHERE code = 'twitch'), ?, 'planned') RETURNING id"
+            "INSERT INTO streams (user_id, streaming_platform_id, title, title_prefixes, title_body, status, scheduled_start)
+             VALUES (?, (SELECT id FROM streaming_platforms WHERE code = 'twitch'), ?, " . TitleCounters::FROM_JSON . ", ?, 'planned', ?) RETURNING id"
         );
-        $stmt->execute([$user, $title]);
+        $stmt->execute([$this->user, $body, json_encode($prefixes), $body, $at]);
 
         return (int) $stmt->fetchColumn();
     }
 
-    private function value(int $user, string $name): int
+    private function title(int $id): string
     {
-        return (int) array_column(TitleCounters::forUser($user), 'value', 'name')[$name];
+        $stmt = $this->pdo->prepare('SELECT title FROM streams WHERE id = ?');
+        $stmt->execute([$id]);
+
+        return (string) $stmt->fetchColumn();
     }
 
-    public function testPrefixesTakeTheNextNumberInTheChosenOrder(): void
+    public function testNumbersFollowTheCalendarAndUndatedShowsAQuestionMark(): void
     {
-        $user = $this->setUpUser(
-            [['text' => '[STREAM #{stream}]', 'default' => '1'], ['text' => '[PT-BR]'], ['text' => '[DAY {day} · #{stream}]']],
-            [['name' => 'stream', 'value' => '152'], ['name' => 'day', 'value' => '2']]
-        );
-        $ids = array_column(ContentDefaults::prefixes($user), 'id');
+        $later   = $this->stream('2030-01-10 20:00+00', ['[STREAM #{stream}]', '[PT-BR]']);
+        $earlier = $this->stream('2030-01-05 20:00+00', ['[STREAM #{stream}]']);
+        $undated = $this->stream(null, ['[STREAM #{stream}]']);
+        $both    = $this->stream('2030-01-20 20:00+00', ['[DAY {day} · #{stream}]'], 'Control');
 
-        $taken = TitleCounters::take($this->pdo, $user, [$ids[1], $ids[0], $ids[2]]);
-
-        self::assertSame('[PT-BR] [STREAM #153] [DAY 3 · #153]', $taken['text']);
-        self::assertSame(153, $this->value($user, 'stream'));
-        self::assertSame(3, $this->value($user, 'day'));
-        self::assertTrue(ContentDefaults::prefixes($user)[0]['is_default']);
+        self::assertSame('[STREAM #153] Playing', $this->title($earlier));
+        self::assertSame('[STREAM #154] [PT-BR] Playing', $this->title($later));
+        self::assertSame('[STREAM #?] Playing', $this->title($undated));
+        self::assertSame('[DAY 1 · #155] Control', $this->title($both));
     }
 
-    public function testDeletingTheLatestGivesTheNumberBackButNotAnOlderOne(): void
+    public function testMovingCancellingAndDeletingRenumber(): void
     {
-        $user = $this->setUpUser([['text' => '#{stream}']], [['name' => 'stream', 'value' => '9']]);
-        $id   = ContentDefaults::prefixes($user)[0]['id'];
+        $a = $this->stream('2030-01-05 20:00+00', ['[STREAM #{stream}]']);
+        $b = $this->stream('2030-01-10 20:00+00', ['[STREAM #{stream}]']);
+        $c = $this->stream('2030-01-15 20:00+00', ['[STREAM #{stream}]']);
 
-        $first = TitleCounters::take($this->pdo, $user, [$id]);
-        $a     = $this->stream($user, $first['text']);
-        TitleCounters::record($this->pdo, $a, $first['uses']);
+        $this->pdo->prepare("UPDATE streams SET scheduled_start = '2030-01-12 20:00+00' WHERE id = ?")->execute([$a]);
+        self::assertSame(['[STREAM #154] Playing', '[STREAM #153] Playing'], [$this->title($a), $this->title($b)]);
 
-        $second = TitleCounters::take($this->pdo, $user, [$id]);
-        $b      = $this->stream($user, $second['text']);
-        TitleCounters::record($this->pdo, $b, $second['uses']);
+        $this->pdo->prepare("UPDATE streams SET status = 'cancelled' WHERE id = ?")->execute([$b]);
+        self::assertSame('[STREAM #?] Playing', $this->title($b));
+        self::assertSame('[STREAM #153] Playing', $this->title($a));
 
-        self::assertSame(['#10', '#11'], [$first['text'], $second['text']]);
-
-        TitleCounters::release($this->pdo, $a);
-        self::assertSame(11, $this->value($user, 'stream'), 'an older number stays used');
-
-        TitleCounters::release($this->pdo, $b);
-        self::assertSame(10, $this->value($user, 'stream'), 'the latest number comes back');
+        $this->pdo->prepare('DELETE FROM streams WHERE id = ?')->execute([$a]);
+        self::assertSame('[STREAM #153] Playing', $this->title($c));
     }
 
-    public function testRenamingACounterRenamesItInThePrefixes(): void
+    public function testChangingWhereACounterStartsRenumbers(): void
     {
-        $user     = $this->setUpUser([['text' => '[#{stream}]'], ['text' => '[{day}]']], [['name' => 'stream', 'value' => '1'], ['name' => 'day', 'value' => '5']]);
-        $existing = TitleCounters::forUser($user);
+        $a = $this->stream('2030-01-05 20:00+00', ['[STREAM #{stream}]']);
+
+        $this->pdo->prepare("UPDATE user_counters SET value = 199 WHERE user_id = ? AND name = 'stream'")->execute([$this->user]);
+
+        self::assertSame('[STREAM #200] Playing', $this->title($a));
+    }
+
+    public function testRenamingFollowsIntoContentAndUsedCountersStay(): void
+    {
+        $a        = $this->stream('2030-01-05 20:00+00', ['[STREAM #{stream}]']);
+        $existing = TitleCounters::forUser($this->user);
         $byName   = array_column($existing, 'id', 'name');
+        $posted   = TitleCounters::fromInput([['id' => $byName['stream'], 'name' => 'live', 'value' => '152'], ['id' => $byName['day'], 'name' => 'day', 'value' => '0']]);
+        $renames  = TitleCounters::renames($existing, $posted);
 
-        $posted  = TitleCounters::fromInput([
-            ['id' => $byName['stream'], 'name' => 'day', 'value' => '1'],
-            ['id' => $byName['day'], 'name' => 'stream', 'value' => '5'],
-        ]);
-        $renames = TitleCounters::renames($existing, $posted);
-        $rows    = ContentDefaults::prefixesFromInput([['text' => '[#{stream}]'], ['text' => '[{day}]']], array_column($posted, 'name'), $renames);
-        ContentDefaults::save($user, 120, $rows, $posted);
+        ContentDefaults::save($this->user, 120, ContentDefaults::prefixesFromInput([['text' => '[STREAM #{stream}]']], ['live', 'day'], $renames), $posted, $renames);
 
-        self::assertSame(['[#{day}]', '[{stream}]'], array_column(ContentDefaults::prefixes($user), 'prefix'));
-        self::assertSame(1, $this->value($user, 'day'));
+        $stmt = $this->pdo->prepare('SELECT array_to_json(title_prefixes) FROM streams WHERE id = ?');
+        $stmt->execute([$a]);
+        self::assertSame(['[STREAM #{live}]'], json_decode((string) $stmt->fetchColumn(), true));
+        self::assertSame('[STREAM #153] Playing', $this->title($a));
+
+        $this->expectException(UserError::class);
+        ContentDefaults::save($this->user, 120, [], TitleCounters::fromInput([['id' => $byName['day'], 'name' => 'day', 'value' => '0']]));
     }
 
-    public function testPrefixesMayOnlyUseExistingCounters(): void
+    public function testOnlyTheUsersPrefixesOrOnesAlreadyOnTheContentAreAccepted(): void
     {
-        $this->expectException(UserError::class);
-        ContentDefaults::prefixesFromInput([['text' => '[#{nope}]']], ['stream']);
+        self::assertSame(['[PT-BR]', '[STREAM #{stream}]'], TitleCounters::templates($this->user, ['[PT-BR]', '[nope]', '[STREAM #{stream}]', '[PT-BR]']));
+        self::assertSame(['[OLD]'], TitleCounters::templates($this->user, ['[OLD]'], ['[OLD]']));
     }
 
     public function testCounterInputIsChecked(): void

@@ -60,9 +60,11 @@ private preview. Preview access: streamorg@outlook.com.
   that one.
 - **Title prefixes and counters**: prefixes such as "[STEAM DECK]" or
   "[STREAM #{stream}]" are picked as chips (several, in any order, the usual
-  ones preselected); a counter in braces takes its next number when the
-  content is saved and gives it back when the latest one is deleted. The form
-  previews the whole title and keeps it within Twitch's 140 characters.
+  ones preselected); a counter in braces numbers content in calendar order
+  (undated content shows "?"), and the database renumbers whenever a plan is
+  moved, cancelled or deleted. The title field shows prefixes, automatic
+  numbers, your own text and added tags in different colours, and keeps the
+  whole title within Twitch's 140 characters.
 
 ### Catalogue
 - **Twitch first**: with Twitch connected, a game is added by picking its

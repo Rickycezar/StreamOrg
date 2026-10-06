@@ -1417,6 +1417,160 @@
         if (status) status.textContent = result.message + ' ' + result.status;
     });
 
+    /**
+     * The content title field: prefix chips (in the order chosen) before
+     * the creator's own text, and a coloured preview of the finished
+     * title. A counter's number is the content's place on the calendar:
+     * how many dated, not cancelled plans using it come first, plus where
+     * the counter starts; undated content shows "?".
+     */
+    const COUNTER = /\{([a-z][a-z0-9_]{0,19})\}/g;
+
+    function counterNumber(name, field) {
+        const timeline = (window.STREAMORG_TITLE_TIMELINE || {})[name];
+        if (!timeline) return null;
+
+        const form = field.closest('form');
+        const when = form && form.querySelector('[name="scheduled_start"]');
+        const status = form && form.querySelector('[name="status"]');
+        if (!when || !when.value || (status && status.value === 'cancelled')) return '?';
+
+        const at = new Date(when.value).getTime();
+        const self = parseInt(field.dataset.streamId || '0', 10);
+        const before = timeline.dates.filter(function (d) {
+            return d[1] !== self && (d[0] < at || (d[0] === at && self && d[1] < self));
+        }).length;
+
+        return String(timeline.base + before + 1);
+    }
+
+    function renderTemplate(text, field) {
+        return text.replace(COUNTER, function (whole, name) {
+            const n = counterNumber(name, field);
+            return n === null ? whole : n;
+        });
+    }
+
+    function segment(cls, text, hint) {
+        const span = document.createElement('span');
+        span.className = cls;
+        span.textContent = text;
+        if (hint) span.title = hint;
+        return span;
+    }
+
+    function titleField(field) {
+        const input = field.querySelector('[data-prefix-input]');
+        const chosenBox = field.querySelector('[data-prefix-chosen]');
+        const body = field.querySelector('textarea[name="title"]');
+        const preview = field.querySelector('[data-title-preview]');
+        const options = field.querySelectorAll('.prefix-option');
+        const form = field.closest('form');
+        let chosen = [];
+
+        try { chosen = JSON.parse(input.value) || []; } catch (e) { chosen = []; }
+
+        function update() {
+            input.value = JSON.stringify(chosen);
+            chosenBox.innerHTML = '';
+
+            chosen.forEach(function (text, i) {
+                const chip = document.createElement('span');
+                chip.className = 'prefix-chip';
+                chip.dataset.index = String(i);
+
+                if (i > 0) {
+                    const left = document.createElement('button');
+                    left.type = 'button';
+                    left.className = 'chip-move';
+                    left.textContent = '‹';
+                    chip.append(left);
+                }
+
+                chip.append(segment('', renderTemplate(text, field)));
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'chip-remove';
+                remove.textContent = '×';
+                chip.append(remove);
+                chosenBox.append(chip);
+            });
+
+            options.forEach(function (option) {
+                option.classList.toggle('chosen', chosen.indexOf(option.dataset.prefixText) !== -1);
+            });
+
+            preview.innerHTML = '';
+            let length = 0;
+
+            chosen.forEach(function (text) {
+                text.split(/(\{[a-z][a-z0-9_]{0,19}\})/).forEach(function (part) {
+                    if (!part) return;
+
+                    const match = /^\{([a-z][a-z0-9_]{0,19})\}$/.exec(part);
+                    const n = match ? counterNumber(match[1], field) : null;
+
+                    if (match && n !== null) {
+                        preview.append(segment('seg-number' + (n === '?' ? ' undated' : ''), n, n === '?' ? preview.dataset.undated : preview.dataset.numbered));
+                        length += n.length;
+                    } else {
+                        preview.append(segment('seg-prefix', part));
+                        length += part.length;
+                    }
+                });
+                preview.append(' ');
+                length += 1;
+            });
+
+            const own = body.value.replace(/\s+/g, ' ').trim();
+
+            own.split(/((?:^|\s)(?:#\S+|ft\. @[^#]+?)(?=\s#|\s*$))/).forEach(function (part) {
+                if (!part) return;
+                preview.append(segment(/^\s?(#|ft\. @)/.test(part) ? 'seg-tag' : 'seg-text', part));
+            });
+            length += own.length;
+            if (!own) length = Math.max(0, length - 1);
+
+            const max = parseInt(preview.dataset.max, 10);
+            const platform = form && form.querySelector('[name="platform"]');
+            const over = (!platform || platform.value === 'twitch') && length > max;
+            preview.append(segment('seg-count' + (over ? ' over' : ''), ' ' + length + '/' + max + (over ? ' · ' + preview.dataset.over : '')));
+            field.classList.toggle('over', over);
+        }
+
+        field.addEventListener('click', function (event) {
+            const option = event.target.closest('.prefix-option');
+            const chip = event.target.closest('.prefix-chip');
+
+            if (option && chosen.indexOf(option.dataset.prefixText) === -1) {
+                chosen.push(option.dataset.prefixText);
+                update();
+            } else if (chip && event.target.closest('.chip-remove')) {
+                chosen.splice(parseInt(chip.dataset.index, 10), 1);
+                update();
+            } else if (chip && event.target.closest('.chip-move')) {
+                const i = parseInt(chip.dataset.index, 10);
+                chosen.splice(i - 1, 0, chosen.splice(i, 1)[0]);
+                update();
+            }
+        });
+
+        body.addEventListener('input', update);
+
+        if (form) {
+            form.addEventListener('change', function (event) {
+                if (event.target.matches('[name="scheduled_start"], [name="status"], [name="platform"]')) update();
+            });
+        }
+
+        update();
+    }
+
+    onPage(function () {
+        document.querySelectorAll('[data-title-field]').forEach(titleField);
+    });
+
     /** Editable lists (title prefixes, counters): add a row from its template, remove one, move one up. */
     document.addEventListener('click', function (event) {
         const add = event.target.closest('[data-row-add]');
@@ -2506,90 +2660,6 @@
             const gameSelect    = document.getElementById('content-game');
             const sponsorSelect = document.getElementById('content-sponsor');
             const collabSelect  = document.getElementById('content-collab');
-            const picker = document.querySelector('#add-content [data-prefix-picker]');
-            const preview = document.querySelector('#add-content [data-title-preview]');
-            const platformSelect = document.querySelector('#add-content select[name="platform"]');
-            const counters = picker ? JSON.parse(picker.dataset.counters || '{}') : {};
-
-            /** A prefix as it will read: each {counter} shows its next number. */
-            function renderPrefix(text) {
-                return text.replace(/\{([a-z][a-z0-9_]{0,19})\}/g, function (whole, name) {
-                    return Object.prototype.hasOwnProperty.call(counters, name) ? String(counters[name] + 1) : whole;
-                });
-            }
-
-            /** The title as it will be saved and sent to Twitch, with its length against Twitch's limit. */
-            function updatePreview() {
-                if (!preview) return;
-
-                const chosen = picker ? Array.from(picker.querySelectorAll('[data-prefix-chosen] .prefix-chip')) : [];
-                const prefix = chosen.map(function (chip) { return renderPrefix(chip.dataset.prefixText); }).join(' ');
-                const full = (prefix + ' ' + titleField.value.replace(/\s+/g, ' ').trim()).trim();
-                const max = parseInt(preview.dataset.max, 10);
-                const twitch = !platformSelect || platformSelect.value === 'twitch';
-                const over = twitch && full.length > max;
-
-                preview.textContent = full ? preview.dataset.label + ' ' + full + ' · ' + full.length + '/' + max + (over ? ' · ' + preview.dataset.over : '') : '';
-                preview.classList.toggle('over', over);
-            }
-
-            function addPrefix(option) {
-                if (option.classList.contains('chosen')) return;
-
-                const chip = document.createElement('span');
-                chip.className = 'prefix-chip';
-                chip.dataset.prefixText = option.dataset.prefixText;
-                chip.dataset.prefixId = option.dataset.prefixId;
-
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'prefix_ids[]';
-                input.value = option.dataset.prefixId;
-
-                const left = document.createElement('button');
-                left.type = 'button';
-                left.className = 'chip-move';
-                left.textContent = '‹';
-                left.setAttribute('aria-label', '←');
-
-                const label = document.createElement('span');
-                label.textContent = renderPrefix(option.dataset.prefixText);
-
-                const remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'chip-remove';
-                remove.textContent = '×';
-                remove.setAttribute('aria-label', '×');
-
-                chip.append(input, left, label, remove);
-                picker.querySelector('[data-prefix-chosen]').append(chip);
-                option.classList.add('chosen');
-                updatePreview();
-            }
-
-            if (picker) {
-                picker.addEventListener('click', function (event) {
-                    const option = event.target.closest('.prefix-option');
-                    const chip = event.target.closest('.prefix-chip');
-
-                    if (option) {
-                        addPrefix(option);
-                    } else if (chip && event.target.closest('.chip-remove')) {
-                        picker.querySelector('.prefix-option[data-prefix-id="' + chip.dataset.prefixId + '"]').classList.remove('chosen');
-                        chip.remove();
-                        updatePreview();
-                    } else if (chip && event.target.closest('.chip-move') && chip.previousElementSibling) {
-                        chip.parentElement.insertBefore(chip, chip.previousElementSibling);
-                        updatePreview();
-                    }
-                });
-
-                picker.querySelectorAll('.prefix-option[data-default="1"]').forEach(addPrefix);
-            }
-
-            titleField.addEventListener('input', updatePreview);
-            if (platformSelect) platformSelect.addEventListener('change', updatePreview);
-            updatePreview();
 
             if (gameSelect) {
                 gameSelect.addEventListener('change', function () {

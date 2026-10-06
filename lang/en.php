@@ -596,12 +596,12 @@ return [
                 'prefixes_title' => 'Title prefixes',
                 'prefixes_text' => "Short tags that open your titles, such as [STEAM DECK] or [PT-BR].\nWhen you plan content, add as many as you like, in any order: click one to add it, ‹ to move it left, × to take it out.\nTick \"By default\" on the ones you always use: they come already chosen, in the order of this list (↑ moves one up).",
                 'counters_title' => 'Counters',
-                'counters_text' => "A counter keeps a running number, like the stream count of your channel or the day of a long playthrough.\nGive it a name and write it in braces inside a prefix: [STREAM #{stream}] or [CONTROL DAY {control}].\nThe number shown is the last one used; change it by hand whenever you need to.",
+                'counters_text' => "A counter keeps a running number, like the stream count of your channel or the day of a long playthrough.\nGive it a name and write it in braces inside a prefix: [STREAM #{stream}] or [CONTROL DAY {control}].\nSet where its numbers start after: with 152, the first plan gets 153.",
                 'numbers_title' => 'How the numbers move',
-                'numbers_text' => "Each new plan that uses a counter takes the next number when you save it, so two plans never share one.\nDelete the latest of them and its number is given back.\nDelete an older one and the number stays used: its title may already be on Twitch.\nRenaming a counter renames it in your prefixes too.",
+                'numbers_text' => "Numbers follow the calendar: the earliest dated plan using a counter gets the first number, the next one the following, and so on.\nA plan without a date shows \"?\" until it has a place on the calendar.\nMove a plan to another day, cancel it or delete it, and every plan after it is renumbered by itself.\nIn the title field, prefixes, automatic numbers, your text and added tags each have their own colour.",
                 'limit_title' => 'Within Twitch\'s 140 characters',
                 'limit_text' => "While you write, the form shows the whole title as it will be saved, prefixes and next numbers included, with its length.\nTwitch refuses titles over 140 characters, so StreamOrg does not save a longer one for Twitch: shorten the title or drop a prefix.",
-                'tips' => "Prefixes and counters are yours alone: other people's titles are not affected.\nA counter can appear in several prefixes; a title that uses it twice still takes a single number.\nPlans created from a collab keep the collab's own title, without prefixes.",
+                'tips' => "Prefixes and counters are yours alone: other people's titles are not affected.\nA counter can appear in several prefixes; a title that uses it twice shows the same number twice.\nA prefix you change or delete later stays as it was on the content that already uses it.",
             ],
             'giveaways' => [
                 'title' => 'Giveaways',
@@ -855,7 +855,7 @@ return [
         'field' => [
             'counters' => 'Counters',
             'counter_name' => 'Counter name',
-            'counter_value' => 'Last number',
+            'counter_value' => 'Numbers start after',
             'notification_body' => 'Text',
             'notification_level' => 'Kind',
             'notification_link' => 'Link',
@@ -973,8 +973,14 @@ return [
         ],
 
         'label' => [
+            'title_body_hint' => 'Your title…',
+            'number_when_dated' => 'Gets its number once it has a date on the calendar',
+            'number_by_calendar' => 'Automatic: its place on the calendar among plans using this counter',
+            'legend_prefix' => 'Prefix',
+            'legend_number' => 'Automatic number',
+            'legend_text' => 'Your text',
+            'legend_tags' => 'Added tags',
             'use_by_default' => 'By default',
-            'twitch_title_preview' => 'Title:',
             'twitch_title_over' => 'too long for Twitch',
             'unread' => 'Unread',
             'notification_new' => 'New notification',
@@ -1242,7 +1248,8 @@ return [
         ],
 
         'message' => [
-            'counters_hint' => 'A counter numbers your content: write {name} in a prefix, like [STREAM #{stream}]. Each new content that uses it takes the next number, and deleting the latest one gives its number back. Set the last number by hand at any time.',
+            'counter_in_use' => 'The counter {%s} is used by some of your content, so it cannot be removed. Rename it instead.',
+            'counters_hint' => 'A counter numbers your content in calendar order: write {name} in a prefix, like [STREAM #{stream}]. The earliest dated plan using it gets the number after the one below, the next one the following number, and so on; plans without a date show "?". Moving, cancelling or deleting content renumbers the rest by itself.',
             'counter_name_invalid' => '"%s": a counter name starts with a letter and has only lowercase letters, numbers and _ (up to 20).',
             'counter_value_invalid' => '{%s}: the last number goes from 0 to %d.',
             'counter_name_taken' => 'There are two counters named {%s}.',

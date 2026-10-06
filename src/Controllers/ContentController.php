@@ -118,7 +118,7 @@ final class ContentController
         $stmt->execute(['user' => $userId]);
         $backlog = $stmt->fetchAll();
 
-        $sql = "SELECT s.id, s.title, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
+        $sql = "SELECT s.id, s.title, array_to_json(s.title_prefixes) AS title_prefixes, s.title_body, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
                        s.category_id, s.category_name,
                        sp.code AS platform_code,
                        count(sg.game_id)                                     AS game_count,
@@ -238,7 +238,7 @@ final class ContentController
             'schedule'    => StreamSchedule::forUser((int) $userId),
             'contentMinutes' => ContentDefaults::minutes((int) $userId),
             'prefixes'    => ContentDefaults::prefixes((int) $userId),
-            'counters'    => array_column(TitleCounters::forUser((int) $userId), 'value', 'name'),
+            'timeline'    => TitleCounters::timeline((int) $userId),
             'twitchSchedule' => TwitchSchedule::status((int) $userId),
             'twitchCategories' => Twitch::isConfigured(),
             'content'     => $content,
@@ -264,11 +264,11 @@ final class ContentController
         Auth::requireLogin();
         Csrf::verify();
 
-        $title     = self::oneLine((string) ($_POST['title'] ?? ''));
-        $platform  = trim((string) ($_POST['platform'] ?? ''));
-        $prefixIds = array_map('intval', (array) ($_POST['prefix_ids'] ?? []));
+        $title    = self::oneLine((string) ($_POST['title'] ?? ''));
+        $platform = trim((string) ($_POST['platform'] ?? ''));
+        $prefixes = TitleCounters::templates((int) Auth::id(), self::postedPrefixes());
 
-        if (($title === '' && $prefixIds === []) || $platform === '') {
+        if (($title === '' && $prefixes === []) || $platform === '') {
             flash('error', __('ui.message.invalid_input'));
             redirect('/content');
         }
@@ -305,22 +305,17 @@ final class ContentController
         $pdo->beginTransaction();
 
         try {
-            $prefix = TitleCounters::take($pdo, (int) Auth::id(), $prefixIds);
-            $title  = trim($prefix['text'] . ' ' . $title);
-
-            if ($platform === 'twitch' && mb_strlen($title) > self::TWITCH_TITLE_MAX) {
-                throw new UserError(sprintf(__('ui.message.twitch_title_too_long'), mb_strlen($title), self::TWITCH_TITLE_MAX));
-            }
-
             $stmt = $pdo->prepare(
-                'INSERT INTO streams (user_id, streaming_platform_id, title, status,
+                'INSERT INTO streams (user_id, streaming_platform_id, title, title_prefixes, title_body, status,
                                       scheduled_start, deadline, notes, category_id, category_name)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
+                 VALUES (?, ?, ?, ' . ($prefixes !== [] ? TitleCounters::FROM_JSON : 'CAST(? AS text[])') . ', ?, ?, ?, ?, ?, ?, ?) RETURNING id'
             );
             $stmt->execute([
                 Auth::id(),
                 $platformId,
                 $title,
+                $prefixes !== [] ? json_encode($prefixes) : null,
+                $prefixes !== [] ? $title : null,
                 $status,
                 $scheduled !== '' ? $scheduled : null,
                 $deadline,
@@ -331,7 +326,7 @@ final class ContentController
 
             $streamId = (int) $stmt->fetchColumn();
 
-            TitleCounters::record($pdo, $streamId, $prefix['uses']);
+            self::assertTitleFits($pdo, $streamId, $platform);
 
             $collabId = filter_input(INPUT_POST, 'collab_id', FILTER_VALIDATE_INT);
 
@@ -397,6 +392,35 @@ final class ContentController
 
         flash('success', __('ui.message.saved'));
         redirect('/content');
+    }
+
+    /** The title prefixes the form chose, in order (a JSON list in "prefixes"). */
+    private static function postedPrefixes(): array
+    {
+        $list = json_decode((string) ($_POST['prefixes'] ?? '[]'), true);
+
+        return is_array($list) ? array_values(array_filter($list, 'is_string')) : [];
+    }
+
+    /**
+     * Twitch refuses titles over 140 characters: checks the finished title
+     * (prefixes and numbers included) inside the saving transaction.
+     *
+     * @throws UserError
+     */
+    private static function assertTitleFits(PDO $pdo, int $streamId, string $platform): void
+    {
+        if ($platform !== 'twitch') {
+            return;
+        }
+
+        $stmt = $pdo->prepare('SELECT title FROM streams WHERE id = ?');
+        $stmt->execute([$streamId]);
+        $length = mb_strlen((string) $stmt->fetchColumn());
+
+        if ($length > self::TWITCH_TITLE_MAX) {
+            throw new UserError(sprintf(__('ui.message.twitch_title_too_long'), $length, self::TWITCH_TITLE_MAX));
+        }
     }
 
     /** Collapses newlines and runs of whitespace into single spaces. */
@@ -646,23 +670,31 @@ final class ContentController
             json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
         }
 
-        if (($_POST['platform'] ?? '') === 'twitch' && mb_strlen($title) > self::TWITCH_TITLE_MAX) {
-            json_response(['ok' => false, 'error' => sprintf(__('ui.message.twitch_title_too_long'), mb_strlen($title), self::TWITCH_TITLE_MAX)], 400);
-        }
-
         $status    = in_array($_POST['status'] ?? '', self::STATUSES, true) ? $_POST['status'] : 'planned';
         $scheduled = trim((string) ($_POST['scheduled_start'] ?? '')) ?: null;
         $deadline  = trim((string) ($_POST['deadline'] ?? '')) ?: null;
+
+        $current = $pdo->prepare('SELECT array_to_json(title_prefixes) FROM streams WHERE id = ? AND user_id = ?');
+        $current->execute([$id, Auth::id()]);
+        $had      = json_decode((string) $current->fetchColumn(), true) ?: [];
+        $prefixes = array_key_exists('prefixes', $_POST)
+            ? TitleCounters::templates((int) Auth::id(), self::postedPrefixes(), $had)
+            : $had;
+
+        $pdo->beginTransaction();
 
         $stmt = $pdo->prepare(
             'UPDATE streams
                 SET title = :title, streaming_platform_id = :platform, status = :status,
                     scheduled_start = :scheduled, deadline = :deadline,
-                    vod_url = :vod, notes = :notes
+                    vod_url = :vod, notes = :notes,
+                    title_prefixes = ' . ($prefixes !== [] ? 'ARRAY(SELECT jsonb_array_elements_text(CAST(:prefixes AS jsonb)))' : 'NULL') . ',
+                    title_body = :body
               WHERE id = :id AND user_id = :user'
         );
 
-        $stmt->execute([
+        $stmt->execute(($prefixes !== [] ? ['prefixes' => json_encode($prefixes)] : []) + [
+            'body'      => $prefixes !== [] ? $title : null,
             'title'     => $title,
             'platform'  => $platformId,
             'status'    => $status,
@@ -675,7 +707,16 @@ final class ContentController
         ]);
 
         if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
+        }
+
+        try {
+            self::assertTitleFits($pdo, $id, (string) ($_POST['platform'] ?? ''));
+            $pdo->commit();
+        } catch (UserError $e) {
+            $pdo->rollBack();
+            json_response(['ok' => false, 'error' => $e->getMessage()], 400);
         }
 
         if (array_key_exists('category_id', $_POST)) {
@@ -711,8 +752,8 @@ final class ContentController
      * AJAX: delete one piece of content.
      *
      * The games and collaborators attached to it cascade away with it;
-     * the keys themselves do not, they simply become unattached. Numbers
-     * it took from title counters are given back while still the latest.
+     * the keys themselves do not, they simply become unattached. Title
+     * numbers after it move down on their own (streamorg_renumber_titles).
      */
     public static function delete(): void
     {
@@ -733,7 +774,6 @@ final class ContentController
                 return false;
             }
 
-            TitleCounters::release($pdo, $id);
             $pdo->prepare('DELETE FROM streams WHERE id = ? AND user_id = ?')->execute([$id, Auth::id()]);
 
             return true;
