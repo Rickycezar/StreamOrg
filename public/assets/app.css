@@ -1340,7 +1340,7 @@ dl.detail dd { margin: 0; font-size: .875rem; overflow-wrap: anywhere; }
 .detail-problems p { margin: 0 0 .3rem; font-size: .85rem; }
 .detail-problems p:last-child { margin-bottom: 0; }
 
-td.rowactions { white-space: nowrap; text-align: left; width: 1%; }
+td.rowactions { white-space: nowrap; text-align: left; }
 .table-wrap th.col-actions,
 .table-wrap td.rowactions { position: sticky; left: 0; z-index: 2; background: var(--surface); box-shadow: calc(-1 * var(--wrap-pad, 0px)) 0 0 var(--surface); }
 .table-wrap tbody tr:hover td.rowactions { background: var(--surface-2); box-shadow: calc(-1 * var(--wrap-pad, 0px)) 0 0 var(--surface-2); }
