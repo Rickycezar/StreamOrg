@@ -113,7 +113,7 @@ final class CatalogController
         try {
             $results = Twitch::isConfigured() ? self::twitchResults($term) : $provider->search($term);
         } catch (Throwable $e) {
-            error_log('StreamOrg catalog search: ' . $e->getMessage());
+            ErrorLog::note('catalog search: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.provider_error')], 502);
         }
 
@@ -202,7 +202,7 @@ final class CatalogController
                 $pdo->rollBack();
             }
 
-            error_log('StreamOrg catalog import: ' . $e->getMessage());
+            ErrorLog::note('catalog import: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 
@@ -231,7 +231,7 @@ final class CatalogController
         } catch (UserError $e) {
             json_response(['ok' => false, 'error' => $e->getMessage()], 400);
         } catch (Throwable $e) {
-            error_log('StreamOrg add from Twitch: ' . $e->getMessage());
+            ErrorLog::note('add from Twitch: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 
@@ -275,7 +275,7 @@ final class CatalogController
             json_response(['ok' => false, 'error' => $e->getMessage()], 400);
         } catch (Throwable $e) {
             $pdo->rollBack();
-            error_log('StreamOrg catalog refresh: ' . $e->getMessage());
+            ErrorLog::note('catalog refresh: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 

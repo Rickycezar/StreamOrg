@@ -116,7 +116,7 @@ final class ChatBot
         ]));
 
         if ($who === null || empty($who['user_id']) || empty($who['login'])) {
-            error_log('StreamOrg bot connect: ' . TwitchUser::lastError());
+            ErrorLog::note('bot connect: ' . TwitchUser::lastError());
             throw new UserError(__('ui.message.bot_connect_failed'));
         }
 

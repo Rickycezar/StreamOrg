@@ -23,6 +23,8 @@ if ($debug) {
 
 date_default_timezone_set((string) Config::get('app.timezone', 'UTC'));
 
+ErrorLog::install();
+
 send_security_headers();
 
 $requestPath = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
@@ -113,6 +115,8 @@ $routes = [
         '/notifications/panel' => [NotificationController::class, 'panel'],
         '/notifications/open' => [NotificationController::class, 'open'],
         '/admin/notifications' => [NotificationController::class, 'admin'],
+        '/admin/winners'     => [PrizeRemovalController::class, 'index'],
+        '/admin/errors'      => [ErrorLogController::class, 'index'],
         '/embargoes'         => [EmbargoController::class, 'index'],
         '/streamers'         => [StreamerController::class, 'index'],
         '/streamers/search'  => [StreamerController::class, 'search'],
@@ -205,6 +209,9 @@ $routes = [
         '/collabs/session/leave' => [CollabController::class, 'leave'],
         '/admin/notifications' => [NotificationController::class, 'send'],
         '/admin/notifications/delete' => [NotificationController::class, 'delete'],
+        '/admin/winners/remove' => [PrizeRemovalController::class, 'remove'],
+        '/admin/errors/resolve' => [ErrorLogController::class, 'resolve'],
+        '/admin/errors/clear' => [ErrorLogController::class, 'clear'],
         '/admin/notifications/preview' => [NotificationController::class, 'preview'],
         '/admin/bot/disconnect' => [BotController::class, 'disconnect'],
         '/profile/sessions/revoke'        => [ProfileController::class, 'revokeSession'],
@@ -261,7 +268,7 @@ try {
         throw $e;
     }
 
-    error_log('StreamOrg: ' . $e->getMessage());
+    ErrorLog::exception($e);
     http_response_code(500);
     View::render('error', [
         'heading' => '500',

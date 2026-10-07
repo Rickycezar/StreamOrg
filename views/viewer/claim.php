@@ -2,7 +2,8 @@
 /**
  * The page behind a winner's claim link, for the general public.
  *
- * One of these, in order: an unknown link; the winner's own claimed key
+ * One of these, in order: an unknown link; a prize taken back by the
+ * StreamOrg team; the winner's own claimed key
  * (with a little celebration right after claiming); someone else's claimed
  * prize; a withdrawn or expired link; "sign in with Twitch"; the wrong
  * account; the key set aside for them (ready to reveal, or still locked by
@@ -44,7 +45,9 @@ $state = static function (string $icon, string $title, string $text, string $ton
             <h1><?= e($g['title']) ?></h1>
         </header>
 
-        <?php if (!empty($claim['claimed'])): $prize = $claim['claimed']; $redeem = $prize['code'] ? Giveaways::redeemUrl($prize['platform_code'], $prize['code']) : null; ?>
+        <?php if ($w['removed_at'] !== null): ?>
+            <?php $state('link', __('ui.viewer.removed_title'), __('ui.viewer.removed'), 'muted'); ?>
+        <?php elseif (!empty($claim['claimed'])): $prize = $claim['claimed']; $redeem = $prize['code'] ? Giveaways::redeemUrl($prize['platform_code'], $prize['code']) : null; ?>
             <div class="pub-card pub-reveal<?= $celebrate ? ' celebrate' : '' ?>">
                 <?php if ($celebrate): ?>
                     <div class="confetti" aria-hidden="true"><?php for ($i = 0; $i < 24; $i++): ?><i style="--i: <?= $i ?>"></i><?php endfor; ?></div>

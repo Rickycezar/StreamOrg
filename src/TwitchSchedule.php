@@ -286,7 +286,7 @@ final class TwitchSchedule
             $message         = $response !== null ? (Http::json($response)['message'] ?? null) : null;
             $result['error'] = is_string($message) && $message !== '' ? $message : TwitchUser::lastError();
 
-            error_log('StreamOrg Twitch schedule: ' . ($response !== null ? Twitch::describe($response, 'helix/schedule/segment') : (string) TwitchUser::lastError()));
+            ErrorLog::note('Twitch schedule: ' . ($response !== null ? Twitch::describe($response, 'helix/schedule/segment') : (string) TwitchUser::lastError()));
         }
     }
 }

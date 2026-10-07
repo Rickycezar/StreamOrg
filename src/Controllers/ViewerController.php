@@ -90,7 +90,7 @@ final class ViewerController
         try {
             $back = Viewers::complete($code);
         } catch (UserError $e) {
-            error_log('StreamOrg viewer sign-in: ' . TwitchUser::lastError());
+            ErrorLog::note('viewer sign-in: ' . TwitchUser::lastError());
             flash('error', $e->getMessage());
             redirect('/login?as=viewer');
         }

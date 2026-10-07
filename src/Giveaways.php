@@ -576,7 +576,7 @@ final class Giveaways
                JOIN game_keys k ON k.id = p.game_key_id
                JOIN games gv ON gv.id = k.game_id
           LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
-              WHERE w.twitch_user_id = ?
+              WHERE w.twitch_user_id = ? AND w.removed_at IS NULL
            ORDER BY p.claimed_at DESC'
         );
         $stmt->execute([$viewer['twitch_user_id']]);

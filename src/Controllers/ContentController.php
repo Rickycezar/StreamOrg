@@ -385,7 +385,7 @@ final class ContentController
             redirect('/content');
         } catch (Throwable $e) {
             $pdo->rollBack();
-            error_log('StreamOrg content: ' . $e->getMessage());
+            ErrorLog::note('content: ' . $e->getMessage());
             flash('error', __('ui.message.server_error'));
             redirect('/content');
         }
@@ -825,7 +825,7 @@ final class ContentController
         } catch (UserError $e) {
             json_response(['ok' => false, 'error' => $e->getMessage()], 400);
         } catch (Throwable $e) {
-            error_log('StreamOrg Twitch preview: ' . $e->getMessage());
+            ErrorLog::note('Twitch preview: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 
@@ -849,7 +849,7 @@ final class ContentController
         } catch (UserError $e) {
             json_response(['ok' => false, 'error' => $e->getMessage()], 400);
         } catch (Throwable $e) {
-            error_log('StreamOrg Twitch push: ' . $e->getMessage());
+            ErrorLog::note('Twitch push: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 

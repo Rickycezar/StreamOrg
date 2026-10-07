@@ -2324,6 +2324,67 @@ td.user-cell .avatar-initials { font-size: .66rem; }
 .badge.winner-claimed { border-color: var(--ok-border); background: var(--ok-bg); color: var(--ok); }
 .badge.winner-waiting { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
 .badge.winner-expired { border-color: var(--warn-border); background: var(--warn-bg); color: var(--warn); }
+.badge.winner-removed { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
+.winner-removed-reason { font-style: italic; overflow-wrap: anywhere; }
+.btn.danger-outline { border-color: var(--danger-border); color: var(--danger); }
+.btn.danger-outline:hover { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+.winners-admin tr.state-removed td { opacity: .75; }
+.remove-prize-summary { display: grid; grid-template-columns: auto 1fr; gap: .3rem .9rem; margin: 0 0 1rem; padding: .7rem .9rem; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border-soft); font-size: .88rem; }
+.remove-prize-summary dt { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
+.remove-prize-summary dd { margin: 0; }
+.remove-outcome { border: 0; padding: 0; margin: 0 0 1rem; display: grid; gap: .5rem; }
+.remove-outcome legend { font-size: .88rem; font-weight: 600; margin-bottom: .5rem; }
+.remove-outcome label.choice { display: flex; gap: .65rem; align-items: flex-start; margin: 0; padding: .65rem .8rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.remove-outcome label.choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.remove-outcome label.choice input { margin-top: .2rem; width: auto; }
+.remove-outcome label.choice > span { display: grid; gap: .15rem; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .9rem; color: var(--text); }
+.remove-outcome label.choice small { font-size: .8rem; }
+.removal-list { list-style: none; margin: 0; padding: 0; }
+.removal-list li { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border-soft); }
+.removal-list li:last-child { border-bottom: 0; }
+.removal-reason { margin: .25rem 0 0; font-size: .88rem; color: var(--text-2); overflow-wrap: anywhere; }
+.removal-meta { display: grid; justify-items: end; align-content: start; gap: .25rem; flex-shrink: 0; }
+@media (max-width: 640px) { .removal-list li { flex-direction: column; } .removal-meta { justify-items: start; } }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.error-tiles .tile { border-left: 3px solid var(--border); }
+.error-tiles .tile.level-fatal { border-left-color: var(--danger); }
+.error-tiles .tile.level-error { border-left-color: #d9622b; }
+.error-tiles .tile.level-warning { border-left-color: var(--warn); }
+.error-tiles .tile.level-notice { border-left-color: var(--muted); }
+.badge.error-level.level-fatal { border-color: var(--danger); background: var(--danger); color: var(--on-danger, #fff); }
+.badge.error-level.level-error { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
+.badge.error-level.level-warning { border-color: var(--warn-border); background: var(--warn-bg); color: var(--warn); }
+.badge.error-level.level-notice { border-color: var(--border); background: var(--surface-2); color: var(--muted); }
+.error-bulk { display: inline-flex; align-items: center; gap: .7rem; }
+.error-bulk label.inline { margin: 0; }
+.error-list { list-style: none; margin: 0; padding: 0; }
+.error-item { display: flex; gap: .6rem; align-items: flex-start; padding: .55rem .2rem; border-bottom: 1px solid var(--border-soft); }
+.error-item:last-child { border-bottom: 0; }
+.error-item.resolved { opacity: .65; }
+.error-item.focus { background: var(--accent-soft); border-radius: 8px; padding-inline: .5rem; }
+.error-check { margin-top: .45rem; width: auto; flex-shrink: 0; }
+.error-check-spacer { width: 13px; flex-shrink: 0; }
+.error-item details { flex: 1; min-width: 0; }
+.error-item summary { display: grid; gap: .3rem; cursor: pointer; list-style: none; padding: .15rem 0; }
+.error-item summary::-webkit-details-marker { display: none; }
+.error-head { display: flex; gap: .55rem; align-items: baseline; min-width: 0; }
+.error-head .badge { flex-shrink: 0; }
+.error-message { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .84rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; background: none; padding: 0; }
+.error-item details[open] .error-message { white-space: normal; overflow-wrap: anywhere; }
+.error-meta { display: flex; flex-wrap: wrap; gap: .25rem .9rem; align-items: center; font-size: .78rem; color: var(--muted); }
+.error-where { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.error-count { font-weight: 700; color: var(--text-2); }
+.error-detail { margin-top: .6rem; padding: .8rem .9rem; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border-soft); }
+.error-detail dl { display: grid; grid-template-columns: auto 1fr; gap: .3rem 1rem; margin: 0 0 .7rem; font-size: .86rem; }
+.error-detail dt { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
+.error-detail dd { margin: 0; overflow-wrap: anywhere; }
+.error-full, .error-trace { margin: 0 0 .7rem; padding: .6rem .7rem; border-radius: 6px; background: var(--surface); border: 1px solid var(--border-soft); font-size: .78rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 22rem; overflow: auto; }
+.error-detail .card-actions { margin: 0; }
+.error-empty { display: grid; justify-items: center; gap: .4rem; padding: 2.5rem 1rem; color: var(--ok); }
+.error-empty svg { width: 42px; height: 42px; }
+.error-empty p { color: var(--muted); margin: 0; }
+.error-clear { text-align: right; margin-top: .8rem; }
+
 .entry-list { display: flex; flex-wrap: wrap; gap: .4rem; }
 .entry-list li { padding: .2rem .55rem; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-soft); font-size: .84rem; }
 .danger-zone { margin-top: 1rem; text-align: right; }

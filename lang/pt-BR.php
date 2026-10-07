@@ -292,6 +292,13 @@ return [
         'assigned' => 'Prêmio definido para o vencedor',
     ],
 
+    'error_level' => [
+        'fatal' => 'Travamento',
+        'error' => 'Erro',
+        'warning' => 'Aviso',
+        'notice' => 'Observação',
+    ],
+
     'winner_method' => [
         'draw' => 'Sorteado no chat',
         'external' => 'Resultado externo',
@@ -479,6 +486,8 @@ return [
         ],
 
         'viewer' => [
+            'removed_title' => 'Este prêmio foi removido',
+            'removed' => 'A equipe do StreamOrg retirou este prêmio. Se achar que foi um engano, fale com o streamer.',
             'reserved_flash' => 'Pronto — essa chave está guardada para você!',
             'reserved_eyebrow' => 'É sua!',
             'reserved_ready_eyebrow' => 'Pronta quando você quiser',
@@ -737,6 +746,50 @@ return [
             'left' => 'Saiu',
         ],
         'notify' => [
+            'error_new_fatal' => [
+                'title' => 'Novo travamento no StreamOrg',
+                'body' => "`%s`\n\nUma requisição quebrou. Abra o registro de erros para ver onde.",
+            ],
+            'error_new_error' => [
+                'title' => 'Novo erro no StreamOrg',
+                'body' => "`%s`\n\nUma requisição falhou. Abra o registro de erros para ver onde.",
+            ],
+            'error_new_warning' => [
+                'title' => 'Novo aviso no StreamOrg',
+                'body' => "`%s`\n\nAbra o registro de erros para ver onde aconteceu.",
+            ],
+            'error_back_fatal' => [
+                'title' => 'Um travamento resolvido voltou',
+                'body' => "`%s`\n\nEle aconteceu de novo depois de marcado como resolvido.",
+            ],
+            'error_back_error' => [
+                'title' => 'Um erro resolvido voltou',
+                'body' => "`%s`\n\nEle aconteceu de novo depois de marcado como resolvido.",
+            ],
+            'error_back_warning' => [
+                'title' => 'Um aviso resolvido voltou',
+                'body' => "`%s`\n\nEle aconteceu de novo depois de marcado como resolvido.",
+            ],
+            'prize_removed_freed' => [
+                'title' => 'Um prêmio foi retirado de %s',
+                'body' => "**%2\$s** de \"%3\$s\" ainda não tinha sido resgatado; voltou aos prêmios do sorteio.\n\n> %4\$s",
+            ],
+            'prize_removed_returned' => [
+                'title' => 'Um prêmio foi retirado de %s',
+                'body' => "**%2\$s** de \"%3\$s\" voltou ao seu cofre, pronto para outro sorteio.\n\n> %4\$s",
+            ],
+            'prize_removed_revoked' => [
+                'title' => 'Um prêmio foi retirado de %s',
+                'body' => "**%2\$s** de \"%3\$s\" está marcado como revogado no seu cofre: o código já tinha sido mostrado.\n\n> %4\$s",
+            ],
+            'prize_removed_none' => [
+                'title' => '%s foi removido dos ganhadores',
+                'body' => "De \"%3\$s\": o link de resgate não funciona mais.\n\n> %4\$s",
+            ],
+            'prize_removed_winner' => [
+                'title' => 'Um prêmio que você ganhou foi removido',
+                'body' => '**%s** de "%s" foi retirado pela equipe do StreamOrg.',
+            ],
             'together_invited' => [
                 'title' => '%s convida você para planejar uma collab',
                 'body' => '**%2$s**: abra para entrar, ou recuse.',
@@ -789,6 +842,8 @@ return [
             'link_words' => 'texto do link',
         ],
         'nav' => [
+            'errors' => 'Erros',
+            'winners' => 'Ganhadores',
             'notifications' => 'Notificações',
             'chat_bot' => 'Bot do chat',
             'users' => 'Usuários',
@@ -820,6 +875,11 @@ return [
         ],
 
         'action' => [
+            'resolve' => 'Marcar resolvido',
+            'reopen' => 'Abrir de novo',
+            'resolve_selected' => 'Marcar selecionados como resolvidos',
+            'clear_resolved' => 'Apagar resolvidos',
+            'remove_key' => 'Remover chave',
             'together_accept' => 'Entrar no plano',
             'together_decline' => 'Recusar',
             'together_agree' => 'Concordar',
@@ -943,6 +1003,8 @@ return [
         ],
 
         'field' => [
+            'error_level' => 'Nível',
+            'remove_reason' => 'Motivo',
             'together_start' => 'Início',
             'together_minutes' => 'Duração',
             'collab_prefix' => 'Crédito de collab',
@@ -1066,6 +1128,43 @@ return [
         ],
 
         'label' => [
+            'error_request_unknown' => 'Não consta no log do servidor (a página de origem aparece ao lado)',
+            'errors_search_hint' => 'Mensagem, arquivo ou página',
+            'errors_show_open' => 'Abertos',
+            'errors_show_resolved' => 'Resolvidos',
+            'errors_show_all' => 'Todos',
+            'errors_shown' => 'Problemas',
+            'select_all' => 'Selecionar todos',
+            'select' => 'Selecionar',
+            'error_times' => 'Vezes que aconteceu',
+            'error_last_seen' => 'última %s',
+            'error_first_seen' => 'Primeira vez',
+            'error_last_request' => 'Última requisição',
+            'error_no_request' => 'Fora de uma requisição (tarefa em segundo plano)',
+            'error_user' => 'Conectado como',
+            'error_resolved' => 'Resolvido',
+            'error_imported' => 'Dos logs do servidor',
+            'error_imported_hint' => 'Lido dos logs do servidor escritos antes de o registro de erros existir',
+            'winner' => 'Ganhador',
+            'giveaway' => 'Sorteio',
+            'prize' => 'Prêmio',
+            'winners_search_hint' => 'Nome na Twitch, streamer, sorteio ou jogo',
+            'winners_filter_all' => 'Todos',
+            'winners_filter_claimed' => 'Resgataram',
+            'winners_filter_waiting' => 'Esperando resgate',
+            'winners_filter_removed' => 'Removidos',
+            'winners_found' => 'Ganhadores',
+            'remove_key_from' => 'Remover a chave de %s',
+            'remove_key_outcome' => 'O código já foi mostrado ao ganhador. O que acontece com a chave?',
+            'remove_outcome_revoked' => 'Marcar como revogada',
+            'remove_outcome_returned' => 'Devolver para outro sorteio',
+            'remove_reason_hint' => 'Por que a chave está sendo retirada?',
+            'removals_recent' => 'Remoções recentes',
+            'key_outcome_freed' => 'De volta ao sorteio',
+            'key_outcome_returned' => 'De volta ao cofre',
+            'key_outcome_revoked' => 'Revogada',
+            'key_outcome_none' => 'Sem chave ainda',
+            'winner_state_removed' => 'Removido pelo StreamOrg',
             'formatting' => 'Formatação',
             'together_title' => 'Planejados juntos',
             'together_badge' => 'Juntos',
@@ -1357,6 +1456,25 @@ return [
         ],
 
         'message' => [
+            'errors_intro' => 'Problemas que o StreamOrg encontrou, agrupados por tipo e contados. Travamentos e erros quebraram uma requisição; avisos e observações foram tratados, mas merecem uma olhada. Problemas novos são notificados aos administradores. Problemas que não aparecem há 90 dias são apagados.',
+            'errors_none_open' => 'Nenhum problema aberto. Tudo certo!',
+            'errors_resolved' => '%d problema(s) marcado(s) como resolvido(s).',
+            'errors_reopened' => '%d problema(s) aberto(s) de novo.',
+            'errors_cleared' => '%d problema(s) resolvido(s) apagado(s).',
+            'errors_clear_confirm' => 'Apagar todos os problemas resolvidos? Se algum acontecer de novo, volta como novo.',
+            'winners_admin_intro' => 'Ganhadores dos sorteios de todos os streamers. Retire a chave de quem não deveria tê-la: o link de resgate para de funcionar, a chave sai dos prêmios da pessoa e o streamer é avisado do motivo.',
+            'remove_outcome_revoked' => 'O mais seguro quando o código pode ter sido usado ou compartilhado: ela fica no cofre do streamer marcada como revogada.',
+            'remove_outcome_returned' => 'Só se tiver certeza de que não foi resgatada: ela volta ao cofre do streamer, pronta para um sorteio, e aos prêmios deste sorteio se ele ainda estiver rolando.',
+            'remove_unclaimed_freed' => 'Ainda não resgatada: a chave separada para a pessoa volta aos prêmios do sorteio, e o link dela para de funcionar.',
+            'remove_unclaimed_none' => 'Nenhuma chave foi separada para a pessoa ainda: o link dela só para de funcionar.',
+            'remove_reason_seen_by' => 'O streamer vê este motivo. O ganhador só é avisado de que o prêmio foi removido.',
+            'removals_none' => 'Nenhuma chave foi retirada ainda.',
+            'prize_removal_reason_needed' => 'Escreva por que a chave está sendo retirada.',
+            'prize_removal_nothing' => 'Este ganhador não tem chave para retirar (já foi desfeito ou removido).',
+            'prize_removed_freed' => 'Chave retirada: ela está de novo nos prêmios do sorteio.',
+            'prize_removed_returned' => 'Chave retirada e devolvida ao cofre do streamer.',
+            'prize_removed_revoked' => 'Chave retirada e marcada como revogada.',
+            'prize_removed_none' => 'Ganhador removido: o link dele não funciona mais.',
             'format_hint' => '**negrito**  *itálico*  [link](https://…)  - lista  1. lista  ## título  > destaque. Uma linha em branco começa um novo parágrafo.',
             'together_intro' => 'Cada pessoa planeja o próprio conteúdo para esta collab: título, jogos, chaves e patrocinadores são de cada um. O horário é compartilhado e só muda quando todos que participam concordam.',
             'together_invite_title' => '%s convida você para planejar esta collab junto',

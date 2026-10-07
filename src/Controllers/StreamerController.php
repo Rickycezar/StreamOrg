@@ -174,7 +174,7 @@ final class StreamerController
         try {
             $results = Twitch::search($term);
         } catch (Throwable $e) {
-            error_log('StreamOrg twitch search: ' . $e->getMessage());
+            ErrorLog::note('twitch search: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.provider_error')], 502);
         }
 
@@ -245,7 +245,7 @@ final class StreamerController
             throw $e;
         } catch (Throwable $e) {
             $pdo->rollBack();
-            error_log('StreamOrg twitch import: ' . $e->getMessage());
+            ErrorLog::note('twitch import: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 

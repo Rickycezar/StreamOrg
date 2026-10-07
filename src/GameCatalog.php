@@ -100,10 +100,10 @@ final class GameCatalog
             GameImages::sync($pdo, (int) $row['id'], $detail['images'] ?? [], $refreshImages);
 
             foreach (GameImages::problems() as $problem) {
-                error_log("StreamOrg images for game #{$row['id']}: {$problem}");
+                ErrorLog::note("images for game #{$row['id']}: {$problem}");
             }
         } catch (Throwable $e) {
-            error_log("StreamOrg images for game #{$row['id']}: " . $e->getMessage());
+            ErrorLog::note("images for game #{$row['id']}: " . $e->getMessage());
         }
 
         if ($category !== null) {
@@ -150,7 +150,7 @@ final class GameCatalog
 
                 return $result + ['via' => $provider->code()];
             } catch (Throwable $e) {
-                error_log("StreamOrg add from Twitch #{$category['id']} via {$provider->code()}: " . $e->getMessage());
+                ErrorLog::note("add from Twitch #{$category['id']} via {$provider->code()}: " . $e->getMessage());
             }
         }
 
@@ -160,7 +160,7 @@ final class GameCatalog
             try {
                 GameImages::sync($pdo, $gameId, ['portrait' => $category['box_art']]);
             } catch (Throwable $e) {
-                error_log("StreamOrg box art for game #{$gameId}: " . $e->getMessage());
+                ErrorLog::note("box art for game #{$gameId}: " . $e->getMessage());
             }
         }
 

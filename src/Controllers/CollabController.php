@@ -125,7 +125,7 @@ final class CollabController
             $pdo->commit();
         } catch (Throwable $e) {
             $pdo->rollBack();
-            error_log('StreamOrg collab: ' . $e->getMessage());
+            ErrorLog::note('collab: ' . $e->getMessage());
             flash('error', __('ui.message.server_error'));
             redirect('/collabs');
         }
@@ -282,7 +282,7 @@ final class CollabController
             $pdo->commit();
         } catch (Throwable $e) {
             $pdo->rollBack();
-            error_log('StreamOrg collab plan: ' . $e->getMessage());
+            ErrorLog::note('collab plan: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 

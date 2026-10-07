@@ -213,7 +213,7 @@ final class TwitchEventSub
                 $pdo->commit();
             } catch (Throwable $e) {
                 $pdo->rollBack();
-                error_log('StreamOrg EventSub: ' . $e->getMessage());
+                ErrorLog::note('EventSub: ' . $e->getMessage());
             }
         }
 

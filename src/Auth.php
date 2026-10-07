@@ -10,7 +10,7 @@ declare(strict_types=1);
  */
 final class Auth
 {
-    private const SESSION_KEY = 'streamorg_user_id';
+    public const SESSION_KEY = 'streamorg_user_id';
 
     /**
      * Verified against when the username does not exist, so that path costs
@@ -101,7 +101,7 @@ final class Auth
         Vault::forget();
 
         if (!Vault::unlock((int) $user['id'], $password)) {
-            error_log("StreamOrg: user #{$user['id']} signed in but their private vault did not unlock.");
+            ErrorLog::note("user #{$user['id']} signed in but their private vault did not unlock.");
         }
 
         return true;

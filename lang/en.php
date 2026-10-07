@@ -293,6 +293,13 @@ return [
         'assigned' => 'Prize assigned to the winner',
     ],
 
+    'error_level' => [
+        'fatal' => 'Crash',
+        'error' => 'Error',
+        'warning' => 'Warning',
+        'notice' => 'Notice',
+    ],
+
     'winner_method' => [
         'draw' => 'Drawn from the chat',
         'external' => 'External result',
@@ -480,6 +487,8 @@ return [
         ],
 
         'viewer' => [
+            'removed_title' => 'This prize was removed',
+            'removed' => 'The StreamOrg team took this prize back. If you think this is a mistake, talk to the streamer.',
             'reserved_flash' => 'Done — that key is saved for you!',
             'reserved_eyebrow' => 'It\'s yours!',
             'reserved_ready_eyebrow' => 'Ready when you are',
@@ -738,6 +747,50 @@ return [
             'left' => 'Left',
         ],
         'notify' => [
+            'error_new_fatal' => [
+                'title' => 'New crash in StreamOrg',
+                'body' => "`%s`\n\nA request broke. Open the error log to see where.",
+            ],
+            'error_new_error' => [
+                'title' => 'New error in StreamOrg',
+                'body' => "`%s`\n\nA request failed. Open the error log to see where.",
+            ],
+            'error_new_warning' => [
+                'title' => 'New warning in StreamOrg',
+                'body' => "`%s`\n\nOpen the error log to see where it happened.",
+            ],
+            'error_back_fatal' => [
+                'title' => 'A resolved crash is back',
+                'body' => "`%s`\n\nIt happened again after being marked resolved.",
+            ],
+            'error_back_error' => [
+                'title' => 'A resolved error is back',
+                'body' => "`%s`\n\nIt happened again after being marked resolved.",
+            ],
+            'error_back_warning' => [
+                'title' => 'A resolved warning is back',
+                'body' => "`%s`\n\nIt happened again after being marked resolved.",
+            ],
+            'prize_removed_freed' => [
+                'title' => 'A prize was taken back from %s',
+                'body' => "**%2\$s** from \"%3\$s\" was not claimed yet; it is back in the giveaway's prizes.\n\n> %4\$s",
+            ],
+            'prize_removed_returned' => [
+                'title' => 'A prize was taken back from %s',
+                'body' => "**%2\$s** from \"%3\$s\" went back to your vault, ready for another giveaway.\n\n> %4\$s",
+            ],
+            'prize_removed_revoked' => [
+                'title' => 'A prize was taken back from %s',
+                'body' => "**%2\$s** from \"%3\$s\" is marked revoked in your vault: its code was already shown.\n\n> %4\$s",
+            ],
+            'prize_removed_none' => [
+                'title' => '%s was removed as a winner',
+                'body' => "From \"%3\$s\": their claim link no longer works.\n\n> %4\$s",
+            ],
+            'prize_removed_winner' => [
+                'title' => 'A prize you won was removed',
+                'body' => '**%s** from "%s" was taken back by the StreamOrg team.',
+            ],
             'together_invited' => [
                 'title' => '%s invites you to plan a collab',
                 'body' => '**%2$s**: open it to join, or decline.',
@@ -790,6 +843,8 @@ return [
             'link_words' => 'link text',
         ],
         'nav' => [
+            'errors' => 'Errors',
+            'winners' => 'Winners',
             'notifications' => 'Notifications',
             'chat_bot' => 'Chat bot',
             'users' => 'Users',
@@ -821,6 +876,11 @@ return [
         ],
 
         'action' => [
+            'resolve' => 'Mark resolved',
+            'reopen' => 'Open again',
+            'resolve_selected' => 'Mark selected resolved',
+            'clear_resolved' => 'Delete resolved',
+            'remove_key' => 'Remove key',
             'together_accept' => 'Join the plan',
             'together_decline' => 'Decline',
             'together_agree' => 'Agree',
@@ -944,6 +1004,8 @@ return [
         ],
 
         'field' => [
+            'error_level' => 'Level',
+            'remove_reason' => 'Reason',
             'together_start' => 'Start',
             'together_minutes' => 'Length',
             'collab_prefix' => 'Collab credit',
@@ -1067,6 +1129,43 @@ return [
         ],
 
         'label' => [
+            'error_request_unknown' => 'Not in the server log (the page it came from is shown)',
+            'errors_search_hint' => 'Message, file or page',
+            'errors_show_open' => 'Open',
+            'errors_show_resolved' => 'Resolved',
+            'errors_show_all' => 'All',
+            'errors_shown' => 'Problems',
+            'select_all' => 'Select all',
+            'select' => 'Select',
+            'error_times' => 'Times it happened',
+            'error_last_seen' => 'last %s',
+            'error_first_seen' => 'First seen',
+            'error_last_request' => 'Last request',
+            'error_no_request' => 'Not during a request (background task)',
+            'error_user' => 'Signed in as',
+            'error_resolved' => 'Resolved',
+            'error_imported' => 'From server logs',
+            'error_imported_hint' => 'Read back from the server logs written before the error log existed',
+            'winner' => 'Winner',
+            'giveaway' => 'Giveaway',
+            'prize' => 'Prize',
+            'winners_search_hint' => 'Twitch name, streamer, giveaway or game',
+            'winners_filter_all' => 'Everyone',
+            'winners_filter_claimed' => 'Claimed',
+            'winners_filter_waiting' => 'Waiting to claim',
+            'winners_filter_removed' => 'Removed',
+            'winners_found' => 'Winners',
+            'remove_key_from' => 'Remove the key from %s',
+            'remove_key_outcome' => 'The code was already shown to the winner. What happens to the key?',
+            'remove_outcome_revoked' => 'Mark it revoked',
+            'remove_outcome_returned' => 'Return it for another giveaway',
+            'remove_reason_hint' => 'Why is the key being taken back?',
+            'removals_recent' => 'Recent removals',
+            'key_outcome_freed' => 'Back to the giveaway',
+            'key_outcome_returned' => 'Back to the vault',
+            'key_outcome_revoked' => 'Revoked',
+            'key_outcome_none' => 'No key yet',
+            'winner_state_removed' => 'Removed by StreamOrg',
             'formatting' => 'Formatting',
             'together_title' => 'Planned together',
             'together_badge' => 'Together',
@@ -1358,6 +1457,25 @@ return [
         ],
 
         'message' => [
+            'errors_intro' => 'Problems StreamOrg ran into, grouped by kind and counted. Crashes and errors broke a request; warnings and notices were handled but are worth a look. New problems are notified to administrators. Problems not seen for 90 days are deleted.',
+            'errors_none_open' => 'No open problems. All good!',
+            'errors_resolved' => '%d problem(s) marked resolved.',
+            'errors_reopened' => '%d problem(s) opened again.',
+            'errors_cleared' => '%d resolved problem(s) deleted.',
+            'errors_clear_confirm' => 'Delete every resolved problem? If one happens again it comes back as new.',
+            'winners_admin_intro' => 'Giveaway winners of every streamer. Take a key back from someone who should not have it: their claim link stops working, the key leaves their prizes, and the streamer is told why.',
+            'remove_outcome_revoked' => 'Safest when the code may have been used or shared: it stays in the streamer\'s vault marked revoked.',
+            'remove_outcome_returned' => 'Only if you are sure it was not redeemed: it goes back to the streamer\'s vault, ready for a giveaway, and back into this giveaway\'s prizes if it is still running.',
+            'remove_unclaimed_freed' => 'Not claimed yet: the key set aside for them goes back to the giveaway\'s prizes, and their link stops working.',
+            'remove_unclaimed_none' => 'No key was set aside for them yet: their link just stops working.',
+            'remove_reason_seen_by' => 'The streamer sees this reason. The winner is only told the prize was removed.',
+            'removals_none' => 'No key has been taken back yet.',
+            'prize_removal_reason_needed' => 'Write why the key is being taken back.',
+            'prize_removal_nothing' => 'This winner has no key to take back (already withdrawn or removed).',
+            'prize_removed_freed' => 'Key taken back: it is in the giveaway\'s prizes again.',
+            'prize_removed_returned' => 'Key taken back and returned to the streamer\'s vault.',
+            'prize_removed_revoked' => 'Key taken back and marked revoked.',
+            'prize_removed_none' => 'Winner removed: their link no longer works.',
             'format_hint' => '**bold**  *italic*  [link](https://…)  - list  1. list  ## heading  > highlight. A blank line starts a new paragraph.',
             'together_intro' => 'Everyone plans their own content for this collab: title, games, keys and sponsors are each person\'s own. The time is shared, and only changes when everyone taking part agrees.',
             'together_invite_title' => '%s invites you to plan this collab together',

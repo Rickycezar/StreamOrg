@@ -15,7 +15,7 @@ final class HealthController
         try {
             Database::connection()->query('SELECT 1')->fetchColumn();
         } catch (Throwable $e) {
-            error_log('StreamOrg health check: ' . $e->getMessage());
+            ErrorLog::note('health check: ' . $e->getMessage());
             json_response(['ok' => false], 503);
         }
 

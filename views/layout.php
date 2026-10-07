@@ -96,6 +96,8 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     '/admin/api'        => __('ui.nav.api_settings'),
                     '/admin/bot'        => __('ui.nav.chat_bot'),
                     '/admin/notifications' => __('ui.nav.notifications'),
+                    '/admin/winners'    => __('ui.nav.winners'),
+                    '/admin/errors'     => __('ui.nav.errors'),
                     '/admin/settings'   => __('ui.nav.settings'),
                     '/admin/testimonials' => __('ui.nav.testimonials'),
                     '/admin/lang'       => __('ui.nav.languages'),

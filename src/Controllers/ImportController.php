@@ -41,7 +41,7 @@ final class ImportController
         try {
             $results = $provider->search($term);
         } catch (Throwable $e) {
-            error_log('StreamOrg import search: ' . $e->getMessage());
+            ErrorLog::note('import search: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.provider_error')], 502);
         }
 
@@ -80,7 +80,7 @@ final class ImportController
                 $pdo->rollBack();
             }
 
-            error_log('StreamOrg import: ' . $e->getMessage());
+            ErrorLog::note('import: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
         }
 

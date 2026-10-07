@@ -96,6 +96,25 @@ final class ProfileController
         ]);
     }
 
+    /** Saves the default stream schedule from the defaults tab. */
+    public static function saveDefaults(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $days = StreamSchedule::fromInput((array) ($_POST['day'] ?? []));
+
+        if ($days === null) {
+            flash('error', __('ui.message.schedule_invalid'));
+            redirect('/profile/defaults');
+        }
+
+        StreamSchedule::save((int) Auth::id(), $days);
+
+        flash('success', __('ui.message.saved'));
+        redirect('/profile/defaults');
+    }
+
     /** Saves the content defaults: usual content length, title prefixes and their counters. */
     public static function saveContentDefaults(): void
     {
@@ -511,7 +530,7 @@ final class ProfileController
         $result = TwitchUser::complete((int) Auth::id(), $code, $state);
 
         if ($result === null) {
-            error_log('StreamOrg Twitch connect: ' . TwitchUser::lastError());
+            ErrorLog::note('Twitch connect: ' . TwitchUser::lastError());
             flash('error', __('ui.message.twitch_connect_failed'));
             redirect('/profile');
         }
@@ -531,7 +550,7 @@ final class ProfileController
         ChatBot::recheck((int) Auth::id());
 
         if (TwitchEventSub::isAvailable() && !TwitchEventSub::subscribe((int) Auth::id())) {
-            error_log('StreamOrg EventSub subscribe: ' . TwitchEventSub::lastError());
+            ErrorLog::note('EventSub subscribe: ' . TwitchEventSub::lastError());
         }
 
         flash('success', sprintf(__('ui.message.twitch_connected'), $result['login']));
@@ -570,7 +589,7 @@ final class ProfileController
         }
 
         if (!TwitchEventSub::subscribe($userId)) {
-            error_log('StreamOrg EventSub subscribe: ' . TwitchEventSub::lastError());
+            ErrorLog::note('EventSub subscribe: ' . TwitchEventSub::lastError());
             flash('error', __('ui.message.tracking_failed'));
             redirect('/profile');
         }

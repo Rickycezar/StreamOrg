@@ -234,7 +234,7 @@ final class LangController
         try {
             $result = LangFile::saveGroup($locale, $group, $merged);
         } catch (Throwable $e) {
-            error_log('StreamOrg lang save: ' . $e->getMessage());
+            ErrorLog::note('lang save: ' . $e->getMessage());
             flash('error', __('ui.message.lang_write_failed') . ' ' . $e->getMessage());
             redirect('/admin/lang?locale=' . urlencode($locale) . '&group=' . urlencode($group));
         }

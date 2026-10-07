@@ -267,7 +267,7 @@ final class UserAdminController
             TwitchEventSub::unsubscribe($id);
             TwitchUser::disconnect($id);
         } catch (Throwable $e) {
-            error_log('StreamOrg user delete, Twitch cleanup: ' . $e->getMessage());
+            ErrorLog::note('user delete, Twitch cleanup: ' . $e->getMessage());
         }
 
         Database::transaction(static function (PDO $pdo) use ($id): void {

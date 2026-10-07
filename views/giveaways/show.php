@@ -290,6 +290,7 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                             <small class="muted"><?= e(sprintf(__('ui.label.until_date'), fmt_datetime($w['expires_at'], 'd/m H:i'))) ?></small>
                         <?php endif; ?>
                         <?php if ($w['prize_title']): ?><small class="muted"><?= e($w['prize_title']) ?></small><?php endif; ?>
+                        <?php if ($w['state'] === 'removed' && $w['removed_reason']): ?><small class="muted winner-removed-reason"><?= e($w['removed_reason']) ?></small><?php endif; ?>
                     </div>
                     <?php if (in_array($w['state'], ['waiting', 'expired'], true) && $w['link']): ?>
                         <div class="winner-link">

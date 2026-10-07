@@ -109,7 +109,7 @@ final class TwitchCategories
 
             return $category;
         } catch (Throwable $e) {
-            error_log("StreamOrg Twitch category for game #{$gameId}: " . $e->getMessage());
+            ErrorLog::note("Twitch category for game #{$gameId}: " . $e->getMessage());
 
             return null;
         }

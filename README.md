@@ -202,6 +202,16 @@ private preview. Preview access: streamorg@outlook.com.
   (bold, italic, links, lists, headings, highlights) from a toolbar or
   shortcuts, and a preview — choose its kind and an optional link, send it to everyone or to chosen users, see how many read
   it, and take it back at any time.
+- **Winners**: search giveaway winners across every streamer and take a key
+  back with a reason — an unclaimed key returns to the giveaway, a claimed
+  one is marked revoked or returned to the vault — with a history of
+  removals; the streamer is notified and the winner's link stops working.
+- **Errors**: crashes, failed requests, PHP warnings and problems the code
+  handled (a Twitch call that failed, an image that would not download),
+  grouped by kind and counted, with the last request, user and a stack trace
+  without argument values. New problems notify the administrators; problems
+  can be resolved, and come back as open if they happen again. Older errors
+  can be read back from the server logs with `bin/errors_backfill.php`.
 - **Testimonials** for the landing page, managed as a JSON file that can be
   uploaded, edited or downloaded, with a switch per testimonial and for the
   whole section.

@@ -19,6 +19,7 @@ abstract class DatabaseTestCase extends TestCase
         $_COOKIE  = [];
         self::resetStatic(Vault::class, 'keys', []);
         self::resetStatic(Settings::class, 'cache', null);
+        ErrorLog::useConnection($this->pdo);
     }
 
     protected function tearDown(): void
@@ -26,6 +27,8 @@ abstract class DatabaseTestCase extends TestCase
         if ($this->pdo->inTransaction()) {
             $this->pdo->rollBack();
         }
+
+        ErrorLog::useConnection(null);
 
         self::resetStatic(Vault::class, 'keys', []);
         self::resetStatic(Settings::class, 'cache', null);

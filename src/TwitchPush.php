@@ -236,7 +236,7 @@ final class TwitchPush
         $error = TwitchUser::lastError();
 
         if ($error !== null && !in_array($error, ['not_connected', 'reconnect'], true)) {
-            error_log('StreamOrg Twitch: ' . $error);
+            ErrorLog::note('Twitch: ' . $error);
         }
 
         return match ($error) {

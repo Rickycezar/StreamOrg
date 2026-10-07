@@ -1370,6 +1370,33 @@
         }
     });
 
+    /** Administration → Errors: tick all, the bulk button only with something ticked, and the problem a link points at in view. */
+    onPage(function () {
+        const log = document.querySelector('[data-error-log]');
+        if (!log) return;
+
+        const boxes = log.querySelectorAll('.error-check');
+        const all = log.querySelector('[data-check-all]');
+        const bulk = log.querySelector('[data-needs-checked]');
+        const sync = function () {
+            const ticked = Array.prototype.filter.call(boxes, function (b) { return b.checked; }).length;
+            if (bulk) bulk.disabled = ticked === 0;
+            if (all) {
+                all.checked = ticked > 0 && ticked === boxes.length;
+                all.indeterminate = ticked > 0 && ticked < boxes.length;
+            }
+        };
+
+        boxes.forEach(function (b) { b.addEventListener('change', sync); });
+        if (all) all.addEventListener('change', function () {
+            boxes.forEach(function (b) { b.checked = all.checked; });
+            sync();
+        });
+
+        const focus = log.querySelector('.error-item.focus');
+        if (focus) focus.scrollIntoView({ block: 'center' });
+    });
+
     /** Copy buttons: data-copy names the field whose value goes to the clipboard. */
     document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-copy]');
