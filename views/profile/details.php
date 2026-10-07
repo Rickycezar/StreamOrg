@@ -146,10 +146,13 @@ $twitchSource = $twitch !== null || (($user['channel_handle'] ?? '') !== '' && T
                 <select name="locale">
                     <?php foreach ($locales as $loc): ?>
                         <option value="<?= e($loc) ?>" <?= $user['locale'] === $loc ? 'selected' : '' ?>>
-                            <?= e($loc) ?>
+                            <?= e(Lang::t('ui.label.language_name', $loc)) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <?php if (!Lang::switchable()): ?>
+                    <small class="muted"><?= e(sprintf(__('ui.message.language_fixed_here'), (string) preg_replace('/:\d+$/', '', strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''))), Lang::t('ui.label.language_name', Lang::locale()))) ?></small>
+                <?php endif; ?>
             </label>
             <label class="grow">
                 <span><?= e(__('ui.field.timezone')) ?></span>

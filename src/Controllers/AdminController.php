@@ -46,6 +46,8 @@ final class AdminController
             'units'         => array_keys(self::LIFETIME_UNITS),
             'minMinutes'    => UserSessions::IDLE_MIN,
             'maxDays'       => intdiv(UserSessions::IDLE_MAX, 1440),
+            'domains'       => array_map('strval', (array) Config::get('app.domain_locales', [])),
+            'fixedDomains'  => fixed_locale_domains(),
         ], __('ui.nav.settings'));
     }
 
@@ -71,6 +73,21 @@ final class AdminController
         }
 
         Settings::set('session_idle_minutes', (string) $minutes, Auth::id());
+
+        flash('success', __('ui.message.saved'));
+        redirect('/admin/settings');
+    }
+
+    /** POST /admin/settings/domains — which domains keep their language, with no switch. */
+    public static function saveDomains(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $known = array_keys((array) Config::get('app.domain_locales', []));
+        $fixed = array_values(array_intersect($known, array_map('strval', (array) ($_POST['fixed'] ?? []))));
+
+        Settings::set('fixed_locale_domains', implode(',', $fixed), Auth::id());
 
         flash('success', __('ui.message.saved'));
         redirect('/admin/settings');

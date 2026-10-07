@@ -27,6 +27,13 @@ ErrorLog::install();
 
 send_security_headers();
 
+$requestHost = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+
+if (str_starts_with($requestHost, 'www.') && in_array(substr($requestHost, 4), app_hosts(), true)) {
+    header('Location: https://' . substr($requestHost, 4) . ($_SERVER['REQUEST_URI'] ?? '/'), true, 308);
+    exit;
+}
+
 $requestPath = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
 $hasSession  = isset($_COOKIE[session_name()]);
 
@@ -49,7 +56,9 @@ Lang::setLocale(Lang::resolve(
     (string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''),
     (array) Config::get('app.domain_locales', []),
     (string) Config::get('app.locale', 'en'),
+    fixed_locale_domains(),
 ));
+Lang::setSwitchable(Lang::fixedFor((string) ($_SERVER['HTTP_HOST'] ?? ''), (array) Config::get('app.domain_locales', []), fixed_locale_domains()) === null);
 
 if (($user = Auth::user()) !== null) {
     date_default_timezone_set((string) ($user['timezone'] ?: Config::get('app.timezone', 'UTC')));
@@ -236,6 +245,7 @@ $routes = [
         '/admin/key-sites'   => [AdminController::class, 'storeKeySite'],
         '/admin/api'         => [AdminController::class, 'saveApiSettings'],
         '/admin/settings'    => [AdminController::class, 'saveSettings'],
+        '/admin/settings/domains' => [AdminController::class, 'saveDomains'],
         '/admin/testimonials' => [AdminController::class, 'saveTestimonials'],
         '/admin/testimonials/toggle' => [AdminController::class, 'toggleTestimonial'],
         '/admin/testimonials/section' => [AdminController::class, 'toggleTestimonialsSection'],

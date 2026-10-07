@@ -1129,6 +1129,8 @@ return [
         ],
 
         'label' => [
+            'domains' => 'Domains and language',
+            'domain_fixed' => 'Always in this language, no language switch',
             'error_request_unknown' => 'Not in the server log (the page it came from is shown)',
             'errors_search_hint' => 'Message, file or page',
             'errors_show_open' => 'Open',
@@ -1457,6 +1459,10 @@ return [
         ],
 
         'message' => [
+            'domains_hint' => 'Each public domain opens in its own language (APP_DOMAIN_LOCALES). A domain can keep that language for everyone: the language switch is hidden there, and profile choices do not change it.',
+            'domains_none' => 'No public domains are configured (APP_DOMAIN_LOCALES).',
+            'domain_fixed_hint' => 'Content kept in several languages (notifications, testimonials, language files) can still be filled in for every language from the administration pages.',
+            'language_fixed_here' => 'On %s the site is always in %s. Your choice applies on the other domains and to your notifications.',
             'errors_intro' => 'Problems StreamOrg ran into, grouped by kind and counted. Crashes and errors broke a request; warnings and notices were handled but are worth a look. New problems are notified to administrators. Problems not seen for 90 days are deleted.',
             'errors_none_open' => 'No open problems. All good!',
             'errors_resolved' => '%d problem(s) marked resolved.',

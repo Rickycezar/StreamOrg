@@ -262,3 +262,27 @@ function app_hosts(): array
 
     return array_values(array_unique($hosts));
 }
+
+/**
+ * Domains whose language is fixed, with no language switch (Administration
+ * → Settings).
+ *
+ * @return list<string>
+ */
+function fixed_locale_domains(): array
+{
+    $value = (string) Settings::get('fixed_locale_domains', '');
+
+    return array_values(array_filter(array_map(static fn (string $d): string => strtolower(trim($d)), explode(',', $value))));
+}
+
+/** The public address to give out for something meant for speakers of $locale (see Lang::baseUrlFor()). */
+function public_base_url(?string $locale): string
+{
+    return Lang::baseUrlFor(
+        $locale,
+        (array) Config::get('app.domain_locales', []),
+        fixed_locale_domains(),
+        (string) (Config::get('app.base_url', '') ?: rtrim(url('/'), '/'))
+    );
+}

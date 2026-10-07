@@ -1128,6 +1128,8 @@ return [
         ],
 
         'label' => [
+            'domains' => 'Domínios e idioma',
+            'domain_fixed' => 'Sempre neste idioma, sem troca de idioma',
             'error_request_unknown' => 'Não consta no log do servidor (a página de origem aparece ao lado)',
             'errors_search_hint' => 'Mensagem, arquivo ou página',
             'errors_show_open' => 'Abertos',
@@ -1456,6 +1458,10 @@ return [
         ],
 
         'message' => [
+            'domains_hint' => 'Cada domínio público abre no seu próprio idioma (APP_DOMAIN_LOCALES). Um domínio pode manter esse idioma para todos: a troca de idioma some ali, e a escolha no perfil não o muda.',
+            'domains_none' => 'Nenhum domínio público configurado (APP_DOMAIN_LOCALES).',
+            'domain_fixed_hint' => 'Conteúdos mantidos em vários idiomas (notificações, depoimentos, arquivos de idioma) continuam podendo ser preenchidos em todos os idiomas pelas páginas de administração.',
+            'language_fixed_here' => 'Em %s o site é sempre em %s. A sua escolha vale nos outros domínios e nas suas notificações.',
             'errors_intro' => 'Problemas que o StreamOrg encontrou, agrupados por tipo e contados. Travamentos e erros quebraram uma requisição; avisos e observações foram tratados, mas merecem uma olhada. Problemas novos são notificados aos administradores. Problemas que não aparecem há 90 dias são apagados.',
             'errors_none_open' => 'Nenhum problema aberto. Tudo certo!',
             'errors_resolved' => '%d problema(s) marcado(s) como resolvido(s).',

@@ -22,6 +22,8 @@ final class Lang
 
     private static string $locale = self::DEFAULT_LOCALE;
 
+    private static bool $switchable = true;
+
     /** @var array<string, array<string, mixed>> */
     private static array $loaded = [];
 
@@ -63,7 +65,12 @@ final class Lang
      *   4. the browser's Accept-Language, on any other host (localhost…);
      *   5. the app default.
      *
+     * A domain marked as having a fixed language (Administration →
+     * Settings) always uses its own, whatever the profile or the cookie
+     * say: there is no language switch there.
+     *
      * @param array<string,string> $domainLocales host => locale
+     * @param list<string> $fixedDomains domains whose language cannot be changed
      */
     public static function resolve(
         ?string $userLocale,
@@ -72,8 +79,14 @@ final class Lang
         string $acceptLanguage,
         array $domainLocales,
         string $default,
+        array $fixedDomains = [],
     ): string {
         $available = self::available();
+        $fixed     = self::fixedFor($host, $domainLocales, $fixedDomains);
+
+        if ($fixed !== null && in_array($fixed, $available, true)) {
+            return $fixed;
+        }
 
         foreach ([$userLocale, $chosen, self::forHost($host, $domainLocales)] as $candidate) {
             if ($candidate !== null && in_array($candidate, $available, true)) {
@@ -106,6 +119,52 @@ final class Lang
         }
 
         return null;
+    }
+
+    /**
+     * The fixed language of a host, when its domain is one of $fixedDomains;
+     * null when visitors may choose.
+     *
+     * @param array<string,string> $domainLocales host => locale
+     * @param list<string> $fixedDomains
+     */
+    public static function fixedFor(string $host, array $domainLocales, array $fixedDomains): ?string
+    {
+        $fixed = array_intersect_key(
+            $domainLocales,
+            array_flip(array_map(static fn (string $d): string => strtolower(trim($d)), $fixedDomains))
+        );
+
+        return $fixed === [] ? null : self::forHost($host, $fixed);
+    }
+
+    /** Whether visitors on this request's host may change the language (no fixed language there). */
+    public static function switchable(): bool
+    {
+        return self::$switchable;
+    }
+
+    /** Set once per request by the front controller. */
+    public static function setSwitchable(bool $switchable): void
+    {
+        self::$switchable = $switchable;
+    }
+
+    /**
+     * The public address that speaks a language: the domain set to it
+     * (a fixed one first), otherwise the base URL. For links sent to other
+     * people, like giveaway claim links.
+     *
+     * @param array<string,string> $domainLocales host => locale
+     * @param list<string> $fixedDomains
+     */
+    public static function baseUrlFor(?string $locale, array $domainLocales, array $fixedDomains, string $baseUrl): string
+    {
+        $fixed   = array_map(static fn (string $d): string => strtolower(trim($d)), $fixedDomains);
+        $matches = array_keys(array_filter($domainLocales, static fn (string $l): bool => $l === $locale));
+        usort($matches, static fn (string $a, string $b): int => (int) in_array($b, $fixed, true) <=> (int) in_array($a, $fixed, true));
+
+        return $matches !== [] ? 'https://' . strtolower($matches[0]) : rtrim($baseUrl, '/');
     }
 
     /**

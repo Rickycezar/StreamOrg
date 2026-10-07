@@ -54,4 +54,38 @@ final class LangTest extends TestCase
     {
         self::assertSame('pt-BR', Lang::resolve('xx', '../../etc', 'streamorg.com.br', '', self::DOMAINS, 'en'));
     }
+
+    public function testAFixedDomainKeepsItsLanguageWhateverTheChoices(): void
+    {
+        $fixed = ['streamorg.com.br'];
+
+        self::assertSame('pt-BR', Lang::resolve('en', 'en', 'streamorg.com.br', 'en-US', self::DOMAINS, 'en', $fixed));
+        self::assertSame('pt-BR', Lang::resolve('en', null, 'www.streamorg.com.br', '', self::DOMAINS, 'en', $fixed));
+        self::assertSame('pt-BR', Lang::resolve(null, 'pt-BR', 'streamorg.com', '', self::DOMAINS, 'en', $fixed), 'Other domains still switch.');
+        self::assertSame('pt-BR', Lang::fixedFor('streamorg.com.br', self::DOMAINS, $fixed));
+        self::assertNull(Lang::fixedFor('streamorg.com', self::DOMAINS, $fixed));
+        self::assertNull(Lang::fixedFor('streamorg.com.br', self::DOMAINS, []));
+    }
+
+    public function testLinksForOthersGoToTheDomainOfTheirLanguage(): void
+    {
+        self::assertSame('https://streamorg.com.br', Lang::baseUrlFor('pt-BR', self::DOMAINS, [], 'https://streamorg.com'));
+        self::assertSame('https://streamorg.com', Lang::baseUrlFor('en', self::DOMAINS, ['streamorg.com.br'], 'https://streamorg.com'));
+        self::assertSame('https://base.example', Lang::baseUrlFor('de', self::DOMAINS, [], 'https://base.example/'));
+        self::assertSame('https://base.example', Lang::baseUrlFor(null, [], [], 'https://base.example'));
+    }
+
+    public function testTheSwitcherComesBackToTheSamePageWithItsQuery(): void
+    {
+        $saved = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/claim?t=abc_DEF-123';
+
+        try {
+            self::assertSame('/claim?t=abc_DEF-123', LocaleController::here());
+            parse_str((string) parse_url(LocaleController::links()['en']['href'], PHP_URL_QUERY), $query);
+            self::assertSame('/claim?t=abc_DEF-123', $query['back']);
+        } finally {
+            $_SERVER['REQUEST_URI'] = $saved;
+        }
+    }
 }

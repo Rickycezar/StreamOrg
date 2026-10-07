@@ -350,10 +350,14 @@ final class Giveaways
         return $stmt->rowCount() > 0;
     }
 
-    /** The claim link of a winner, for the streamer to copy again. */
-    public static function claimUrl(string $token): string
+    /**
+     * The claim link of a winner, for the streamer to copy again: on the
+     * domain that speaks the streamer's language (streamorg.com.br for a
+     * Portuguese streamer), as their audience most likely does.
+     */
+    public static function claimUrl(string $token, ?string $locale = null): string
     {
-        return rtrim((string) (Config::get('app.base_url', '') ?: url('/')), '/') . '/claim?t=' . rawurlencode($token);
+        return public_base_url($locale) . url('/claim') . '?t=' . rawurlencode($token);
     }
 
     /** Decrypts the stored copy of a winner's claim token. */

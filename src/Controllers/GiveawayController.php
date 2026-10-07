@@ -82,9 +82,10 @@ final class GiveawayController
            ORDER BY w.created_at DESC'
         );
         $stmt->execute([$giveaway['id']]);
-        $winners = array_map(static function (array $w): array {
+        $locale  = (string) (Auth::user()['locale'] ?? '');
+        $winners = array_map(static function (array $w) use ($locale): array {
             $token     = Giveaways::tokenOf($w);
-            $w['link'] = $token !== null ? Giveaways::claimUrl($token) : null;
+            $w['link'] = $token !== null ? Giveaways::claimUrl($token, $locale) : null;
             $w['state'] = PrizeRemovals::stateOf($w);
             unset($w['claim_token'], $w['claim_token_hash']);
 
