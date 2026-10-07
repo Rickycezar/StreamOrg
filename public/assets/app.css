@@ -1342,8 +1342,11 @@ dl.detail dd { margin: 0; font-size: .875rem; overflow-wrap: anywhere; }
 
 td.rowactions { white-space: nowrap; text-align: left; }
 .table-wrap th.col-actions,
-.table-wrap td.rowactions { position: sticky; left: 0; z-index: 2; background: var(--surface); box-shadow: calc(-1 * var(--wrap-pad, 0px)) 0 0 var(--surface); }
-.table-wrap tbody tr:hover td.rowactions { background: var(--surface-2); box-shadow: calc(-1 * var(--wrap-pad, 0px)) 0 0 var(--surface-2); }
+.table-wrap td.rowactions { position: sticky; left: 0; z-index: 2; background: var(--surface); }
+.table-wrap tbody tr:hover td.rowactions { background: var(--surface-2); }
+.table-wrap th.col-actions::before,
+.table-wrap td.rowactions::before { content: ''; position: absolute; top: 0; bottom: 0; left: calc(-1 * var(--wrap-pad, 0px)); width: var(--wrap-pad, 0px); background: inherit; pointer-events: none; }
+.table-wrap td.rowactions::before { bottom: -1px; border-bottom: inherit; }
 .table-wrap td.rowactions.menu-open { z-index: 80; }
 .table-wrap th.col-actions::after,
 .table-wrap td.rowactions::after { content: ''; position: absolute; top: 0; right: -10px; bottom: 0; width: 10px; pointer-events: none; opacity: 0; transition: opacity .15s; background: linear-gradient(to right, rgba(0, 0, 0, .12), transparent); }
