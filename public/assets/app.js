@@ -1445,8 +1445,8 @@
     });
 
     /**
-     * The content title field: prefix chips (in the order chosen) before
-     * the creator's own text, and a coloured preview of the finished
+     * The content title field: prefix and suffix buttons around the
+     * creator's own text, and a coloured preview of the finished
      * title. A counter's number is the content's place on the calendar:
      * how many dated, not cancelled plans using it come first, plus where
      * the counter starts; undated content shows "?".
@@ -1476,17 +1476,27 @@
         return String(text).toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
     }
 
+    function escapeRegExp(text) {
+        return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /** The collab credit ("ft. @a, @b") as a pattern, with the user's own credit word. */
+    function creditPattern() {
+        const word = typeof window.STREAMORG_COLLAB_PREFIX === 'string' ? window.STREAMORG_COLLAB_PREFIX : 'ft.';
+        return (word ? escapeRegExp(word) + ' ' : '') + '@[^\\s,#]+(?:,\\s*@[^\\s,#]+)*';
+    }
+
     /**
-     * The title split into coloured pieces: prefixes at the start (and any
-     * of the user's prefixes elsewhere), counters, the collab credit,
-     * sponsor tags and developer/publisher tags; the rest is plain text.
+     * The title split into coloured pieces: the user's prefixes and
+     * suffixes wherever they are (and bracketed text at the start),
+     * counters, the collab credit, sponsor tags and developer/publisher
+     * tags; the rest is plain text.
      */
     function titleTokens(text, prefixes, sponsors) {
         const tokens = [];
         const lead = /^(\s*\[[^\]]*\])+/.exec(text);
-        const word = typeof window.STREAMORG_COLLAB_PREFIX === 'string' ? window.STREAMORG_COLLAB_PREFIX : 'ft.';
-        const credit = (word ? word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' ' : '') + '@[^\\s,#]+(?:,\\s*@[^\\s,#]+)*';
-        const pattern = new RegExp('(\\[[^\\]]*\\])|(\\{[a-z][a-z0-9_]{0,19}\\})|(' + credit + ')|(#[^\\s#]+)', 'g');
+        const affixes = prefixes.filter(Boolean).slice().sort(function (a, b) { return b.length - a.length; }).map(escapeRegExp);
+        const pattern = new RegExp('(' + (affixes.length ? affixes.join('|') : '(?!)') + ')|(\\[[^\\]]*\\])|(\\{[a-z][a-z0-9_]{0,19}\\})|(' + creditPattern() + ')|(#[^\\s#]+)', 'g');
         let last = 0;
         let match;
 
@@ -1498,14 +1508,14 @@
             push('text', text.slice(last, match.index));
             const value = match[0];
 
-            if (match[1]) {
-                const isPrefix = (lead && match.index < lead[0].length) || prefixes.indexOf(value) !== -1;
+            if (match[1] || match[2]) {
+                const isPrefix = !!match[1] || (lead && match.index < lead[0].length);
                 value.split(/(\{[a-z][a-z0-9_]{0,19}\})/).forEach(function (part) {
                     if (part) push(/^\{/.test(part) ? 'counter' : (isPrefix ? 'prefix' : 'text'), part);
                 });
-            } else if (match[2]) {
-                push('counter', value);
             } else if (match[3]) {
+                push('counter', value);
+            } else if (match[4]) {
                 push('collab', value);
             } else {
                 push(sponsors.indexOf(tagKey(value)) !== -1 ? 'sponsor' : 'devpub', value);
@@ -1595,12 +1605,30 @@
             const button = event.target.closest('.prefix-option');
             if (!button) return;
 
-            const lead = /^(\s*\[[^\]]*\])*/.exec(input.value)[0];
-            const rest = input.value.slice(lead.length).replace(/^\s+/, '');
-            input.value = (lead.trim() ? lead.trim() + ' ' : '') + button.dataset.prefixText + ' ' + rest;
+            const piece = button.dataset.prefixText;
+
+            if (button.dataset.kind === 'suffix') {
+                const tail = new RegExp('(\\s+(' + creditPattern() + '|#[^\\s#]+))+\\s*$').exec(input.value);
+                const cut = tail ? tail.index : input.value.length;
+                const body = input.value.slice(0, cut).replace(/\s+$/, '');
+                input.value = (body ? body + ' ' : '') + piece + (tail ? tail[0].replace(/\s+$/, '') : '');
+            } else {
+                const lead = /^(\s*\[[^\]]*\])*/.exec(input.value)[0];
+                const rest = input.value.slice(lead.length).replace(/^\s+/, '');
+                input.value = (lead.trim() ? lead.trim() + ' ' : '') + piece + ' ' + rest;
+            }
+
             input.focus();
             update();
         });
+
+        if (wrap.dataset.caret !== undefined) {
+            input.addEventListener('focus', function place() {
+                input.removeEventListener('focus', place);
+                const at = Math.min(parseInt(wrap.dataset.caret, 10) || 0, input.value.length);
+                setTimeout(function () { input.setSelectionRange(at, at); }, 0);
+            });
+        }
 
         if (form) {
             form.addEventListener('change', function (event) {
@@ -2259,53 +2287,203 @@
         });
     }
 
+    /**
+     * Puts the columns in the user's order: cells with data-col move,
+     * cells without one (the row's buttons) keep their place at the start.
+     * Columns missing from the order stay after the ordered ones.
+     */
+    function applyOrder(table, order) {
+        if (!order.length) return;
+
+        const rank = function (col) {
+            const i = order.indexOf(col);
+            return i === -1 ? order.length : i;
+        };
+
+        Array.prototype.forEach.call(table.rows, function (row) {
+            const cells = Array.prototype.filter.call(row.cells, function (cell) { return cell.dataset.col; });
+            if (cells.length < 2) return;
+
+            cells
+                .map(function (cell, i) { return { cell: cell, i: i }; })
+                .sort(function (a, b) { return rank(a.cell.dataset.col) - rank(b.cell.dataset.col) || a.i - b.i; })
+                .forEach(function (item) { row.appendChild(item.cell); });
+        });
+    }
+
+    /**
+     * Column chooser: tick the columns to show, and put them in any order,
+     * by dragging or with the arrows. Saved per user and table.
+     */
     onPage(function () {
         document.querySelectorAll('table[data-table]').forEach(function (table) {
             const name = table.dataset.table;
             const prefKey = 'columns.' + name;
+            const orderKey = prefKey + '.order';
             const prefs = window.STREAMORG_PREFS || {};
+            const L = window.STREAMORG_L || {};
             let hidden = Array.isArray(prefs[prefKey]) ? prefs[prefKey].slice() : [];
+            let order = Array.isArray(prefs[orderKey]) ? prefs[orderKey].slice() : [];
 
             const headers = Array.prototype.slice.call(table.querySelectorAll('thead th[data-col]'));
             if (!headers.length) return;
 
+            const labels = {};
+            const defaults = headers.map(function (th) {
+                labels[th.dataset.col] = th.textContent.trim() || th.dataset.col;
+                return th.dataset.col;
+            });
+
+            applyOrder(table, order);
             applyColumns(table, hidden);
+
+            const current = function () {
+                return Array.prototype.map.call(table.querySelectorAll('thead th[data-col]'), function (th) { return th.dataset.col; });
+            };
 
             const wrap = document.createElement('details');
             wrap.className = 'columns-picker';
 
             const summary = document.createElement('summary');
-            summary.textContent = (window.STREAMORG_L || {}).columns || 'Columns';
+            summary.textContent = L.columns || 'Columns';
             wrap.append(summary);
 
             const list = document.createElement('div');
             list.className = 'columns-list';
 
-            headers.forEach(function (th) {
-                const col = th.dataset.col;
-                const label = document.createElement('label');
-                label.className = 'inline';
+            const hint = document.createElement('p');
+            hint.className = 'columns-hint';
+            hint.textContent = L.columns_hint || '';
 
-                const box = document.createElement('input');
-                box.type = 'checkbox';
-                box.checked = hidden.indexOf(col) === -1;
+            const items = document.createElement('ol');
+            items.className = 'columns-items';
 
-                const text = document.createElement('span');
-                text.textContent = th.textContent.trim() || col;
+            const reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'btn small ghost columns-reset';
+            reset.textContent = L.columns_reset || 'Reset';
 
-                box.addEventListener('change', async function () {
-                    hidden = box.checked
-                        ? hidden.filter(function (c) { return c !== col; })
-                        : hidden.concat([col]);
+            const save = function (key, value) {
+                postJson('/preferences', { key: key, value: JSON.stringify(value) });
+            };
 
-                    applyColumns(table, hidden);
-                    await postJson('/preferences', { key: prefKey, value: JSON.stringify(hidden) });
+            const commitOrder = function () {
+                order = Array.prototype.map.call(items.children, function (li) { return li.dataset.col; });
+                applyOrder(table, order);
+                applyColumns(table, hidden);
+                save(orderKey, order);
+                refreshArrows();
+            };
+
+            const refreshArrows = function () {
+                Array.prototype.forEach.call(items.children, function (li, i) {
+                    li.querySelector('[data-col-up]').disabled = i === 0;
+                    li.querySelector('[data-col-down]').disabled = i === items.children.length - 1;
+                });
+            };
+
+            const arrow = function (label, glyph, attr) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'col-move';
+                button.setAttribute(attr, '');
+                button.setAttribute('aria-label', label);
+                button.title = label;
+                button.textContent = glyph;
+                return button;
+            };
+
+            const build = function () {
+                items.innerHTML = '';
+
+                current().forEach(function (col) {
+                    const li = document.createElement('li');
+                    li.dataset.col = col;
+                    li.draggable = true;
+
+                    const grip = document.createElement('span');
+                    grip.className = 'col-grip';
+                    grip.setAttribute('aria-hidden', 'true');
+                    grip.textContent = '⋮⋮';
+
+                    const label = document.createElement('label');
+                    label.className = 'inline';
+                    const box = document.createElement('input');
+                    box.type = 'checkbox';
+                    box.checked = hidden.indexOf(col) === -1;
+                    const text = document.createElement('span');
+                    text.textContent = labels[col];
+                    label.append(box, text);
+
+                    box.addEventListener('change', function () {
+                        hidden = box.checked
+                            ? hidden.filter(function (c) { return c !== col; })
+                            : hidden.concat([col]);
+                        applyColumns(table, hidden);
+                        save(prefKey, hidden);
+                    });
+
+                    const up = arrow((L.move_up || 'Move up') + ': ' + labels[col], '↑', 'data-col-up');
+                    const down = arrow((L.move_down || 'Move down') + ': ' + labels[col], '↓', 'data-col-down');
+
+                    up.addEventListener('click', function () {
+                        if (li.previousElementSibling) items.insertBefore(li, li.previousElementSibling);
+                        commitOrder();
+                        up.disabled ? down.focus() : up.focus();
+                    });
+
+                    down.addEventListener('click', function () {
+                        if (li.nextElementSibling) items.insertBefore(li.nextElementSibling, li);
+                        commitOrder();
+                        down.disabled ? up.focus() : down.focus();
+                    });
+
+                    li.addEventListener('dragstart', function (event) {
+                        li.classList.add('dragging');
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', col);
+                    });
+
+                    li.addEventListener('dragend', function () {
+                        li.classList.remove('dragging');
+                        commitOrder();
+                    });
+
+                    li.append(grip, label, up, down);
+                    items.append(li);
                 });
 
-                label.append(box, text);
-                list.append(label);
+                refreshArrows();
+            };
+
+            items.addEventListener('dragover', function (event) {
+                const dragging = items.querySelector('.dragging');
+                if (!dragging) return;
+                event.preventDefault();
+
+                const after = Array.prototype.find.call(items.children, function (li) {
+                    if (li === dragging) return false;
+                    const box = li.getBoundingClientRect();
+                    return event.clientY < box.top + box.height / 2;
+                });
+
+                if (after) items.insertBefore(dragging, after);
+                else items.append(dragging);
             });
 
+            reset.addEventListener('click', function () {
+                hidden = [];
+                order = defaults.slice();
+                applyOrder(table, order);
+                applyColumns(table, hidden);
+                save(prefKey, hidden);
+                save(orderKey, []);
+                order = [];
+                build();
+            });
+
+            build();
+            list.append(hint, items, reset);
             wrap.append(list);
 
             const card = table.closest('.card');
@@ -2396,10 +2574,10 @@
             const headers = Array.prototype.slice.call(table.tHead ? table.tHead.rows[0].cells : []);
             const L = window.STREAMORG_L || {};
 
-            const show = function (index, dir) {
-                headers.forEach(function (th, i) {
+            const show = function (active, dir) {
+                headers.forEach(function (th) {
                     if (th.classList.contains('col-actions') || th.hasAttribute('data-nosort')) return;
-                    th.setAttribute('aria-sort', i === index && dir ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+                    th.setAttribute('aria-sort', th === active && dir ? (dir > 0 ? 'ascending' : 'descending') : 'none');
                 });
             };
 
@@ -2417,18 +2595,22 @@
                     const current = th.getAttribute('aria-sort');
                     const dir = current === 'ascending' ? -1 : current === 'descending' ? 0 : 1;
 
-                    sortRows(table, index, dir);
-                    show(index, dir);
-                    storeSort(key, dir ? { index: index, dir: dir } : null);
+                    sortRows(table, th.cellIndex, dir);
+                    show(th, dir);
+                    storeSort(key, dir ? { col: th.dataset.col || null, index: index, dir: dir } : null);
                 });
             });
 
-            show(-1, 0);
+            show(null, 0);
 
             const saved = storedSort(key);
-            if (saved && headers[saved.index] && headers[saved.index].querySelector('.th-sort')) {
-                sortRows(table, saved.index, saved.dir);
-                show(saved.index, saved.dir);
+            const target = saved && (saved.col
+                ? table.tHead.querySelector('th[data-col="' + saved.col + '"]')
+                : headers[saved.index]);
+
+            if (target && target.querySelector('.th-sort')) {
+                sortRows(table, target.cellIndex, saved.dir);
+                show(target, saved.dir);
             }
         });
 
@@ -2468,6 +2650,8 @@
     /** Takes the sort buttons and row menus out again before Turbo keeps a copy of the page, whose listeners would be gone. */
     function undoTableExtras() {
         closeRowMenus();
+
+        document.querySelectorAll('.columns-picker').forEach(function (picker) { picker.remove(); });
 
         document.querySelectorAll('th .th-sort').forEach(function (button) {
             const th = button.parentNode;

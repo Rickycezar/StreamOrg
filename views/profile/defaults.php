@@ -1,13 +1,21 @@
 <?php
 /**
  * @var array $user @var array<int, array{start: string, end: ?string}> $schedule
- * @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
+ * @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool, kind:string}> $prefixes
  * @var list<array{id:int, name:string, value:int}> $counters @var string $collabPrefix
  */
 $remove = '<button type="button" class="btn small" data-row-remove aria-label="' . e(__('ui.action.delete')) . '">×</button>';
 
-$prefixRow = static function (string $key, string $text, bool $default) use ($remove): string {
+$prefixRow = static function (string $key, string $text, bool $default, string $kind = 'prefix') use ($remove): string {
+    $kinds = '';
+
+    foreach (ContentDefaults::KINDS as $option) {
+        $kinds .= '<label><input type="radio" name="prefix[' . e($key) . '][kind]" value="' . $option . '"' . ($kind === $option ? ' checked' : '') . '>'
+            . '<span>' . e(__('ui.label.affix_' . $option)) . '</span></label>';
+    }
+
     return '<div class="prefix-row row-item">'
+        . '<span class="affix-kind" role="radiogroup" aria-label="' . e(__('ui.label.affix_where')) . '">' . $kinds . '</span>'
         . '<input type="text" name="prefix[' . e($key) . '][text]" value="' . e($text) . '" maxlength="' . ContentDefaults::PREFIX_MAX . '" placeholder="[STREAM #{stream}]" aria-label="' . e(__('ui.field.title_prefix')) . '">'
         . '<label class="prefix-default"><input type="checkbox" name="prefix[' . e($key) . '][default]" value="1"' . ($default ? ' checked' : '') . '> ' . e(__('ui.label.use_by_default')) . '</label>'
         . '<button type="button" class="btn small" data-row-up title="' . e(__('ui.action.move_up')) . '" aria-label="' . e(__('ui.action.move_up')) . '">↑</button>'
@@ -85,7 +93,7 @@ $counterRow = static function (string $key, ?array $counter) use ($remove): stri
             <p class="muted small"><?= e(__('ui.message.title_prefixes_hint')) ?></p>
             <div class="prefix-rows" data-rows="prefix">
                 <?php foreach ($prefixes as $i => $p): ?>
-                    <?= $prefixRow((string) $i, $p['prefix'], $p['is_default']) ?>
+                    <?= $prefixRow((string) $i, $p['prefix'], $p['is_default'], $p['kind']) ?>
                 <?php endforeach; ?>
                 <?= $prefixRow((string) count($prefixes), '', false) ?>
             </div>

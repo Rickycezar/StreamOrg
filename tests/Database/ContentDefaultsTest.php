@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** Usual content length and title prefixes, one of them the default. */
+/** Usual content length, and title prefixes and suffixes with their defaults. */
 final class ContentDefaultsTest extends DatabaseTestCase
 {
     public function testLengthDefaultsToTwoHoursAndCanChange(): void
@@ -27,9 +27,33 @@ final class ContentDefaultsTest extends DatabaseTestCase
         $rows = [['text' => '[STEAM DECK]'], ['text' => '  '], ['text' => '[PT-BR]', 'default' => '1'], ['text' => '[steam deck]', 'default' => '1']];
 
         self::assertSame(
-            [['prefix' => '[STEAM DECK]', 'is_default' => false], ['prefix' => '[PT-BR]', 'is_default' => true]],
+            [['prefix' => '[STEAM DECK]', 'is_default' => false, 'kind' => 'prefix'], ['prefix' => '[PT-BR]', 'is_default' => true, 'kind' => 'prefix']],
             ContentDefaults::prefixesFromInput($rows)
         );
+    }
+
+    public function testSuffixesAreKeptAndUnknownKindsBecomePrefixes(): void
+    {
+        $rows = [['text' => '| !drops', 'kind' => 'suffix'], ['text' => '[PT-BR]', 'kind' => 'sideways']];
+
+        self::assertSame(['suffix', 'prefix'], array_column(ContentDefaults::prefixesFromInput($rows), 'kind'));
+    }
+
+    public function testDefaultPrefixesOpenAndDefaultSuffixesCloseANewTitle(): void
+    {
+        $user = $this->createUser('phpunit_suffixes');
+
+        ContentDefaults::save($user, 120, [
+            ['prefix' => '[A]', 'is_default' => true, 'kind' => 'prefix'],
+            ['prefix' => '| !drops', 'is_default' => true, 'kind' => 'suffix'],
+            ['prefix' => '[B]', 'is_default' => true, 'kind' => 'prefix'],
+            ['prefix' => '| !unused', 'is_default' => false, 'kind' => 'suffix'],
+        ]);
+        $items = ContentDefaults::prefixes($user);
+
+        self::assertSame('[A] [B] Game night | !drops', ContentDefaults::withDefaults($items, 'Game night'));
+        self::assertSame(['value' => '[A] [B]  | !drops', 'caret' => 8], ContentDefaults::newTitle($items));
+        self::assertSame(['value' => '', 'caret' => 0], ContentDefaults::newTitle([]));
     }
 
     public function testTooLongPrefixIsRefused(): void

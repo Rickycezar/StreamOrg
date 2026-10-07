@@ -400,13 +400,9 @@ final class CollabSessions
         $others->execute([$sessionId, $userId]);
         $logins = $others->fetchAll(PDO::FETCH_COLUMN);
 
-        $prefixes = implode('', array_map(
-            static fn (array $p): string => $p['prefix'] . ' ',
-            array_filter(ContentDefaults::prefixes($userId), static fn (array $p): bool => $p['is_default'])
-        ));
         $word   = ContentDefaults::collabPrefix($userId);
         $credit = $logins === [] ? '' : ' ' . trim(($word !== '' ? $word . ' ' : '') . implode(', ', array_map(static fn (string $l): string => '@' . $l, $logins)));
-        $title  = trim($prefixes . $plan['title'] . $credit);
+        $title  = trim(ContentDefaults::withDefaults(ContentDefaults::prefixes($userId), (string) $plan['title']) . $credit);
 
         $platform = $pdo->prepare(
             "SELECT coalesce(u.channel_platform_id, (SELECT id FROM streaming_platforms WHERE code = 'twitch')) FROM users u WHERE u.id = ?"

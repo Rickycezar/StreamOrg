@@ -4,16 +4,17 @@
  * (prefixes included) and coloured as it is typed — prefixes, counters,
  * collab credits, developer/publisher tags and sponsor tags — by a layer
  * drawn under a transparent text box, so editing stays native. Under it:
- * buttons that add a prefix, what each counter will read, the length
+ * buttons that add a prefix or a suffix, what each counter will read, the length
  * against Twitch's limit, and what the colours mean. Used by the new
  * content form and every edit form.
  *
- * @var list<array{id:int, prefix:string, is_default:bool}> $prefixes the user's prefixes
+ * @var list<array{id:int, prefix:string, is_default:bool, kind:string}> $prefixes the user's prefixes and suffixes
  * @var string $value the title (or its template, with {counters})
+ * @var ?int $caret where the cursor goes on first focus (a new title: between the default prefixes and suffixes)
  * @var ?int $streamId the content being edited, null when new
  */
 ?>
-<div class="title-editor-wrap" data-title-editor data-stream-id="<?= $streamId !== null ? (int) $streamId : '' ?>">
+<div class="title-editor-wrap" data-title-editor data-stream-id="<?= $streamId !== null ? (int) $streamId : '' ?>"<?= isset($caret) ? ' data-caret="' . (int) $caret . '"' : '' ?>>
     <span class="title-field-label"><?= e(__('ui.field.title')) ?></span>
     <div class="title-editor">
         <div class="title-highlight" aria-hidden="true" data-title-highlight></div>
@@ -23,8 +24,9 @@
     <div class="title-editor-foot">
         <?php if ($prefixes !== []): ?>
             <span class="title-prefix-buttons">
-                <?php foreach ($prefixes as $p): ?>
-                    <button type="button" class="prefix-option" data-prefix-text="<?= e($p['prefix']) ?>">+ <?= e($p['prefix']) ?></button>
+                <?php foreach ($prefixes as $p): $suffix = ($p['kind'] ?? 'prefix') === 'suffix'; ?>
+                    <button type="button" class="prefix-option<?= $suffix ? ' is-suffix' : '' ?>" data-prefix-text="<?= e($p['prefix']) ?>" data-kind="<?= $suffix ? 'suffix' : 'prefix' ?>"
+                            title="<?= e(__($suffix ? 'ui.label.add_suffix_hint' : 'ui.label.add_prefix_hint')) ?>"><?= $suffix ? e($p['prefix']) . ' +' : '+ ' . e($p['prefix']) ?></button>
                 <?php endforeach; ?>
             </span>
         <?php endif; ?>

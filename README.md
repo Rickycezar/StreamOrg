@@ -58,15 +58,21 @@ private preview. Preview access: streamorg@outlook.com.
 - **Content length**: how long you usually give sponsored content, set once
   under *Profile → Defaults*; resize an item on the calendar to change just
   that one.
-- **Title prefixes and counters**: prefixes such as "[STEAM DECK]" or
-  "[STREAM #{stream}]" are picked as chips (several, in any order, the usual
-  ones preselected); a counter in braces numbers content in calendar order
+- **Title prefixes, suffixes and counters**: prefixes such as "[STEAM DECK]"
+  or "[STREAM #{stream}]" open the title and suffixes such as "| !drops" close
+  your text, before the collab credit and hashtags (several, in any order, the
+  usual ones already written); a counter in braces numbers content in calendar order
   (undated content shows "?"), and the database renumbers whenever a plan is
   moved, cancelled or deleted. The title field works like a small code
   editor: typed freely, with prefixes, collab credits ("ft. @guest", the
   word chosen in your defaults), developer/publisher
   tags and sponsor tags coloured as you type, and the whole title kept
   within Twitch's 140 characters.
+- **Tables** (content, keys, catalogue, streamers, collabs, embargoes and
+  more): the row's buttons come first and stay in place while scrolling
+  sideways; a click on a column title sorts by it; the columns can be hidden
+  and put in any order, remembered per account; on phones a "⋮" opens a
+  row's buttons.
 
 ### Catalogue
 - **Twitch first**: with Twitch connected, a game is added by picking its

@@ -2,13 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Per-user interface preferences, currently just which table columns are
- * hidden on which screen.
+ * Per-user interface preferences: which table columns are hidden on which
+ * screen (columns.<table>), and their order (columns.<table>.order).
  */
 final class PreferenceController
 {
-    /** Preference keys the app recognises. Anything else is rejected. */
-    private const ALLOWED = ['columns.keys', 'columns.content', 'columns.catalog', 'columns.embargoes'];
+    /** Tables whose columns can be chosen and ordered. Any other key is rejected. */
+    private const TABLES = ['keys', 'content', 'catalog', 'embargoes', 'streamers', 'collabs'];
 
     /**
      * Every preference for the signed-in user, for injecting into the page.
@@ -44,7 +44,7 @@ final class PreferenceController
 
         $key = (string) ($_POST['key'] ?? '');
 
-        if (!in_array($key, self::ALLOWED, true)) {
+        if (!self::allowed($key)) {
             json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
         }
 
@@ -67,5 +67,11 @@ final class PreferenceController
         $stmt->execute([Auth::id(), $key, json_encode($value)]);
 
         json_response(['ok' => true]);
+    }
+
+    /** columns.<table> or columns.<table>.order, for a table that has a column chooser. */
+    public static function allowed(string $key): bool
+    {
+        return (bool) preg_match('/^columns\.(' . implode('|', self::TABLES) . ')(\.order)?$/', $key);
     }
 }

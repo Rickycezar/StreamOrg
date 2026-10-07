@@ -182,7 +182,8 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
             <div class="title-block">
                 <?= View::partial('content/title_field', [
                     'prefixes' => $prefixes,
-                    'value'    => implode('', array_map(static fn (array $p): string => $p['prefix'] . ' ', array_filter($prefixes, static fn (array $p): bool => $p['is_default']))),
+                    'value'    => ContentDefaults::newTitle($prefixes)['value'],
+                    'caret'    => ContentDefaults::newTitle($prefixes)['caret'],
                     'streamId' => null,
                 ]) ?>
             </div>
