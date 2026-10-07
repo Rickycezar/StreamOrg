@@ -1129,6 +1129,9 @@ return [
         ],
 
         'label' => [
+            'actions' => 'Actions',
+            'more_actions' => 'More actions',
+            'sort_by' => 'Sort by %s',
             'domains' => 'Domains and language',
             'domain_fixed' => 'Always in this language, no language switch',
             'error_request_unknown' => 'Not in the server log (the page it came from is shown)',

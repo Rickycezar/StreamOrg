@@ -130,44 +130,21 @@
         <p class="empty"><?= e(__('ui.message.empty_list')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-        <table data-table="collabs">
+        <table data-sortable data-table="collabs">
             <thead>
             <tr>
+                <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                 <th data-col="title"><?= e(__('ui.field.title')) ?></th>
                 <th data-col="streamers"><?= e(__('ui.field.streamers')) ?></th>
                 <th data-col="platform"><?= e(__('ui.field.platform')) ?></th>
                 <th data-col="when"><?= e(__('ui.field.proposed_at')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
                 <th data-col="streams"><?= e(__('ui.nav.content')) ?></th>
-                <th></th>
             </tr>
             </thead>
             <tbody>
             <?php foreach ($collabs as $row): $picked = $cast[(int) $row['id']] ?? []; ?>
                 <tr>
-                    <td data-col="title">
-                        <?= e($row['title']) ?>
-                        <?php if (!empty($row['notes'])): ?>
-                            <small class="muted block"><?= e($row['notes']) ?></small>
-                        <?php endif; ?>
-                    </td>
-                    <td data-col="streamers">
-                        <?php if ($row['streamers']): ?>
-                            <?= e($row['streamers']) ?>
-                        <?php else: ?>
-                            <span class="badge warn"><?= e(__('ui.label.no_streamers')) ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td data-col="platform"><?= e($row['platform_code'] ? code_label('streaming_platform', $row['platform_code']) : '—') ?></td>
-                    <td data-col="when"><?= e($row['proposed_at'] ? fmt_datetime($row['proposed_at']) : '—') ?></td>
-                    <td data-col="status"><span class="badge"><?= e(code_label('collab_status', $row['status'])) ?></span></td>
-                    <td data-col="streams">
-                        <?php if ((int) $row['stream_count'] > 0): ?>
-                            <a href="<?= e(url('/content')) ?>"><?= (int) $row['stream_count'] ?></a>
-                        <?php else: ?>
-                            <span class="muted">—</span>
-                        <?php endif; ?>
-                    </td>
                     <td class="rowactions">
                         <?php if (isset($sessions[(int) $row['id']])): ?>
                             <a class="btn small primary" href="<?= e(url(CollabSessions::LINK . (int) $sessions[(int) $row['id']])) ?>"><?= e(__('ui.action.together_open')) ?></a>
@@ -186,6 +163,29 @@
                         </button>
                         <button type="button" class="btn small" data-modal-form="#edit-collab-<?= (int) $row['id'] ?>"
                                 data-modal-title="<?= e($row['title']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                    </td>
+                    <td data-col="title">
+                        <?= e($row['title']) ?>
+                        <?php if (!empty($row['notes'])): ?>
+                            <small class="muted block"><?= e($row['notes']) ?></small>
+                        <?php endif; ?>
+                    </td>
+                    <td data-col="streamers">
+                        <?php if ($row['streamers']): ?>
+                            <?= e($row['streamers']) ?>
+                        <?php else: ?>
+                            <span class="badge warn"><?= e(__('ui.label.no_streamers')) ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td data-col="platform"><?= e($row['platform_code'] ? code_label('streaming_platform', $row['platform_code']) : '—') ?></td>
+                    <td data-col="when" data-sort="<?= e(sort_key($row['proposed_at'])) ?>"><?= e($row['proposed_at'] ? fmt_datetime($row['proposed_at']) : '—') ?></td>
+                    <td data-col="status"><span class="badge"><?= e(code_label('collab_status', $row['status'])) ?></span></td>
+                    <td data-col="streams">
+                        <?php if ((int) $row['stream_count'] > 0): ?>
+                            <a href="<?= e(url('/content')) ?>"><?= (int) $row['stream_count'] ?></a>
+                        <?php else: ?>
+                            <span class="muted">—</span>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <tr id="edit-collab-<?= (int) $row['id'] ?>" class="editrow hidden">

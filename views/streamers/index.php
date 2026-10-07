@@ -83,21 +83,29 @@
         <p class="empty"><?= e(__('ui.message.empty_list')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-        <table data-table="streamers">
+        <table data-sortable data-table="streamers">
             <thead>
             <tr>
+                <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                 <th data-col="name"><?= e(__('ui.field.name')) ?></th>
                 <th data-col="channels"><?= e(__('ui.field.channels')) ?></th>
                 <th data-col="type"><?= e(__('ui.field.broadcaster_type')) ?></th>
                 <th data-col="collabs"><?= e(__('ui.nav.collabs')) ?></th>
                 <th data-col="streams"><?= e(__('ui.nav.content')) ?></th>
                 <th data-col="source"><?= e(__('ui.field.source')) ?></th>
-                <th></th>
             </tr>
             </thead>
             <tbody>
             <?php foreach ($streamers as $row): ?>
                 <tr>
+                    <td class="rowactions">
+                        <?php if ($row['source_ref']): ?>
+                            <button type="button" class="btn small streamer-refresh" data-ref="<?= e($row['source_ref']) ?>"
+                                    title="<?= e(__('ui.action.refresh_hint')) ?>"><?= e(__('ui.action.refresh')) ?></button>
+                        <?php endif; ?>
+                        <button type="button" class="btn small" data-modal-form="#edit-streamer-<?= (int) $row['id'] ?>"
+                                data-modal-title="<?= e($row['name']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                    </td>
                     <td data-col="name">
                         <span class="streamer-name">
                             <?php if ($row['avatar_url']): ?>
@@ -131,14 +139,6 @@
                         <?php else: ?>
                             <span class="muted"><?= e(__('ui.label.manual_entry')) ?></span>
                         <?php endif; ?>
-                    </td>
-                    <td class="rowactions">
-                        <?php if ($row['source_ref']): ?>
-                            <button type="button" class="btn small streamer-refresh" data-ref="<?= e($row['source_ref']) ?>"
-                                    title="<?= e(__('ui.action.refresh_hint')) ?>"><?= e(__('ui.action.refresh')) ?></button>
-                        <?php endif; ?>
-                        <button type="button" class="btn small" data-modal-form="#edit-streamer-<?= (int) $row['id'] ?>"
-                                data-modal-title="<?= e($row['name']) ?>"><?= e(__('ui.action.edit')) ?></button>
                     </td>
                 </tr>
                 <tr id="edit-streamer-<?= (int) $row['id'] ?>" class="editrow hidden">

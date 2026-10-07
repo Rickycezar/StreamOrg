@@ -366,9 +366,10 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
         <p class="empty"><?= e(__('ui.message.empty_list')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-        <table data-table="content">
+        <table data-sortable data-table="content">
             <thead>
             <tr>
+                <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                 <th data-col="scheduled"><?= e(__('ui.field.scheduled')) ?></th>
                 <th data-col="title"><?= e(__('ui.field.title')) ?></th>
                 <th data-col="game"><?= e(__('ui.field.game')) ?></th>
@@ -377,13 +378,27 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                 <th data-col="deadline"><?= e(__('ui.field.deadline')) ?></th>
                 <th data-col="key"><?= e(__('ui.field.key')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
-                <th></th>
             </tr>
             </thead>
             <tbody>
             <?php foreach ($content as $row): ?>
                 <tr data-content-id="<?= (int) $row['id'] ?>">
-                    <td data-col="scheduled">
+                    <td class="rowactions">
+                        <?php if ($twitchLogin !== null && $row['platform_code'] === 'twitch'): ?>
+                            <button type="button" class="btn small twitch-push" data-id="<?= (int) $row['id'] ?>"
+                                    title="<?= e(sprintf(__('ui.action.twitch_send_hint'), $twitchLogin)) ?>">
+                                <?= e(__('ui.action.twitch_send')) ?>
+                            </button>
+                        <?php endif; ?>
+                        <button type="button" class="btn small content-detail" data-id="<?= (int) $row['id'] ?>">
+                            <?= e(__('ui.action.details')) ?>
+                        </button>
+                        <button type="button" class="btn small" data-modal-form="#edit-content-<?= (int) $row['id'] ?>"
+                                data-modal-title="<?= e($row['title']) ?>">
+                            <?= e(__('ui.action.edit')) ?>
+                        </button>
+                    </td>
+                    <td data-col="scheduled" data-sort="<?= e(sort_key($row['scheduled_start'])) ?>">
                         <?php if ($row['scheduled_start']): ?>
                             <?= e(fmt_datetime($row['scheduled_start'])) ?>
                         <?php else: ?>
@@ -403,7 +418,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                     </td>
                     <td data-col="game"><?= e($row['games'] ?: '—') ?></td>
                     <td data-col="platform"><?= e(code_label('streaming_platform', $row['platform_code'])) ?></td>
-                    <td data-col="embargo">
+                    <td data-col="embargo" data-sort="<?= e(sort_key($row['embargo_until'] ?? null ?: ($row['expires_at'] ?? null))) ?>">
                         <?php if (!empty($row['embargo_until'])): ?>
                             <?= e(fmt_date($row['embargo_until'])) ?>
                             <?php if ($row['breaks_embargo']): ?>
@@ -415,7 +430,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="deadline">
+                    <td data-col="deadline" data-sort="<?= e(sort_key($row['deadline'])) ?>">
                         <?php if ($row['deadline']): ?>
                             <?= e(fmt_date($row['deadline'])) ?>
                             <?php if (!empty($row['misses_deadline'])): ?>
@@ -430,7 +445,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="key">
+                    <td data-col="key" data-sort="<?= (int) $row['game_count'] === 0 ? '' : e((string) ((int) $row['keyed_count'] / (int) $row['game_count'])) ?>">
                         <?php if ((int) $row['game_count'] === 0): ?>
                             <span class="muted">—</span>
                         <?php elseif ((int) $row['keyed_count'] === 0): ?>
@@ -447,21 +462,6 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                    </td>
-                    <td class="rowactions">
-                        <?php if ($twitchLogin !== null && $row['platform_code'] === 'twitch'): ?>
-                            <button type="button" class="btn small twitch-push" data-id="<?= (int) $row['id'] ?>"
-                                    title="<?= e(sprintf(__('ui.action.twitch_send_hint'), $twitchLogin)) ?>">
-                                <?= e(__('ui.action.twitch_send')) ?>
-                            </button>
-                        <?php endif; ?>
-                        <button type="button" class="btn small content-detail" data-id="<?= (int) $row['id'] ?>">
-                            <?= e(__('ui.action.details')) ?>
-                        </button>
-                        <button type="button" class="btn small" data-modal-form="#edit-content-<?= (int) $row['id'] ?>"
-                                data-modal-title="<?= e($row['title']) ?>">
-                            <?= e(__('ui.action.edit')) ?>
-                        </button>
                     </td>
                 </tr>
 

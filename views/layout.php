@@ -294,6 +294,7 @@ $globals = [
         'confirm_delete' => __('ui.message.confirm_delete'),
         'confirm_delete_named' => __('ui.message.confirm_delete_named'),
         'columns' => __('ui.action.columns'), 'peek' => __('ui.action.peek'),
+        'more_actions' => __('ui.label.more_actions'), 'sort_by' => __('ui.label.sort_by'),
         'key_type' => __('ui.field.key_type'), 'content_type' => __('ui.field.content_type'),
         'region' => __('ui.field.region'), 'received' => __('ui.field.received'),
         'key_code' => __('ui.field.key_code'),

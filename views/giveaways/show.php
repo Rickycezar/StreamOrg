@@ -175,22 +175,32 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
         <p class="empty"><?= e($available === [] ? __('ui.message.giveaway_no_keys_for_giveaway') : __('ui.message.giveaway_no_prizes')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-            <table>
+            <table data-sortable>
                 <thead>
                 <tr>
+                    <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                     <th><?= e(__('ui.field.game')) ?></th>
                     <th><?= e(__('ui.field.platform')) ?></th>
                     <th><?= e(__('ui.field.redeem_by')) ?></th>
                     <th><?= e(__('ui.field.status')) ?></th>
-                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php foreach ($prizes as $p): ?>
                     <tr>
+                        <td class="rowactions">
+                            <?php if (!$p['claimed_at']): ?>
+                                <form method="post" action="<?= e(url('/giveaways/prizes/remove')) ?>">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="id" value="<?= $id ?>">
+                                    <input type="hidden" name="prize_id" value="<?= (int) $p['id'] ?>">
+                                    <button type="submit" class="btn small"><?= e(__('ui.action.remove')) ?></button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
                         <td><?= e($p['game_title']) ?></td>
                         <td><?= e(code_label('game_platform', $p['platform_code'])) ?></td>
-                        <td class="nowrap"><?= e($p['expires_at'] ? fmt_date($p['expires_at']) : '—') ?></td>
+                        <td class="nowrap" data-sort="<?= e(sort_key($p['expires_at'])) ?>"><?= e($p['expires_at'] ? fmt_date($p['expires_at']) : '—') ?></td>
                         <td>
                             <?php if ($p['claimed_at']): ?>
                                 <span class="badge ok"><?= e(sprintf(__('ui.label.claimed_by'), $p['winner_login'])) ?></span>
@@ -202,16 +212,6 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                             <?php endif; ?>
                             <?php if ($needsCopies && !$p['claimed_at']): ?>
                                 <small class="muted"><?= e(__($p['ready'] ? 'ui.label.prize_claimable' : 'ui.label.prize_in_vault')) ?></small>
-                            <?php endif; ?>
-                        </td>
-                        <td class="rowactions">
-                            <?php if (!$p['claimed_at']): ?>
-                                <form method="post" action="<?= e(url('/giveaways/prizes/remove')) ?>">
-                                    <?= Csrf::field() ?>
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <input type="hidden" name="prize_id" value="<?= (int) $p['id'] ?>">
-                                    <button type="submit" class="btn small"><?= e(__('ui.action.remove')) ?></button>
-                                </form>
                             <?php endif; ?>
                         </td>
                     </tr>

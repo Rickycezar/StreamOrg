@@ -202,9 +202,10 @@
         <p class="empty"><?= e(__('ui.message.empty_list')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-        <table class="keys" data-table="keys">
+        <table data-sortable class="keys" data-table="keys">
             <thead>
             <tr>
+                <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                 <th data-col="game"><?= e(__('ui.field.game')) ?></th>
                 <th data-col="platform"><?= e(__('ui.field.platform')) ?></th>
                 <th data-col="source"><?= e(__('ui.field.source')) ?></th>
@@ -212,13 +213,21 @@
                 <th data-col="content_type"><?= e(__('ui.field.content_type')) ?></th>
                 <th data-col="redeem_by"><?= e(__('ui.field.redeem_by')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
-                <th data-col="key_code"><?= e(__('ui.field.key_code')) ?></th>
-                <th></th>
+                <th data-col="key_code" data-nosort><?= e(__('ui.field.key_code')) ?></th>
             </tr>
             </thead>
             <tbody>
             <?php foreach ($keys as $key): ?>
                 <tr data-key-id="<?= (int) $key['id'] ?>">
+                    <td class="rowactions">
+                        <button type="button" class="btn small key-detail" data-id="<?= (int) $key['id'] ?>">
+                            <?= e(__('ui.action.details')) ?>
+                        </button>
+                        <button type="button" class="btn small" data-modal-form="#edit-key-<?= (int) $key['id'] ?>"
+                                data-modal-title="<?= e($key['game_title']) ?>">
+                            <?= e(__('ui.action.edit')) ?>
+                        </button>
+                    </td>
                     <td data-col="game">
                         <?= e($key['game_title']) ?>
                         <?php if ($key['under_embargo']): ?>
@@ -240,7 +249,7 @@
                     <td data-col="source"><?= e(code_label('key_platform', $key['key_platform_code'])) ?></td>
                     <td data-col="key_type"><?= e(code_label('key_type', $key['key_type'])) ?></td>
                     <td data-col="content_type"><?= e(code_label('content_type', $key['content_type'])) ?></td>
-                    <td class="dates" data-col="redeem_by">
+                    <td class="dates" data-col="redeem_by" data-sort="<?= e(sort_key($key['expires_at'] ?? null)) ?>">
                         <?php if (!empty($key['expires_at'])): ?>
                             <small class="muted" title="<?= e(__('ui.label.redeem_by_hint')) ?>">
                                 <?= e(__('ui.label.redeem_by')) ?> <?= e(fmt_date($key['expires_at'])) ?>
@@ -272,15 +281,6 @@
                             <button type="button" class="btn small key-copy"
                                     title="<?= e(__('ui.action.copy')) ?>"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11.5" height="11.5" rx="2.2"/><path d="M5.5 15.5A2 2 0 0 1 3.5 13.5v-8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2"/></svg></button>
                         </div>
-                    </td>
-                    <td class="rowactions">
-                        <button type="button" class="btn small key-detail" data-id="<?= (int) $key['id'] ?>">
-                            <?= e(__('ui.action.details')) ?>
-                        </button>
-                        <button type="button" class="btn small" data-modal-form="#edit-key-<?= (int) $key['id'] ?>"
-                                data-modal-title="<?= e($key['game_title']) ?>">
-                            <?= e(__('ui.action.edit')) ?>
-                        </button>
                     </td>
                 </tr>
 

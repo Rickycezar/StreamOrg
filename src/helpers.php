@@ -286,3 +286,11 @@ function public_base_url(?string $locale): string
         (string) (Config::get('app.base_url', '') ?: rtrim(url('/'), '/'))
     );
 }
+
+/** A date or time as a value for sorting a table column (seconds since 1970), empty when there is none. */
+function sort_key(?string $date): string
+{
+    $time = $date !== null && $date !== '' ? strtotime($date) : false;
+
+    return $time === false ? '' : (string) $time;
+}

@@ -2320,6 +2320,232 @@
         });
     });
 
+    /**
+     * Sortable tables (data-sortable): a click on a column title sorts by
+     * it, a second click the other way round, a third goes back to the
+     * page's own order. Empty cells always stay at the bottom. A cell can
+     * give its own value in data-sort (dates as numbers); a select sorts
+     * by its chosen option. Rows of an inline edit form travel with their
+     * row. The choice is remembered per table in this browser.
+     */
+    function sortValue(cell) {
+        if (!cell) return '';
+        if (cell.dataset.sort !== undefined) return cell.dataset.sort;
+
+        const select = cell.querySelector('select');
+        if (select && select.selectedIndex >= 0) return select.options[select.selectedIndex].text.trim();
+
+        const text = cell.textContent.replace(/\s+/g, ' ').trim();
+        return text === '—' ? '' : text;
+    }
+
+    function sortRows(table, index, dir) {
+        const body = table.tBodies[0];
+        if (!body) return;
+
+        const groups = [];
+        Array.prototype.forEach.call(body.rows, function (row) {
+            if (row.classList.contains('editrow') && groups.length) groups[groups.length - 1].push(row);
+            else groups.push([row]);
+        });
+
+        groups.forEach(function (group, i) {
+            if (group[0].dataset.order === undefined) group[0].dataset.order = String(i);
+        });
+
+        const collator = new Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' });
+        const number = function (v) { return /^-?\d+([.,]\d+)?$/.test(v) ? parseFloat(v.replace(',', '.')) : NaN; };
+
+        const keyed = groups.map(function (group) {
+            return { group: group, order: Number(group[0].dataset.order), value: dir === 0 ? '' : sortValue(group[0].cells[index]) };
+        });
+
+        keyed.sort(function (a, b) {
+            if (dir === 0) return a.order - b.order;
+            if ((a.value === '') !== (b.value === '')) return a.value === '' ? 1 : -1;
+
+            const na = number(a.value);
+            const nb = number(b.value);
+            const compared = !isNaN(na) && !isNaN(nb) ? na - nb : collator.compare(a.value, b.value);
+
+            return compared * dir || a.order - b.order;
+        });
+
+        keyed.forEach(function (item) {
+            item.group.forEach(function (row) { body.appendChild(row); });
+        });
+    }
+
+    function storedSort(key) {
+        try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+    }
+
+    function storeSort(key, value) {
+        try {
+            if (value) localStorage.setItem(key, JSON.stringify(value));
+            else localStorage.removeItem(key);
+        } catch (e) { }
+    }
+
+    onPage(function () {
+        document.querySelectorAll('table[data-sortable]').forEach(function (table, n) {
+            if (table.dataset.sortReady) return;
+            table.dataset.sortReady = '1';
+
+            const key = 'sort.' + (table.dataset.table || location.pathname + '.' + n);
+            const headers = Array.prototype.slice.call(table.tHead ? table.tHead.rows[0].cells : []);
+            const L = window.STREAMORG_L || {};
+
+            const show = function (index, dir) {
+                headers.forEach(function (th, i) {
+                    if (th.classList.contains('col-actions') || th.hasAttribute('data-nosort')) return;
+                    th.setAttribute('aria-sort', i === index && dir ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+                });
+            };
+
+            headers.forEach(function (th, index) {
+                if (th.classList.contains('col-actions') || th.hasAttribute('data-nosort') || !th.textContent.trim()) return;
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'th-sort';
+                button.title = (L.sort_by || 'Sort by %s').replace('%s', th.textContent.trim());
+                while (th.firstChild) button.appendChild(th.firstChild);
+                th.appendChild(button);
+
+                button.addEventListener('click', function () {
+                    const current = th.getAttribute('aria-sort');
+                    const dir = current === 'ascending' ? -1 : current === 'descending' ? 0 : 1;
+
+                    sortRows(table, index, dir);
+                    show(index, dir);
+                    storeSort(key, dir ? { index: index, dir: dir } : null);
+                });
+            });
+
+            show(-1, 0);
+
+            const saved = storedSort(key);
+            if (saved && headers[saved.index] && headers[saved.index].querySelector('.th-sort')) {
+                sortRows(table, saved.index, saved.dir);
+                show(saved.index, saved.dir);
+            }
+        });
+
+        document.querySelectorAll('.table-wrap').forEach(function (wrap) {
+            if (wrap.dataset.edgeReady || !wrap.querySelector('td.rowactions')) return;
+            wrap.dataset.edgeReady = '1';
+
+            const edge = function () { wrap.classList.toggle('scrolled', wrap.scrollLeft > 2); };
+            wrap.addEventListener('scroll', function () { edge(); closeRowMenus(); }, { passive: true });
+            edge();
+        });
+
+        document.querySelectorAll('table[data-sortable] td.rowactions').forEach(function (cell) {
+            if (cell.dataset.menuReady) return;
+            cell.dataset.menuReady = '1';
+
+            if (cell.querySelectorAll('.btn').length < 2) return;
+
+            const menu = document.createElement('div');
+            menu.className = 'rowactions-menu';
+            menu.setAttribute('role', 'menu');
+            while (cell.firstChild) menu.appendChild(cell.firstChild);
+
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'btn small row-more';
+            more.setAttribute('aria-haspopup', 'menu');
+            more.setAttribute('aria-expanded', 'false');
+            more.setAttribute('aria-label', (window.STREAMORG_L || {}).more_actions || 'More actions');
+            more.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+
+            cell.classList.add('has-menu');
+            cell.append(more, menu);
+        });
+    });
+
+    /** Takes the sort buttons and row menus out again before Turbo keeps a copy of the page, whose listeners would be gone. */
+    function undoTableExtras() {
+        closeRowMenus();
+
+        document.querySelectorAll('th .th-sort').forEach(function (button) {
+            const th = button.parentNode;
+            while (button.firstChild) th.insertBefore(button.firstChild, button);
+            button.remove();
+        });
+
+        document.querySelectorAll('td.rowactions.has-menu').forEach(function (cell) {
+            const menu = cell.querySelector('.rowactions-menu');
+            const more = cell.querySelector('.row-more');
+            if (more) more.remove();
+            if (menu) {
+                while (menu.firstChild) cell.insertBefore(menu.firstChild, menu);
+                menu.remove();
+            }
+            cell.classList.remove('has-menu');
+        });
+
+        document.querySelectorAll('[data-sort-ready], [data-menu-ready], [data-edge-ready]').forEach(function (node) {
+            delete node.dataset.sortReady;
+            delete node.dataset.menuReady;
+            delete node.dataset.edgeReady;
+        });
+    }
+
+    /** The "⋮" of a row on small screens: opens that row's buttons in a small menu beside it. */
+    function closeRowMenus() {
+        document.querySelectorAll('td.rowactions.menu-open').forEach(function (cell) {
+            cell.classList.remove('menu-open');
+            const menu = cell.querySelector('.rowactions-menu');
+            if (menu) menu.removeAttribute('style');
+            const more = cell.querySelector('.row-more');
+            if (more) more.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function openRowMenu(cell, more) {
+        const menu = cell.querySelector('.rowactions-menu');
+        cell.classList.add('menu-open');
+        more.setAttribute('aria-expanded', 'true');
+
+        const at = more.getBoundingClientRect();
+        const height = menu.offsetHeight;
+        const below = at.bottom + 6 + height <= window.innerHeight - 8;
+
+        menu.style.left = Math.max(8, Math.min(at.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+        menu.style.top = (below ? at.bottom + 6 : Math.max(8, at.top - 6 - height)) + 'px';
+
+        const first = menu.querySelector('.btn, a, button');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    document.addEventListener('click', function (event) {
+        const more = event.target.closest('.row-more');
+
+        if (more) {
+            const cell = more.closest('td.rowactions');
+            const wasOpen = cell.classList.contains('menu-open');
+            closeRowMenus();
+            if (!wasOpen) openRowMenu(cell, more);
+            return;
+        }
+
+        if (event.target.closest('.rowactions-menu')) {
+            setTimeout(closeRowMenus, 0);
+            return;
+        }
+
+        closeRowMenus();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeRowMenus();
+    });
+
+    window.addEventListener('resize', closeRowMenus);
+    window.addEventListener('scroll', closeRowMenus, { passive: true });
+
     function detailKeyField(id) {
         const source = document.querySelector('tr[data-key-id="' + id + '"] .keycell .keyfield');
         if (!source) return null;
@@ -3174,6 +3400,8 @@
             document.querySelectorAll('select.tomselected').forEach(function (select) {
                 if (select.tomselect) select.tomselect.destroy();
             });
+
+            undoTableExtras();
 
             document.querySelectorAll('.key-field').forEach(function (field) {
                 if (field.dataset.id) {

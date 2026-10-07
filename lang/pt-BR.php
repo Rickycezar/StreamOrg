@@ -1128,6 +1128,9 @@ return [
         ],
 
         'label' => [
+            'actions' => 'Ações',
+            'more_actions' => 'Mais ações',
+            'sort_by' => 'Ordenar por %s',
             'domains' => 'Domínios e idioma',
             'domain_fixed' => 'Sempre neste idioma, sem troca de idioma',
             'error_request_unknown' => 'Não consta no log do servidor (a página de origem aparece ao lado)',

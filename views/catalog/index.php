@@ -56,21 +56,31 @@
         <p class="empty"><?= e(__('ui.message.empty_list')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-        <table data-table="catalog">
+        <table data-sortable data-table="catalog">
             <thead>
             <tr>
+                <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                 <th data-col="title"><?= e(__('ui.field.title')) ?></th>
                 <th data-col="publisher"><?= e(__('ui.nav.publishers')) ?></th>
                 <th data-col="developer"><?= e(__('ui.nav.developers')) ?></th>
                 <th data-col="release"><?= e(__('ui.field.release_date')) ?></th>
                 <th data-col="source"><?= e(__('ui.field.source')) ?></th>
                 <th data-col="keys"><?= e(__('ui.nav.keys')) ?></th>
-                <th></th>
             </tr>
             </thead>
             <tbody>
             <?php foreach ($games as $game): ?>
                 <tr data-game-id="<?= (int) $game['id'] ?>">
+                    <td class="rowactions">
+                        <?php if ($game['source_provider']): ?>
+                            <button type="button" class="btn small game-refresh" data-id="<?= (int) $game['id'] ?>"
+                                    title="<?= e(__('ui.action.refresh_hint')) ?>">
+                                <?= e(__('ui.action.refresh')) ?>
+                            </button>
+                        <?php else: ?>
+                            <span class="muted small"><?= e(__('ui.label.manual_entry')) ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td data-col="title">
                         <span class="game-cell">
                             <?php if ($game['thumb_path']): ?>
@@ -84,7 +94,7 @@
                     </td>
                     <td data-col="publisher"><?= e($game['publisher_name'] ?: '—') ?></td>
                     <td data-col="developer"><?= e($game['developer_name'] ?: '—') ?></td>
-                    <td class="release-cell" data-col="release">
+                    <td class="release-cell" data-col="release" data-sort="<?= e(sort_key($game['release_date'])) ?>">
                         <?php if ($game['release_date'] && $game['release_precision'] === 'day'): ?>
                             <?= e(fmt_date($game['release_date'])) ?>
                         <?php elseif ($game['release_date']): ?>
@@ -107,16 +117,6 @@
                         <?php endif; ?>
                     </td>
                     <td data-col="keys"><?= (int) $game['my_keys'] ?></td>
-                    <td class="rowactions">
-                        <?php if ($game['source_provider']): ?>
-                            <button type="button" class="btn small game-refresh" data-id="<?= (int) $game['id'] ?>"
-                                    title="<?= e(__('ui.action.refresh_hint')) ?>">
-                                <?= e(__('ui.action.refresh')) ?>
-                            </button>
-                        <?php else: ?>
-                            <span class="muted small"><?= e(__('ui.label.manual_entry')) ?></span>
-                        <?php endif; ?>
-                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

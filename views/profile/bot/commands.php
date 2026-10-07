@@ -20,23 +20,19 @@
         <p class="empty"><?= e(__('ui.message.bot_no_custom')) ?></p>
     <?php else: ?>
         <div class="table-wrap">
-            <table>
+            <table data-sortable>
                 <thead>
                 <tr>
+                    <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                     <th><?= e(__('ui.field.bot_trigger')) ?></th>
                     <th><?= e(__('ui.field.bot_response')) ?></th>
                     <th><?= e(__('ui.field.bot_permission')) ?></th>
                     <th><?= e(__('ui.field.bot_cooldown')) ?></th>
-                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php foreach ($custom as $command): ?>
                     <tr class="<?= $command['is_enabled'] ? '' : 'muted' ?>">
-                        <td><code><?= e($prefix . $command['trigger']) ?></code><?php if (!$command['is_enabled']): ?> <span class="badge off"><?= e(__('ui.label.off')) ?></span><?php endif; ?></td>
-                        <td class="bot-reply"><?= e(mb_strimwidth($command['response'], 0, 90, '…')) ?></td>
-                        <td><?= e(__('ui.bot_permission.' . $command['permission'])) ?></td>
-                        <td><?= (int) $command['cooldown_seconds'] ?> s</td>
                         <td class="rowactions">
                             <button type="button" class="btn small" data-modal-form="#custom-<?= (int) $command['id'] ?>"
                                     data-modal-title="<?= e($prefix . $command['trigger']) ?>"><?= e(__('ui.action.edit')) ?></button>
@@ -46,6 +42,10 @@
                                 <button type="submit" class="btn small danger-btn" data-confirm="<?= e(sprintf(__('ui.message.bot_delete_command'), $prefix . $command['trigger'])) ?>"><?= e(__('ui.action.delete')) ?></button>
                             </form>
                         </td>
+                        <td><code><?= e($prefix . $command['trigger']) ?></code><?php if (!$command['is_enabled']): ?> <span class="badge off"><?= e(__('ui.label.off')) ?></span><?php endif; ?></td>
+                        <td class="bot-reply"><?= e(mb_strimwidth($command['response'], 0, 90, '…')) ?></td>
+                        <td><?= e(__('ui.bot_permission.' . $command['permission'])) ?></td>
+                        <td><?= (int) $command['cooldown_seconds'] ?> s</td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
