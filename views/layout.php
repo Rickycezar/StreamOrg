@@ -246,6 +246,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     <?= e(__('ui.action.logout')) ?>
                 </button>
             </form>
+            <p class="usermenu-version">StreamOrg <?= e(AppVersion::current()) ?></p>
         </div>
     </div>
 </header>

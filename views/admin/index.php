@@ -1,6 +1,6 @@
 <?php /** @var array $counts @var array<string,Provider> $providers */ ?>
 <h1><?= e(__('ui.nav.admin')) ?></h1>
-<p class="muted"><?= e(__('ui.message.admin_intro')) ?></p>
+<p class="muted"><?= e(__('ui.message.admin_intro')) ?> <span class="badge" title="<?= e(__('ui.label.app_version')) ?>">v<?= e(AppVersion::current()) ?></span></p>
 
 <section class="cards">
     <a class="card link" href="<?= e(url('/admin/games')) ?>">

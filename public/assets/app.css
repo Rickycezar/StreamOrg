@@ -3168,3 +3168,4 @@ a.note.unread:hover { background: var(--accent-soft); filter: brightness(.98); }
 .cast-row.just-added { animation: rise-in .3s ease-out; }
 .cast-name .badge { font-size: .66rem; margin-left: .2rem; }
 .badge[hidden] { display: none !important; }
+.usermenu-version { margin: .35rem 0 0; padding: .45rem .75rem 0; border-top: 1px solid var(--border-soft); font-size: .72rem; color: var(--muted); text-align: right; }

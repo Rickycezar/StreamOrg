@@ -1504,6 +1504,7 @@ return [
         ],
 
         'label' => [
+            'app_version' => 'Versão em uso',
             'on_streamorg' => 'No StreamOrg',
             'on_streamorg_hint' => 'Usa o StreamOrg: vocês podem planejar as collabs juntos',
             'cast_add_hint' => 'Busque na Twitch pelo nome',

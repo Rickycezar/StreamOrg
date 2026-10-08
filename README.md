@@ -616,3 +616,13 @@ Bundled browser libraries keep their own licenses: Turbo and FullCalendar
 License 1.1).
 
 Required Notice: Copyright 2026 Henrique Barros (https://streamorg.com)
+
+## Versions
+
+The running version is in `VERSION` (semantic versioning, e.g. `0.6.0`) and
+shows in the account menu and on the Administration overview. Each release
+is described in [CHANGELOG.md](CHANGELOG.md) and tagged in git as
+`v<version>`. To release: bump `VERSION`, add the release to the changelog,
+commit, then `git tag -a v0.7.0 -m "StreamOrg 0.7.0"` and
+`git push origin v0.7.0`.
+
