@@ -98,6 +98,9 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     '/admin/notifications' => __('ui.nav.notifications'),
                     '/admin/winners'    => __('ui.nav.winners'),
                     '/admin/errors'     => __('ui.nav.errors'),
+                    '/admin/bugs'       => __('ui.nav.bug_tracker'),
+                    '/admin/feedback'   => __('ui.nav.feedback_inbox'),
+                    '/admin/surveys'    => __('ui.nav.surveys'),
                     '/admin/settings'   => __('ui.nav.settings'),
                     '/admin/testimonials' => __('ui.nav.testimonials'),
                     '/admin/lang'       => __('ui.nav.languages'),
@@ -217,6 +220,23 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 </a>
             <?php endif; ?>
 
+            <?php $supportAttention = SupportCenter::attentionFor((int) $user['id'])['total']; ?>
+            <a class="usermenu-row" href="<?= e(url('/support')) ?>">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/></svg>
+                </span>
+                <?= e(__('ui.nav.support')) ?>
+                <?php if ($supportAttention > 0): ?><span class="usermenu-badge"><?= (int) $supportAttention ?></span><?php endif; ?>
+            </a>
+            <?php $herePath = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH); if (!str_starts_with($herePath, '/support')): ?>
+                <a class="usermenu-row" href="<?= e(url('/support/bug?page=' . rawurlencode($herePath))) ?>">
+                    <span class="usermenu-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6V4.5a4 4 0 0 1 8 0V6M6 6h12a1 1 0 0 1 1 1v6a7 7 0 0 1-14 0V7a1 1 0 0 1 1-1zM12 13v6"/></svg>
+                    </span>
+                    <?= e(__('ui.support.report_here')) ?>
+                </a>
+            <?php endif; ?>
+
             <form method="post" action="<?= e(url('/logout')) ?>" data-turbo="false" class="usermenu-logout">
                 <?= Csrf::field() ?>
                 <button type="submit" class="usermenu-row">
@@ -295,6 +315,7 @@ $globals = [
         'confirm_delete_named' => __('ui.message.confirm_delete_named'),
         'columns' => __('ui.action.columns'), 'peek' => __('ui.action.peek'),
         'more_actions' => __('ui.label.more_actions'), 'sort_by' => __('ui.label.sort_by'),
+        'on_streamorg' => __('ui.label.on_streamorg'), 'on_streamorg_hint' => __('ui.label.on_streamorg_hint'),
         'move_up' => __('ui.action.move_up'), 'move_down' => __('ui.action.move_down'),
         'columns_hint' => __('ui.message.columns_hint'), 'columns_reset' => __('ui.action.columns_reset'),
         'key_type' => __('ui.field.key_type'), 'content_type' => __('ui.field.content_type'),

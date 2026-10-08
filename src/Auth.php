@@ -205,9 +205,7 @@ final class Auth
         self::requireLogin();
 
         if (!self::isAdmin()) {
-            http_response_code(403);
-            echo '<h1>403</h1><p>' . e(Lang::t('ui.message.access_denied')) . '</p>';
-            exit;
+            error_page(403);
         }
     }
 }

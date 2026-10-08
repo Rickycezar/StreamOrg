@@ -52,8 +52,6 @@ final class Csrf
             json_response(['ok' => false, 'error' => __('ui.message.csrf_failed')], 419);
         }
 
-        http_response_code(419);
-        echo '<h1>419</h1><p>' . e(__('ui.message.csrf_failed')) . '</p>';
-        exit;
+        error_page(419);
     }
 }

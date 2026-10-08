@@ -19,6 +19,30 @@ final class CollabSessions
     public const LINK = '/collabs/session?id=';
 
     /**
+     * Which of these Twitch accounts (by id) belong to StreamOrg users other
+     * than this one: those people can plan collabs together.
+     *
+     * @param list<string> $twitchIds
+     * @return array<string, true>
+     */
+    public static function twitchOnStreamOrg(int $ownerId, array $twitchIds): array
+    {
+        $twitchIds = array_values(array_filter(array_map('strval', $twitchIds), static fn (string $id): bool => (bool) preg_match('/^\d{1,20}$/', $id)));
+
+        if ($twitchIds === []) {
+            return [];
+        }
+
+        $stmt = Database::connection()->prepare(
+            'SELECT t.twitch_user_id FROM twitch_connections t JOIN users u ON u.id = t.user_id AND u.is_active
+              WHERE t.twitch_user_id = ANY(CAST(? AS text[])) AND u.id <> ?'
+        );
+        $stmt->execute(['{' . implode(',', $twitchIds) . '}', $ownerId]);
+
+        return array_fill_keys(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);
+    }
+
+    /**
      * The streamers among these who are StreamOrg users (other than the
      * owner), matched by Twitch account.
      *

@@ -74,8 +74,11 @@ final class CollabController
 
         $stmt = $pdo->prepare('SELECT id, name FROM streamers WHERE user_id = ? ORDER BY is_favorite DESC, name');
         $stmt->execute([$userId]);
+        $streamers = $stmt->fetchAll();
 
         View::render('collabs/index', [
+            'linked'      => CollabSessions::linkedUsers((int) $userId, array_column($streamers, 'id')),
+            'twitchReady' => Twitch::isConfigured(),
             'together'    => CollabSessions::forUser((int) $userId),
             'onStreamOrg' => $onStreamOrg,
             'sessions'    => array_column($active->fetchAll(), 'id', 'collab_id'),
@@ -85,7 +88,7 @@ final class CollabController
             'filters'   => $filters,
             'statuses'  => self::STATUSES,
             'roles'     => self::ROLES,
-            'streamers' => $stmt->fetchAll(),
+            'streamers' => $streamers,
             'platforms' => $pdo->query('SELECT code FROM streaming_platforms WHERE is_enabled ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
         ], __('ui.nav.collabs'));
     }

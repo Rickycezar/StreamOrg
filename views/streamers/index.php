@@ -1,5 +1,6 @@
 <?php
-/** @var array $streamers @var array $filters @var array $platforms @var bool $twitchReady */
+/** @var array $streamers @var array $filters @var array $platforms @var bool $twitchReady
+ *  @var array<int, array{user_id:int, name:string, login:string}> $linked streamers who use StreamOrg (plan collabs together) */
 ?>
 <h1><?= e(__('ui.nav.streamers')) ?></h1>
 <p class="muted"><?= e(__('ui.message.streamers_intro')) ?></p>
@@ -113,6 +114,9 @@
                             <?php endif; ?>
                             <span>
                                 <?= e($row['name']) ?>
+                                <?php if (isset($linked[(int) $row['id']])): ?>
+                                    <span class="badge on-streamorg" title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span>
+                                <?php endif; ?>
                                 <?php if ($row['is_favorite']): ?>
                                     <span class="badge ok"><?= e(__('ui.label.favorite')) ?></span>
                                 <?php endif; ?>

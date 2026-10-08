@@ -41,8 +41,11 @@ final class StreamerController
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
 
+        $streamers = $stmt->fetchAll();
+
         View::render('streamers/index', [
-            'streamers'      => $stmt->fetchAll(),
+            'linked'         => CollabSessions::linkedUsers((int) $userId, array_column($streamers, 'id')),
+            'streamers'      => $streamers,
             'filters'        => $filters,
             'platforms'      => $pdo->query('SELECT code FROM streaming_platforms WHERE is_enabled ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
             'twitchReady'    => Twitch::isConfigured(),
@@ -177,6 +180,13 @@ final class StreamerController
             ErrorLog::note('twitch search: ' . $e->getMessage());
             json_response(['ok' => false, 'error' => __('ui.message.provider_error')], 502);
         }
+
+        $onStreamOrg = CollabSessions::twitchOnStreamOrg((int) Auth::id(), array_column($results, 'ref'));
+
+        foreach ($results as &$result) {
+            $result['on_streamorg'] = isset($onStreamOrg[(string) $result['ref']]);
+        }
+        unset($result);
 
         json_response(['ok' => true, 'results' => $results]);
     }

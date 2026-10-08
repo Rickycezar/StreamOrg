@@ -102,11 +102,12 @@
         <fieldset class="inset">
             <legend><?= e(__('ui.field.streamers')) ?></legend>
             <p class="muted small"><?= e(__('ui.message.collab_cast_hint')) ?></p>
+            <?php require __DIR__ . '/_cast_add.php'; ?>
             <div class="cast-list">
                 <?php foreach ($streamers as $s): ?>
                     <label class="cast-row">
                         <input type="checkbox" name="streamers[]" value="<?= (int) $s['id'] ?>">
-                        <span class="cast-name"><?= e($s['name']) ?></span>
+                        <span class="cast-name"><?= e($s['name']) ?><?php if (isset($linked[(int) $s['id']])): ?> <span class="badge on-streamorg" title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span><?php endif; ?></span>
                         <select name="roles[<?= (int) $s['id'] ?>]" class="cast-role">
                             <?php foreach ($roles as $role): ?>
                                 <option value="<?= e($role) ?>" <?= $role === 'guest' ? 'selected' : '' ?>>
@@ -125,6 +126,18 @@
         </label>
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
+
+    <template data-cast-template>
+        <label class="cast-row">
+            <input type="checkbox" name="streamers[]" value="__ID__" checked>
+            <span class="cast-name"><span data-cast-name></span> <span class="badge on-streamorg" data-cast-streamorg hidden title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span></span>
+            <select name="roles[__ID__]" class="cast-role">
+                <?php foreach ($roles as $role): ?>
+                    <option value="<?= e($role) ?>" <?= $role === 'guest' ? 'selected' : '' ?>><?= e(code_label('collab_role', $role)) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+    </template>
 
     <?php if ($collabs === []): ?>
         <p class="empty"><?= e(__('ui.message.empty_list')) ?></p>
@@ -226,12 +239,13 @@
 
                             <fieldset class="inset">
                                 <legend><?= e(__('ui.field.streamers')) ?></legend>
+                                <?php require __DIR__ . '/_cast_add.php'; ?>
                                 <div class="cast-list">
                                     <?php foreach ($streamers as $s): ?>
                                         <label class="cast-row">
                                             <input type="checkbox" name="streamers[]" value="<?= (int) $s['id'] ?>"
                                                    <?= in_array((int) $s['id'], $picked, true) ? 'checked' : '' ?>>
-                                            <span class="cast-name"><?= e($s['name']) ?></span>
+                                            <span class="cast-name"><?= e($s['name']) ?><?php if (isset($linked[(int) $s['id']])): ?> <span class="badge on-streamorg" title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span><?php endif; ?></span>
                                             <select name="roles[<?= (int) $s['id'] ?>]" class="cast-role">
                                                 <?php foreach ($roles as $role): ?>
                                                     <option value="<?= e($role) ?>" <?= $role === 'guest' ? 'selected' : '' ?>>

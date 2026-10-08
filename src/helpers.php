@@ -294,3 +294,26 @@ function sort_key(?string $date): string
 
     return $time === false ? '' : (string) $time;
 }
+
+/**
+ * Ends the request with an error page: 403 (not allowed), 404 (no such
+ * page), 419 (the page expired) or 500 (something broke), with a way back
+ * and, for signed-in users, a link to report it (see views/error.php).
+ * Falls back to plain text if even the page cannot be drawn.
+ *
+ * @param int|null $reference the problem's id in the error log, for a 500
+ */
+function error_page(int $code, ?int $reference = null): never
+{
+    if (!headers_sent()) {
+        http_response_code($code);
+    }
+
+    try {
+        View::render('error', ['code' => $code, 'reference' => $reference], (string) $code);
+    } catch (Throwable) {
+        echo '<!DOCTYPE html><meta charset="utf-8"><title>' . $code . '</title><h1>' . $code . '</h1>';
+    }
+
+    exit;
+}

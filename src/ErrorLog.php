@@ -68,11 +68,16 @@ final class ErrorLog
         });
     }
 
-    /** An exception the request could not recover from: logged, and kept. */
-    public static function exception(Throwable $e, string $level = 'error'): void
+    /**
+     * An exception the request could not recover from: logged, and kept.
+     *
+     * @return int|null the problem's id in the error log (shown as the error reference), or null
+     */
+    public static function exception(Throwable $e, string $level = 'error'): ?int
     {
         error_log('StreamOrg: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-        self::record($level, get_class($e) . ': ' . $e->getMessage(), $e->getFile(), $e->getLine(), self::frames($e->getTrace()));
+
+        return self::record($level, get_class($e) . ': ' . $e->getMessage(), $e->getFile(), $e->getLine(), self::frames($e->getTrace()));
     }
 
     /** A problem the code handled itself: written to the server log and kept, at the "notice" level. */

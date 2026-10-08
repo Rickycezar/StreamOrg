@@ -2907,6 +2907,13 @@
                         const handle = document.createElement('span');
                         handle.className = 'year';
                         handle.textContent = '@' + item.login + (item.live ? ' · live' : '');
+                        if (item.on_streamorg) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge on-streamorg';
+                            badge.textContent = (window.STREAMORG_L || {}).on_streamorg || 'StreamOrg';
+                            badge.title = (window.STREAMORG_L || {}).on_streamorg_hint || '';
+                            title.append(' ', badge);
+                        }
 
                         const add = document.createElement('button');
                         add.type = 'button';
@@ -3394,6 +3401,892 @@
                 });
             });
         });
+    });
+
+    /**
+     * Screenshots for bug reports and replies ([data-shot-uploader]): chosen,
+     * dropped or pasted (Ctrl+V anywhere on the page), shrunk in the browser
+     * to at most 2560 pixels, uploaded right away and kept in the form as
+     * images[]; a click on one opens it large to drop numbered pins on the
+     * problem, each with a note (image_pins[<id>]).
+     */
+    function shotShrink(file) {
+        return new Promise(function (resolve) {
+            if (!/^image\/(png|jpeg|webp)$/.test(file.type) || !window.createImageBitmap) {
+                resolve(file);
+                return;
+            }
+
+            createImageBitmap(file).then(function (bitmap) {
+                const scale = Math.min(1, 2560 / Math.max(bitmap.width, bitmap.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(bitmap.width * scale);
+                canvas.height = Math.round(bitmap.height * scale);
+                canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function (blob) {
+                    resolve(blob && blob.size < file.size ? blob : file);
+                }, 'image/webp', 0.88);
+            }, function () { resolve(file); });
+        });
+    }
+
+    function shotUploader(box) {
+        const form = box.closest('form');
+        const input = box.querySelector('[data-shot-file]');
+        const thumbs = box.querySelector('[data-shot-thumbs]');
+        const board = box.querySelector('[data-shot-board]');
+        const stage = box.querySelector('[data-shot-stage]');
+        const pinList = box.querySelector('[data-shot-pins]');
+        const error = box.querySelector('[data-shot-error]');
+        const max = parseInt(box.dataset.max, 10) || 6;
+        let open = null;
+
+        const fail = function (message) {
+            error.textContent = message || '';
+            error.hidden = !message;
+        };
+
+        const count = function () { return thumbs.querySelectorAll('.shot-thumb').length; };
+
+        const pinsOf = function (thumb) {
+            try { return JSON.parse(thumb.querySelector('.shot-pins-input').value || '[]'); } catch (e) { return []; }
+        };
+
+        const savePins = function (thumb, pins) {
+            thumb.querySelector('.shot-pins-input').value = JSON.stringify(pins);
+            const badge = thumb.querySelector('.shot-thumb-pins');
+            badge.textContent = pins.length ? String(pins.length) : '';
+            badge.hidden = !pins.length;
+        };
+
+        const drawBoard = function () {
+            if (!open) return;
+            const pins = pinsOf(open);
+            stage.innerHTML = '';
+            pinList.innerHTML = '';
+
+            const img = document.createElement('img');
+            img.src = open.querySelector('img').src;
+            img.alt = '';
+            stage.append(img);
+
+            pins.forEach(function (pin, i) {
+                const dot = document.createElement('span');
+                dot.className = 'shot-pin';
+                dot.style.left = (pin.x * 100) + '%';
+                dot.style.top = (pin.y * 100) + '%';
+                dot.textContent = String(i + 1);
+                stage.append(dot);
+
+                const li = document.createElement('li');
+                const note = document.createElement('input');
+                note.type = 'text';
+                note.maxLength = 200;
+                note.placeholder = box.dataset.pinNote || '';
+                note.value = pin.note || '';
+                note.addEventListener('input', function () {
+                    const current = pinsOf(open);
+                    current[i].note = note.value;
+                    savePins(open, current);
+                });
+                const drop = document.createElement('button');
+                drop.type = 'button';
+                drop.className = 'shot-pin-remove';
+                drop.textContent = '×';
+                drop.setAttribute('aria-label', box.dataset.remove || 'Remove');
+                drop.addEventListener('click', function () {
+                    const current = pinsOf(open);
+                    current.splice(i, 1);
+                    savePins(open, current);
+                    drawBoard();
+                });
+                li.append(note, drop);
+                pinList.append(li);
+            });
+        };
+
+        stage.addEventListener('click', function (event) {
+            if (!open || event.target.closest('.shot-pin')) return;
+            const img = stage.querySelector('img');
+            const rect = img.getBoundingClientRect();
+            const pins = pinsOf(open);
+            if (pins.length >= 12) return;
+            pins.push({ x: Math.round((event.clientX - rect.left) / rect.width * 10000) / 10000, y: Math.round((event.clientY - rect.top) / rect.height * 10000) / 10000, note: '' });
+            savePins(open, pins);
+            drawBoard();
+            const notes = pinList.querySelectorAll('input');
+            if (notes.length) notes[notes.length - 1].focus();
+        });
+
+        const openBoard = function (thumb) {
+            thumbs.querySelectorAll('.shot-thumb').forEach(function (t) { t.classList.toggle('open', t === thumb); });
+            open = thumb;
+            board.hidden = false;
+            drawBoard();
+        };
+
+        const closeBoard = function () {
+            open = null;
+            board.hidden = true;
+            thumbs.querySelectorAll('.shot-thumb').forEach(function (t) { t.classList.remove('open'); });
+        };
+
+        box.querySelector('[data-shot-close]').addEventListener('click', closeBoard);
+
+        const add = async function (file) {
+            if (!file || !/^image\//.test(file.type)) return;
+            if (count() >= max) {
+                fail(box.dataset.tooMany);
+                return;
+            }
+            fail('');
+
+            const thumb = document.createElement('div');
+            thumb.className = 'shot-thumb uploading';
+            thumb.title = box.dataset.uploading || '';
+            const img = document.createElement('img');
+            img.alt = '';
+            const reader = new FileReader();
+            reader.onload = function () { if (!thumb.dataset.id) img.src = reader.result; };
+            reader.readAsDataURL(file);
+            const pinsBadge = document.createElement('span');
+            pinsBadge.className = 'shot-thumb-pins';
+            pinsBadge.hidden = true;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'shot-thumb-remove';
+            remove.textContent = '×';
+            remove.setAttribute('aria-label', box.dataset.remove || 'Remove');
+            const point = document.createElement('button');
+            point.type = 'button';
+            point.className = 'shot-thumb-point';
+            point.textContent = box.dataset.point || '';
+            thumb.append(img, pinsBadge, point, remove);
+            thumbs.append(thumb);
+
+            remove.addEventListener('click', function () {
+                if (open === thumb) closeBoard();
+                thumb.remove();
+            });
+            point.addEventListener('click', function () { openBoard(thumb); });
+            img.addEventListener('click', function () { if (!thumb.classList.contains('uploading')) openBoard(thumb); });
+
+            const blob = await shotShrink(file);
+            const body = new FormData();
+            body.append('image', blob, (file.name || 'screenshot').replace(/\.[a-z0-9]+$/i, '') + (blob.type === 'image/webp' ? '.webp' : ''));
+            body.append('_token', csrf());
+
+            let result;
+            try {
+                const response = await fetch(url('/support/images'), { method: 'POST', headers: { 'X-CSRF-Token': csrf(), 'Accept': 'application/json' }, body: body });
+                result = await response.json();
+            } catch (e) {
+                result = { ok: false, error: e.message };
+            }
+
+            if (!result.ok) {
+                thumb.remove();
+                fail(result.error);
+                return;
+            }
+
+            thumb.classList.remove('uploading');
+            thumb.title = '';
+            thumb.dataset.id = result.id;
+            img.src = result.url;
+            const idField = document.createElement('input');
+            idField.type = 'hidden';
+            idField.name = 'images[]';
+            idField.value = result.id;
+            const pinField = document.createElement('input');
+            pinField.type = 'hidden';
+            pinField.name = 'image_pins[' + result.id + ']';
+            pinField.className = 'shot-pins-input';
+            pinField.value = '[]';
+            thumb.append(idField, pinField);
+        };
+
+        box.querySelector('[data-shot-drop]').addEventListener('click', function () { input.click(); });
+        input.addEventListener('change', function () {
+            Array.prototype.forEach.call(input.files, add);
+            input.value = '';
+        });
+
+        ['dragenter', 'dragover'].forEach(function (type) {
+            box.addEventListener(type, function (event) {
+                if (!event.dataTransfer || Array.prototype.indexOf.call(event.dataTransfer.types, 'Files') === -1) return;
+                event.preventDefault();
+                box.classList.add('dragging');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (type) {
+            box.addEventListener(type, function () { box.classList.remove('dragging'); });
+        });
+        box.addEventListener('drop', function (event) {
+            if (!event.dataTransfer || !event.dataTransfer.files.length) return;
+            event.preventDefault();
+            Array.prototype.forEach.call(event.dataTransfer.files, add);
+        });
+
+        box.shotAdd = add;
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                if (thumbs.querySelector('.uploading')) {
+                    event.preventDefault();
+                    fail(box.dataset.uploading);
+                }
+            });
+        }
+    }
+
+    onPage(function () {
+        document.querySelectorAll('[data-shot-uploader]').forEach(function (box) {
+            if (box.dataset.ready) return;
+            box.dataset.ready = '1';
+            shotUploader(box);
+        });
+    });
+
+    /** Pasting a picture anywhere on a page with a screenshot box adds it there (the one in focus, or the first). */
+    document.addEventListener('paste', function (event) {
+        const boxes = document.querySelectorAll('[data-shot-uploader]');
+        if (!boxes.length || !event.clipboardData) return;
+
+        const files = Array.prototype.filter.call(event.clipboardData.files || [], function (f) { return /^image\//.test(f.type); });
+        if (!files.length) return;
+
+        const active = document.activeElement && document.activeElement.closest('form');
+        const box = (active && active.querySelector('[data-shot-uploader]')) || boxes[0];
+        if (!box.shotAdd) return;
+
+        event.preventDefault();
+        files.forEach(box.shotAdd);
+    });
+
+    /**
+     * The bug report form: steps added one per line (Enter adds the next),
+     * and what the browser says about itself in the hidden fields.
+     */
+    onPage(function () {
+        const form = document.querySelector('[data-bug-form]');
+        if (!form || form.dataset.ready) return;
+        form.dataset.ready = '1';
+
+        const list = form.querySelector('[data-bug-steps]');
+
+        const addStep = function (after) {
+            const li = document.createElement('li');
+            const field = document.createElement('input');
+            field.type = 'text';
+            field.name = 'steps[]';
+            field.maxLength = 500;
+            field.placeholder = list.dataset.placeholder || '';
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'bug-step-remove';
+            remove.setAttribute('data-step-remove', '');
+            remove.setAttribute('aria-label', list.dataset.remove || 'Remove');
+            remove.textContent = '×';
+            li.append(field, remove);
+            if (after && after.nextSibling) list.insertBefore(li, after.nextSibling);
+            else list.append(li);
+            field.focus();
+        };
+
+        form.addEventListener('click', function (event) {
+            if (event.target.closest('[data-step-add]')) addStep(null);
+            const remove = event.target.closest('[data-step-remove]');
+            if (remove) {
+                const li = remove.closest('li');
+                if (list.children.length > 1) li.remove();
+                else li.querySelector('input').value = '';
+            }
+        });
+
+        list.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter' || !event.target.matches('input')) return;
+            event.preventDefault();
+            const li = event.target.closest('li');
+            const next = li.nextElementSibling;
+            if (next && !next.querySelector('input').value) next.querySelector('input').focus();
+            else addStep(li);
+        });
+
+        const root = document.documentElement;
+        const env = {
+            screen: window.screen ? window.screen.width + '×' + window.screen.height + ' @' + (window.devicePixelRatio || 1) + 'x' : '',
+            viewport: window.innerWidth + '×' + window.innerHeight,
+            language: navigator.language || '',
+            timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone || '',
+            theme: [root.dataset.themeLight, root.dataset.themeDark, root.dataset.themeMode].filter(Boolean).join(' / '),
+            platform: (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || ''
+        };
+
+        form.querySelectorAll('[data-env]').forEach(function (field) { field.value = env[field.dataset.env] || ''; });
+    });
+
+    /** Answering a questionnaire: a bar and a count of the questions answered so far. */
+    onPage(function () {
+        const form = document.querySelector('[data-survey-form]');
+        if (!form) return;
+
+        const bar = form.querySelector('[data-survey-bar]');
+        const label = form.querySelector('[data-survey-count]');
+        const total = parseInt(form.dataset.total, 10) || 0;
+
+        const update = function () {
+            let done = 0;
+            form.querySelectorAll('[data-question]').forEach(function (q) {
+                const filled = Array.prototype.some.call(q.querySelectorAll('input, textarea, select'), function (field) {
+                    if (field.type === 'radio' || field.type === 'checkbox') return field.checked;
+                    return field.value.trim() !== '';
+                });
+                q.classList.toggle('is-answered', filled);
+                if (filled) done++;
+            });
+            if (bar) bar.style.width = (total ? done * 100 / total : 0) + '%';
+            if (label) label.textContent = (label.dataset.template || '%d/%d').replace('%d', done).replace('%d', total);
+        };
+
+        form.addEventListener('input', update);
+        form.addEventListener('change', update);
+        update();
+    });
+
+    /** Administration → a bug report: quick status buttons, the duplicate field, and the reply box's label (reply, note or fix message). */
+    onPage(function () {
+        const form = document.querySelector('[data-bug-manage]');
+        if (!form) return;
+
+        const status = form.querySelector('[data-bug-status]');
+        const internal = form.querySelector('[data-bug-internal]');
+        const label = form.querySelector('[data-body-label]');
+        const body = form.querySelector('[data-bug-body]');
+        const notice = form.querySelector('[data-bug-notice]');
+        const duplicate = form.querySelector('[data-duplicate-field]');
+        const original = status.value;
+
+        const refresh = function () {
+            const changed = status.value !== original;
+            if (changed) internal.checked = false;
+            internal.disabled = changed;
+            label.textContent = status.value === 'fixed' && changed ? label.dataset.fixed : (internal.checked ? label.dataset.note : label.dataset.reply);
+            notice.hidden = internal.checked && !changed;
+            duplicate.hidden = status.value !== 'duplicate';
+            form.classList.toggle('is-note', internal.checked && !changed);
+        };
+
+        form.addEventListener('click', function (event) {
+            const quick = event.target.closest('[data-bug-quick]');
+            if (!quick) return;
+            status.value = quick.dataset.bugQuick;
+            refresh();
+            body.focus();
+        });
+
+        status.addEventListener('change', refresh);
+        internal.addEventListener('change', refresh);
+        refresh();
+    });
+
+    /**
+     * The questionnaire builder: settings, and sections of questions drawn
+     * from the page's JSON and edited in place — kind, question, hint,
+     * required, choices or scale; add, move, copy, remove — then saved as
+     * a whole (and opened for answers, if asked). Every text is kept per
+     * language: the bar on top picks the language being written and counts
+     * the texts still missing in each; an empty box shows the text of
+     * another language as a hint.
+     */
+    onPage(function () {
+        const root = document.querySelector('[data-survey-builder]');
+        if (!root || root.dataset.ready) return;
+        root.dataset.ready = '1';
+
+        const state = JSON.parse(root.querySelector('[data-survey-data]').textContent);
+        const S = JSON.parse(root.querySelector('[data-survey-strings]').textContent);
+        const sections = root.querySelector('[data-survey-sections]');
+        const langBar = root.querySelector('[data-survey-langs]');
+        const stateLabel = root.querySelector('[data-survey-state]');
+        const errorBox = root.querySelector('[data-survey-error]');
+        const usersBox = root.querySelector('[data-survey-users]');
+        const picker = root.querySelector('[data-survey-picker]');
+        const CHOICE_TYPES = ['radio', 'checkbox', 'select'];
+        const LOCALES = Object.keys(S.locales);
+        let lang = LOCALES.indexOf(S.locale) !== -1 ? S.locale : LOCALES[0];
+        let dirty = false;
+
+        const asMap = function (value) {
+            if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+            const map = {};
+            if (typeof value === 'string' && value !== '') map[lang] = value;
+            return map;
+        };
+
+        const normalize = function () {
+            state.title = asMap(state.title);
+            state.description = asMap(state.description);
+            if (!state.groups || !state.groups.length) state.groups = [{ id: null, title: {}, description: {}, questions: [] }];
+            state.groups.forEach(function (g) {
+                g.title = asMap(g.title);
+                g.description = asMap(g.description);
+                g.questions.forEach(function (q) {
+                    q.label = asMap(q.label);
+                    q.help = asMap(q.help);
+                    q.options = q.options && !Array.isArray(q.options) ? q.options : {};
+                    if (Array.isArray(q.options.choices)) {
+                        q.options.choices = q.options.choices.map(function (c) {
+                            return c && typeof c === 'object' && !Array.isArray(c) ? { key: c.key || null, text: asMap(c.text) } : { key: null, text: asMap(c) };
+                        });
+                    }
+                    if (q.type === 'scale') {
+                        q.options.min_label = asMap(q.options.min_label);
+                        q.options.max_label = asMap(q.options.max_label);
+                    }
+                });
+            });
+        };
+        normalize();
+
+        const filled = function (map) {
+            return Object.keys(map).some(function (k) { return String(map[k] || '') !== ''; });
+        };
+
+        const missingCounts = function () {
+            const counts = {};
+            LOCALES.forEach(function (l) { counts[l] = 0; });
+            const count = function (map) {
+                if (!filled(map)) return;
+                LOCALES.forEach(function (l) { if (!map[l]) counts[l]++; });
+            };
+            count(state.title);
+            count(state.description);
+            state.groups.forEach(function (g) {
+                count(g.title);
+                count(g.description);
+                g.questions.forEach(function (q) {
+                    count(q.label);
+                    count(q.help);
+                    (q.options.choices || []).forEach(function (c) { count(c.text); });
+                    if (q.type === 'scale') { count(q.options.min_label); count(q.options.max_label); }
+                });
+            });
+            return counts;
+        };
+
+        const drawLangBar = function () {
+            const counts = missingCounts();
+            langBar.innerHTML = '';
+            LOCALES.forEach(function (l) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.setAttribute('role', 'tab');
+                button.setAttribute('aria-selected', l === lang ? 'true' : 'false');
+                button.className = l === lang ? 'active' : '';
+                const name = document.createElement('span');
+                name.textContent = S.locales[l];
+                const badge = document.createElement('span');
+                badge.className = 'lang-count' + (counts[l] ? ' missing' : '');
+                badge.textContent = counts[l] ? String(counts[l]) : '✓';
+                badge.title = counts[l] ? S.missing.replace('%d', counts[l]) : S.complete;
+                button.append(name, badge);
+                button.addEventListener('click', function () {
+                    lang = l;
+                    drawSettings();
+                    draw();
+                });
+                langBar.append(button);
+            });
+        };
+
+        const touch = function () {
+            dirty = true;
+            stateLabel.textContent = S.unsaved;
+            drawLangBar();
+        };
+
+        const hintFor = function (map, base) {
+            if (map[lang]) return base || '';
+            const other = LOCALES.find(function (l) { return l !== lang && map[l]; });
+            return other ? S.locales[other] + ': ' + map[other] : (base || '');
+        };
+
+        const bindText = function (field, map, base) {
+            field.value = map[lang] || '';
+            field.placeholder = hintFor(map, base);
+            field.classList.toggle('untranslated', !map[lang] && filled(map));
+            field.oninput = function () {
+                if (field.value === '') delete map[lang];
+                else map[lang] = field.value;
+                field.placeholder = hintFor(map, base);
+                field.classList.toggle('untranslated', !map[lang] && filled(map));
+                touch();
+            };
+            return field;
+        };
+
+        const el = function (tag, attrs, children) {
+            const node = document.createElement(tag);
+            Object.keys(attrs || {}).forEach(function (key) {
+                if (key === 'text') node.textContent = attrs[key];
+                else if (key === 'className') node.className = attrs[key];
+                else if (key.indexOf('on') === 0) node.addEventListener(key.slice(2), attrs[key]);
+                else node.setAttribute(key, attrs[key]);
+            });
+            (children || []).forEach(function (child) { if (child) node.append(child); });
+            return node;
+        };
+
+        const textBox = function (map, attrs, base) {
+            return bindText(el(attrs.rows ? 'textarea' : 'input', attrs.rows ? attrs : Object.assign({ type: 'text' }, attrs)), map, base);
+        };
+
+        const iconButton = function (label, glyph, handler, extra) {
+            return el('button', { type: 'button', className: 'builder-icon' + (extra ? ' ' + extra : ''), title: label, 'aria-label': label, text: glyph, onclick: handler });
+        };
+
+        const move = function (list, index, delta) {
+            const target = index + delta;
+            if (target < 0 || target >= list.length) return;
+            const item = list.splice(index, 1)[0];
+            list.splice(target, 0, item);
+            touch();
+            draw();
+        };
+
+        const freshQuestion = function () {
+            return { id: null, type: 'radio', label: {}, help: {}, required: false, options: { choices: [{ key: null, text: {} }, { key: null, text: {} }] } };
+        };
+
+        const questionCard = function (group, q, qi) {
+            const typeSelect = el('select', { 'aria-label': S.type, onchange: function () {
+                q.type = typeSelect.value;
+                if (CHOICE_TYPES.indexOf(q.type) !== -1 && !Array.isArray(q.options.choices)) q.options = { choices: [{ key: null, text: {} }, { key: null, text: {} }] };
+                if (q.type === 'scale') q.options = { min: 1, max: 5, min_label: {}, max_label: {} };
+                if (CHOICE_TYPES.indexOf(q.type) === -1 && q.type !== 'scale') q.options = {};
+                touch();
+                draw();
+            } });
+            Object.keys(S.types).forEach(function (type) {
+                const option = el('option', { value: type, text: S.types[type] });
+                if (type === q.type) option.selected = true;
+                typeSelect.append(option);
+            });
+
+            const required = el('input', { type: 'checkbox', onchange: function () { q.required = required.checked; touch(); } });
+            required.checked = !!q.required;
+
+            let extra = null;
+
+            if (CHOICE_TYPES.indexOf(q.type) !== -1) {
+                const list = el('ol', { className: 'builder-choices' });
+                q.options.choices.forEach(function (choice, ci) {
+                    const field = textBox(choice.text, { maxlength: '200' }, S.choice + ' ' + (ci + 1));
+                    field.addEventListener('keydown', function (event) {
+                        if (event.key !== 'Enter') return;
+                        event.preventDefault();
+                        q.options.choices.splice(ci + 1, 0, { key: null, text: {} });
+                        touch();
+                        draw();
+                        const fields = sections.querySelectorAll('[data-q="' + group.key + '-' + qi + '"] .builder-choices input');
+                        if (fields[ci + 1]) fields[ci + 1].focus();
+                    });
+                    list.append(el('li', {}, [
+                        el('span', { className: 'builder-choice-mark ' + q.type }),
+                        field,
+                        iconButton(S.remove, '×', function () { q.options.choices.splice(ci, 1); touch(); draw(); }, 'small'),
+                    ]));
+                });
+                extra = el('div', { className: 'builder-options' }, [
+                    el('span', { className: 'builder-sub', text: S.choices }),
+                    list,
+                    el('button', { type: 'button', className: 'btn small ghost', text: '+ ' + S.add_choice, onclick: function () { q.options.choices.push({ key: null, text: {} }); touch(); draw(); } }),
+                ]);
+            } else if (q.type === 'scale') {
+                const from = el('select', { onchange: function () { q.options.min = parseInt(from.value, 10); touch(); } });
+                [0, 1].forEach(function (n) { const o = el('option', { value: String(n), text: String(n) }); if (n === q.options.min) o.selected = true; from.append(o); });
+                const to = el('select', { onchange: function () { q.options.max = parseInt(to.value, 10); touch(); } });
+                [2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(function (n) { const o = el('option', { value: String(n), text: String(n) }); if (n === q.options.max) o.selected = true; to.append(o); });
+                extra = el('div', { className: 'builder-options builder-scale' }, [
+                    el('label', {}, [el('span', { text: S.scale_from }), from]),
+                    el('label', {}, [el('span', { text: S.scale_to }), to]),
+                    el('label', { className: 'grow' }, [el('span', { text: S.scale_min_label }), textBox(q.options.min_label, { maxlength: '60' }, S.scale_min_label)]),
+                    el('label', { className: 'grow' }, [el('span', { text: S.scale_max_label }), textBox(q.options.max_label, { maxlength: '60' }, S.scale_max_label)]),
+                ]);
+            }
+
+            return el('article', { className: 'builder-question', 'data-q': group.key + '-' + qi }, [
+                el('div', { className: 'builder-question-head' }, [
+                    el('span', { className: 'builder-num', text: String(qi + 1) }),
+                    typeSelect,
+                    el('span', { className: 'builder-tools' }, [
+                        iconButton(S.move_up, '↑', function () { move(group.questions, qi, -1); }),
+                        iconButton(S.move_down, '↓', function () { move(group.questions, qi, 1); }),
+                        iconButton(S.duplicate, '⧉', function () {
+                            const copy = JSON.parse(JSON.stringify(q));
+                            copy.id = null;
+                            group.questions.splice(qi + 1, 0, copy);
+                            touch();
+                            draw();
+                        }),
+                        iconButton(S.remove, '🗑', function () { group.questions.splice(qi, 1); touch(); draw(); }, 'danger'),
+                    ]),
+                ]),
+                textBox(q.label, { maxlength: '300', className: 'builder-question-label' }, S.question_label),
+                textBox(q.help, { maxlength: '500', className: 'builder-help' }, S.help),
+                extra,
+                el('label', { className: 'inline builder-required' }, [required, el('span', { text: S.required })]),
+            ]);
+        };
+
+        const draw = function () {
+            sections.innerHTML = '';
+            drawLangBar();
+
+            state.groups.forEach(function (group, gi) {
+                group.key = gi;
+
+                const questions = el('div', { className: 'builder-questions' });
+                group.questions.forEach(function (q, qi) { questions.append(questionCard(group, q, qi)); });
+                if (!group.questions.length) questions.append(el('p', { className: 'muted small builder-empty', text: S.empty_section }));
+
+                sections.append(el('section', { className: 'card builder-section' }, [
+                    el('div', { className: 'builder-section-head' }, [
+                        el('span', { className: 'builder-section-label', text: S.section + ' ' + (gi + 1) }),
+                        el('span', { className: 'builder-tools' }, [
+                            iconButton(S.move_up, '↑', function () { move(state.groups, gi, -1); }),
+                            iconButton(S.move_down, '↓', function () { move(state.groups, gi, 1); }),
+                            state.groups.length > 1 ? iconButton(S.remove_section, '🗑', function () {
+                                if (group.questions.length && !window.confirm(S.remove_section_confirm)) return;
+                                state.groups.splice(gi, 1);
+                                touch();
+                                draw();
+                            }, 'danger') : null,
+                        ]),
+                    ]),
+                    textBox(group.title, { maxlength: '140', className: 'builder-section-title' }, S.section_title),
+                    textBox(group.description, { rows: '1', maxlength: '1000', className: 'builder-section-desc' }, S.section_desc),
+                    questions,
+                    el('button', { type: 'button', className: 'btn small', text: '+ ' + S.add_question, onclick: function () {
+                        group.questions.push(freshQuestion());
+                        touch();
+                        draw();
+                        const labels = sections.querySelectorAll('.builder-section')[gi].querySelectorAll('.builder-question-label');
+                        if (labels.length) labels[labels.length - 1].focus();
+                    } }),
+                ]));
+            });
+        };
+
+        const drawSettings = function () {
+            root.querySelectorAll('[data-field][data-i18n]').forEach(function (field) {
+                if (!field.dataset.base) field.dataset.base = field.placeholder;
+                bindText(field, state[field.dataset.field], field.dataset.base);
+            });
+        };
+
+        root.querySelectorAll('[data-field]:not([data-i18n])').forEach(function (field) {
+            const key = field.dataset.field;
+            if (field.type === 'radio') field.checked = state[key] === field.value;
+            else field.value = state[key] || '';
+
+            field.addEventListener(field.type === 'radio' ? 'change' : 'input', function () {
+                if (field.type === 'radio' && !field.checked) return;
+                state[key] = field.value;
+                if (key === 'audience') usersBox.hidden = state.audience !== 'users';
+                touch();
+            });
+        });
+
+        usersBox.hidden = state.audience !== 'users';
+
+        const preset = function () {
+            if (!picker.tomselect) return;
+            (state.users || []).forEach(function (u) {
+                picker.tomselect.addOption({ id: u.id, name: u.name });
+                picker.tomselect.addItem(String(u.id), true);
+            });
+            picker.tomselect.on('change', touch);
+        };
+        if (picker.tomselect) preset();
+        else setTimeout(function () { initPicker(picker); preset(); }, 0);
+
+        root.querySelector('[data-add-section]').addEventListener('click', function () {
+            state.groups.push({ id: null, title: {}, description: {}, questions: [freshQuestion()] });
+            touch();
+            draw();
+        });
+
+        root.querySelectorAll('[data-survey-save]').forEach(function (button) {
+            button.addEventListener('click', async function () {
+                errorBox.hidden = true;
+                const payload = JSON.parse(JSON.stringify(state));
+                payload.users = picker.tomselect ? picker.tomselect.getValue().map(Number) : [];
+                payload.groups.forEach(function (g) { delete g.key; });
+
+                root.querySelectorAll('[data-survey-save]').forEach(function (b) { b.disabled = true; });
+                stateLabel.textContent = S.saving;
+
+                const result = await postJson('/admin/surveys/save', { survey: JSON.stringify(payload), status: button.dataset.status || '' });
+
+                root.querySelectorAll('[data-survey-save]').forEach(function (b) { b.disabled = false; });
+
+                if (!result.ok) {
+                    errorBox.textContent = result.error || 'Error';
+                    errorBox.hidden = false;
+                    stateLabel.textContent = S.unsaved;
+                    return;
+                }
+
+                dirty = false;
+                if (window.Turbo) window.Turbo.visit(result.redirect, { action: 'replace' });
+                else window.location.href = result.redirect;
+            });
+        });
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!dirty || !document.body.contains(root)) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+
+        drawSettings();
+        draw();
+    });
+
+    /** Error pages: "Back" shows only when there is a page of this site to go back to. */
+    onPage(function () {
+        document.querySelectorAll('[data-history-back]').forEach(function (button) {
+            let sameSite = false;
+            try { sameSite = document.referrer !== '' && new URL(document.referrer).origin === window.location.origin; } catch (e) { }
+            button.hidden = !(sameSite && window.history.length > 1);
+            button.onclick = function () { window.history.back(); };
+        });
+    });
+
+    /**
+     * "Add a streamer" inside a collab form ([data-cast-add]): a Twitch
+     * search whose "+" adds the person to the streamers list and ticks them
+     * in this collab's cast, without leaving the form; people who use
+     * StreamOrg are marked (they can plan together).
+     */
+    document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-cast-add-toggle]');
+        if (!toggle) return;
+        const panel = toggle.closest('[data-cast-add]').querySelector('[data-cast-add-panel]');
+        panel.hidden = !panel.hidden;
+        toggle.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+        if (!panel.hidden) panel.querySelector('[data-cast-add-search]').focus();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && event.target.matches('[data-cast-add-search]')) event.preventDefault();
+    });
+
+    function castAddRow(box, item, id) {
+        const fieldset = box.closest('fieldset') || box.parentNode;
+        const list = fieldset.querySelector('.cast-list');
+        const existing = list.querySelector('input[name="streamers[]"][value="' + id + '"]');
+
+        if (existing) {
+            existing.checked = true;
+            existing.dispatchEvent(new Event('change', { bubbles: true }));
+            existing.closest('.cast-row').scrollIntoView({ block: 'nearest' });
+            return;
+        }
+
+        const template = document.querySelector('template[data-cast-template]');
+        const holder = document.createElement('div');
+        holder.innerHTML = template.innerHTML.replace(/__ID__/g, String(id));
+        const row = holder.firstElementChild;
+        row.querySelector('[data-cast-name]').textContent = item.name;
+        row.querySelector('[data-cast-streamorg]').hidden = !item.on_streamorg;
+        row.classList.add('just-added');
+        list.prepend(row);
+        row.querySelector('input').dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    document.addEventListener('input', function (event) {
+        const search = event.target.closest('[data-cast-add-search]');
+        if (!search) return;
+
+        const box = search.closest('[data-cast-add]');
+        const results = box.querySelector('[data-cast-add-results]');
+        clearTimeout(search._timer);
+
+        search._timer = setTimeout(async function () {
+            const term = search.value.trim();
+            if (term.length < 2) { results.innerHTML = ''; return; }
+
+            const mine = (search._seq = (search._seq || 0) + 1);
+            results.innerHTML = skeletonRows(2);
+            const response = await fetch(url('/streamers/search') + '?q=' + encodeURIComponent(term), { headers: { 'Accept': 'application/json' } });
+            const data = await response.json().catch(function () { return { ok: false }; });
+            if (mine !== search._seq) return;
+
+            results.innerHTML = '';
+
+            if (!data.ok || !data.results.length) {
+                const empty = document.createElement('p');
+                empty.className = 'muted small';
+                empty.textContent = data.ok ? results.dataset.empty : (data.error || 'Error');
+                results.append(empty);
+                return;
+            }
+
+            data.results.slice(0, 8).forEach(function (item) {
+                const row = document.createElement('div');
+                row.className = 'cast-add-result';
+
+                const img = document.createElement('img');
+                img.alt = '';
+                img.loading = 'lazy';
+                if (item.avatar) img.src = item.avatar;
+
+                const name = document.createElement('span');
+                name.className = 'cast-add-name';
+                const strong = document.createElement('strong');
+                strong.textContent = item.name;
+                const login = document.createElement('small');
+                login.className = 'muted';
+                login.textContent = '@' + item.login;
+                name.append(strong, ' ', login);
+
+                if (item.on_streamorg) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge on-streamorg';
+                    badge.textContent = results.dataset.streamorg;
+                    badge.title = results.dataset.streamorgHint;
+                    name.append(' ', badge);
+                }
+
+                const add = document.createElement('button');
+                add.type = 'button';
+                add.className = 'btn small';
+                add.textContent = '+';
+                add.addEventListener('click', async function () {
+                    add.disabled = true;
+                    add.textContent = '…';
+                    const result = await postJson('/streamers/import', { ref: item.ref });
+
+                    if (!result.ok) {
+                        add.disabled = false;
+                        add.textContent = '+';
+                        window.alert(result.error || 'Error');
+                        return;
+                    }
+
+                    add.textContent = '✓';
+                    row.classList.add('done');
+                    login.textContent = '@' + item.login + ' · ' + results.dataset.added;
+                    castAddRow(box, item, result.id);
+                });
+
+                row.append(img, name, add);
+                results.append(row);
+            });
+        }, 320);
     });
 
     function userMenu(open) {

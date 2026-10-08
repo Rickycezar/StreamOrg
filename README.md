@@ -180,6 +180,19 @@ private preview. Preview access: streamorg@outlook.com.
 - **Seven themes, each with a light and a dark version**, and a light / dark /
   auto switch that can follow the device — also in the account menu.
 - **Profile picture**: upload one, or copy it from your Twitch channel.
+- **Support** (user menu): three ways to reach the administrators, all
+  followed from one page.
+  - **Report a bug**: a guided form — title, page (filled in from where you
+    came, or "Report a problem on this page" in the menu), what happened and
+    what was expected, steps added one per line, screenshots (choose, drop or
+    paste with Ctrl+V) with numbered pins pointing at the problem, and how
+    much it gets in the way; browser details go along. The report shows its
+    progress (reported → confirmed → being fixed → fixed), the conversation
+    with the team, and asks you to confirm a fix or say it still happens.
+  - **Questionnaires** from the team, with a progress bar; answers can be
+    changed while one is open.
+  - **Send a message**: an idea, praise, a problem or a question, answered
+    as a conversation.
 - **Notifications**: a bell in the top bar with the unread count, a panel
   with the latest messages and a page with all of them, each in the user's
   own language.
@@ -212,6 +225,15 @@ private preview. Preview access: streamorg@outlook.com.
   back with a reason — an unclaimed key returns to the giveaway, a claimed
   one is marked revoked or returned to the vault — with a history of
   removals; the streamer is notified and the winner's link stops working.
+- **Bug tracker**: reports by status, priority and impact, most urgent
+  first; reply, keep internal notes, change status and priority (the
+  reporter is notified), mark duplicates, or mark fixed with a message.
+- **Feedback inbox**: like email — inbox, unread, starred and archived
+  boxes, categories, search, and replies the user is notified about.
+- **Questionnaires**: a builder with sections and questions (short answer,
+  paragraph, one or several choices, dropdown, scale, yes/no, number, date),
+  required ones, everyone or chosen users, an optional closing date;
+  results per question (bars, averages, written answers) and a CSV export.
 - **Errors**: crashes, failed requests, PHP warnings and problems the code
   handled (a Twitch call that failed, an image that would not download),
   grouped by kind and counted, with the last request, user and a stack trace

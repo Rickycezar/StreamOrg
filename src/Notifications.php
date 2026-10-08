@@ -107,9 +107,24 @@ final class Notifications
     }
 
     /**
+     * Every active administrator, to tell them about something.
+     *
+     * @return list<int>
+     */
+    public static function adminIds(): array
+    {
+        return array_map('intval', Database::connection()
+            ->query("SELECT id FROM users WHERE role = 'admin' AND is_active")
+            ->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    /**
      * A notification from StreamOrg itself (no admin wrote it): its title
      * and text come from ui.notify.<key>.title / .body in every language,
-     * filled with $params (sprintf), so each recipient reads their own.
+     * filled with $params (sprintf), so each recipient reads their own. A
+     * param can itself be per language (["pt-BR" => "…", "en" => "…"]), like
+     * a questionnaire's title: each language gets its own, otherwise English,
+     * otherwise the first one.
      *
      * @param list<int> $userIds
      * @return int|null the notification id, or null when nobody is left to tell
@@ -131,11 +146,12 @@ final class Notifications
                 continue;
             }
 
-            $body = Lang::t("ui.notify.{$key}.body", $locale);
+            $body  = Lang::t("ui.notify.{$key}.body", $locale);
+            $words = array_map(static fn (mixed $p): string => is_array($p) ? (string) ($p[$locale] ?? $p['en'] ?? reset($p)) : (string) $p, $params);
 
             $texts[$locale] = [
-                'title' => mb_substr(vsprintf($title, $params), 0, self::TITLE_MAX),
-                'body'  => $body === "ui.notify.{$key}.body" ? '' : mb_substr(vsprintf($body, array_map(static fn ($p): string => NoteFormat::escape((string) $p), $params)), 0, self::BODY_MAX),
+                'title' => mb_substr(vsprintf($title, $words), 0, self::TITLE_MAX),
+                'body'  => $body === "ui.notify.{$key}.body" ? '' : mb_substr(vsprintf($body, array_map(static fn (string $p): string => NoteFormat::escape($p), $words)), 0, self::BODY_MAX),
             ];
         }
 

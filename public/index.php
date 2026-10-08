@@ -126,6 +126,20 @@ $routes = [
         '/admin/notifications' => [NotificationController::class, 'admin'],
         '/admin/winners'     => [PrizeRemovalController::class, 'index'],
         '/admin/errors'      => [ErrorLogController::class, 'index'],
+        '/admin/bugs'        => [SupportAdminController::class, 'bugs'],
+        '/admin/bugs/view'   => [SupportAdminController::class, 'bug'],
+        '/admin/feedback'    => [SupportAdminController::class, 'feedback'],
+        '/admin/surveys'     => [SupportAdminController::class, 'surveys'],
+        '/admin/surveys/edit' => [SupportAdminController::class, 'surveyEdit'],
+        '/admin/surveys/results' => [SupportAdminController::class, 'surveyResults'],
+        '/admin/surveys/export' => [SupportAdminController::class, 'surveyExport'],
+        '/support'           => [SupportController::class, 'index'],
+        '/support/bug'       => [SupportController::class, 'bugForm'],
+        '/support/bug/view'  => [SupportController::class, 'bugShow'],
+        '/support/image'     => [SupportController::class, 'image'],
+        '/support/feedback'  => [SupportController::class, 'feedbackForm'],
+        '/support/message'   => [SupportController::class, 'thread'],
+        '/support/survey'    => [SupportController::class, 'survey'],
         '/embargoes'         => [EmbargoController::class, 'index'],
         '/streamers'         => [StreamerController::class, 'index'],
         '/streamers/search'  => [StreamerController::class, 'search'],
@@ -221,6 +235,18 @@ $routes = [
         '/admin/winners/remove' => [PrizeRemovalController::class, 'remove'],
         '/admin/errors/resolve' => [ErrorLogController::class, 'resolve'],
         '/admin/errors/clear' => [ErrorLogController::class, 'clear'],
+        '/admin/bugs/update' => [SupportAdminController::class, 'bugUpdate'],
+        '/admin/feedback/reply' => [SupportAdminController::class, 'feedbackReply'],
+        '/admin/feedback/flag' => [SupportAdminController::class, 'feedbackFlag'],
+        '/admin/surveys/save' => [SupportAdminController::class, 'surveySave'],
+        '/admin/surveys/status' => [SupportAdminController::class, 'surveyStatus'],
+        '/support/bug'       => [SupportController::class, 'bugCreate'],
+        '/support/bug/comment' => [SupportController::class, 'bugComment'],
+        '/support/bug/fix'   => [SupportController::class, 'bugAnswerFix'],
+        '/support/images'    => [SupportController::class, 'imageUpload'],
+        '/support/feedback'  => [SupportController::class, 'feedbackCreate'],
+        '/support/message/reply' => [SupportController::class, 'threadReply'],
+        '/support/survey'    => [SupportController::class, 'surveySubmit'],
         '/admin/notifications/preview' => [NotificationController::class, 'preview'],
         '/admin/bot/disconnect' => [BotController::class, 'disconnect'],
         '/profile/sessions/revoke'        => [ProfileController::class, 'revokeSession'],
@@ -263,12 +289,7 @@ $routes = [
 $handler = $routes[$method][$path] ?? null;
 
 if ($handler === null) {
-    http_response_code(404);
-    View::render('error', [
-        'heading' => '404',
-        'message' => __('ui.message.not_found'),
-    ], '404');
-    exit;
+    error_page(404);
 }
 
 try {
@@ -278,10 +299,5 @@ try {
         throw $e;
     }
 
-    ErrorLog::exception($e);
-    http_response_code(500);
-    View::render('error', [
-        'heading' => '500',
-        'message' => __('ui.message.server_error'),
-    ], '500');
+    error_page(500, ErrorLog::exception($e));
 }
