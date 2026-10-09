@@ -1,0 +1,6 @@
+/* StreamOrg overlays: a transparent page for OBS, and the small notice shown when the link is wrong. */
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+body.overlay { width: 100vw; height: 100vh; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.overlay-stage { position: absolute; inset: 0; }
+.overlay-notice { position: absolute; left: 16px; bottom: 16px; max-width: 520px; padding: 10px 14px; border-radius: 10px; background: rgba(160, 30, 30, .9); color: #fff; font: 600 16px/1.4 system-ui, sans-serif; }
+.overlay-notice[hidden] { display: none; }

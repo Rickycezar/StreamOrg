@@ -324,7 +324,8 @@ final class SupportController
             '/notifications'      => __('ui.nav.notifications'),
             '/profile'            => __('ui.nav.profile'),
             '/profile/defaults'   => __('ui.label.profile_defaults'),
-            '/profile/bot'        => __('ui.nav.chat_bot'),
+            '/overlays'           => __('ui.nav.overlays'),
+            '/bot'                => __('ui.nav.chat_bot'),
         ];
     }
 }

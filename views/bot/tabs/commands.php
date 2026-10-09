@@ -36,7 +36,7 @@
                         <td class="rowactions">
                             <button type="button" class="btn small" data-modal-form="#custom-<?= (int) $command['id'] ?>"
                                     data-modal-title="<?= e($prefix . $command['trigger']) ?>"><?= e(__('ui.action.edit')) ?></button>
-                            <form method="post" action="<?= e(url('/profile/bot/custom/delete')) ?>">
+                            <form method="post" action="<?= e(url('/bot/custom/delete')) ?>">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="id" value="<?= (int) $command['id'] ?>">
                                 <button type="submit" class="btn small danger-btn" data-confirm="<?= e(sprintf(__('ui.message.bot_delete_command'), $prefix . $command['trigger'])) ?>"><?= e(__('ui.action.delete')) ?></button>
@@ -64,7 +64,7 @@
     <p class="muted small"><?= e(__('ui.message.bot_commands_hint')) ?></p>
     <?php foreach ($commands as $code => $command): ?>
         <?= View::partial('bot/command_form', [
-            'action'   => '/profile/bot/command',
+            'action'   => '/bot/command',
             'code'     => $code,
             'command'  => $command,
             'prefix'   => $prefix,

@@ -1,0 +1,454 @@
+/*
+ * Watch-streak alert (from seq_alert): a pixel-art card that rises from the
+ * bottom when a viewer shares their watch streak. Big streaks get a bigger
+ * card, a title with jumping letters, a tape behind it, sparks from the
+ * number block and a count-up. The viewer's name colour comes in as
+ * --user-* on .streak-alert; the settings set --streak-panel,
+ * --streak-highlight and --streak-bottom.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap');
+
+:root {
+    --outline: #101018;
+    --panel: var(--streak-panel, #1c1c3c);
+    --grass-dark: #3cb400;
+    --grass-light: #80e030;
+    --earth-dark: #b45c1c;
+    --earth-light: #e08838;
+    --gold: var(--streak-highlight, #f8d830);
+    --text: #f8f8f8;
+    --text-soft: #c8c8e8;
+
+    --user-color: #ff4500;
+    --user-light: #ff8f66;
+    --user-dark: #992900;
+    --user-ink: #101018;
+    --user-name: #ff4500;
+}
+
+* {
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    font-variant-ligatures: none;
+}
+
+.alertContainer {
+    position: absolute;
+    bottom: var(--streak-bottom, 48px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    z-index: 100;
+}
+
+.streak-alert {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.pixel-card {
+    --block-size: 88px;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+        4px 0 0 var(--outline),
+        -4px 0 0 var(--outline),
+        0 4px 0 var(--outline),
+        0 -4px 0 var(--outline);
+    filter: drop-shadow(8px 8px 0 rgba(16, 16, 24, 0.5));
+    transform: translateY(160px);
+    opacity: 0;
+}
+
+.streak-alert.in .pixel-card {
+    animation: cardIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.streak-alert.out .pixel-card {
+    animation: cardOut 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+}
+
+.grass {
+    position: relative;
+    height: 12px;
+    background: linear-gradient(var(--grass-light) 0 4px, var(--grass-dark) 4px);
+}
+
+.grass::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -4px;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, var(--grass-light) 0 8px, transparent 8px 20px);
+}
+
+.earth {
+    height: 16px;
+    background:
+        conic-gradient(var(--earth-dark) 25%, var(--earth-light) 0 50%, var(--earth-dark) 0 75%, var(--earth-light) 0)
+        0 0 / 16px 16px;
+    border-top: 4px solid var(--outline);
+}
+
+.card-main {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 32px 18px 24px;
+    background: var(--panel);
+    border-top: 4px solid var(--outline);
+}
+
+.streak-block {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--block-size);
+    height: var(--block-size);
+    margin-top: calc(var(--block-size) * -0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--user-color);
+    box-shadow:
+        inset 6px 6px 0 var(--user-light),
+        inset -6px -6px 0 var(--user-dark),
+        4px 0 0 var(--outline),
+        -4px 0 0 var(--outline),
+        0 4px 0 var(--outline),
+        0 -4px 0 var(--outline);
+}
+
+.streak-block::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 4px;
+    height: 4px;
+    background: var(--user-dark);
+    box-shadow:
+        calc(var(--block-size) - 28px) 0 0 var(--user-dark),
+        0 calc(var(--block-size) - 28px) 0 var(--user-dark),
+        calc(var(--block-size) - 28px) calc(var(--block-size) - 28px) 0 var(--user-dark);
+}
+
+.streak-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--user-ink);
+}
+
+.streak-num.long {
+    font-size: 16px;
+}
+
+.streak-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 280px;
+    max-width: 500px;
+}
+
+.streak-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    line-height: 1.25;
+    color: var(--user-name);
+    text-shadow: 2px 2px 0 var(--outline);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.streak-test-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 4px 6px;
+    font-size: 8px;
+    color: var(--text);
+    background: #d82800;
+    text-shadow: none;
+    vertical-align: middle;
+}
+
+.streak-line {
+    font-family: 'Pixelify Sans', monospace;
+    font-size: 22px;
+    line-height: 1.1;
+    color: var(--text);
+}
+
+.streak-line strong {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+.streak-msg {
+    font-family: 'Pixelify Sans', monospace;
+    font-size: 18px;
+    line-height: 1.2;
+    color: var(--text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.streak-msg::before {
+    content: '▶ ';
+    color: var(--grass-light);
+}
+
+.emote {
+    vertical-align: middle;
+    height: 24px;
+    margin: -4px 2px 0 2px;
+    image-rendering: auto;
+}
+
+.streak-alert:not(.big) .pixel-card {
+    --block-size: 56px;
+}
+
+.streak-alert:not(.big) .card-main {
+    gap: 16px;
+    padding: 12px 24px 12px 12px;
+    border-top: none;
+}
+
+.streak-alert:not(.big) .streak-block {
+    margin-top: 0;
+    box-shadow:
+        inset 4px 4px 0 var(--user-light),
+        inset -4px -4px 0 var(--user-dark);
+}
+
+.streak-alert:not(.big) .streak-block::before {
+    display: none;
+}
+
+.streak-alert:not(.big) .streak-num {
+    font-size: 16px;
+}
+
+.streak-alert:not(.big) .streak-num.long {
+    font-size: 12px;
+}
+
+.streak-alert:not(.big) .streak-content {
+    gap: 6px;
+    min-width: 240px;
+    max-width: 440px;
+}
+
+.streak-alert:not(.big) .streak-line {
+    font-size: 18px;
+}
+
+.streak-alert:not(.big) .streak-msg {
+    font-size: 16px;
+}
+
+.streak-alert:not(.big) .earth {
+    height: 8px;
+    background-size: 8px 8px;
+}
+
+.streak-alert.big .pixel-card {
+    --block-size: 120px;
+}
+
+.streak-alert.big .streak-num {
+    font-size: 32px;
+}
+
+.streak-alert.big .streak-num.long {
+    font-size: 24px;
+}
+
+.streak-alert.big .streak-line {
+    font-size: 26px;
+}
+
+.streak-alert.big.in .streak-block {
+    animation: blockBump 0.3s steps(3) 0.55s;
+}
+
+.streak-banner {
+    position: absolute;
+    bottom: calc(100% + 20px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    white-space: nowrap;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    color: var(--gold);
+    text-shadow:
+        -3px 0 0 var(--outline),
+        3px 0 0 var(--outline),
+        0 -3px 0 var(--outline),
+        0 3px 0 var(--outline),
+        4px 5px 0 var(--outline);
+}
+
+.streak-banner span,
+.streak-dedication span {
+    position: relative;
+    display: inline-block;
+    visibility: hidden;
+}
+
+.streak-alert.in .streak-banner span,
+.streak-alert.in .streak-dedication span {
+    animation:
+        letterDrop 0.3s steps(3) forwards,
+        letterWave 0.6s steps(2) infinite alternate;
+    animation-delay: calc(var(--start) + var(--i) * 0.05s), calc(var(--start) + 0.6s + var(--i) * 0.08s);
+}
+
+.streak-banner { --start: 0.6s; }
+.streak-dedication { --start: 1s; }
+
+.streak-alert.out .streak-banner,
+.streak-alert.out .streak-dedication {
+    animation: fadeOut 0.3s steps(3) forwards;
+}
+
+.streak-dedication {
+    position: absolute;
+    top: calc(100% + 24px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    white-space: nowrap;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: #f83800;
+    text-shadow:
+        -3px 0 0 var(--outline),
+        3px 0 0 var(--outline),
+        0 -3px 0 var(--outline),
+        0 3px 0 var(--outline),
+        3px 4px 0 var(--outline);
+}
+
+.streak-tape {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    width: 160%;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    background: var(--user-color);
+    border-top: 4px solid var(--outline);
+    border-bottom: 4px solid var(--outline);
+    clip-path: inset(0 18% 0 18%);
+}
+
+.streak-tape::before,
+.streak-tape::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, var(--outline) 0 8px, transparent 8px 16px);
+}
+
+.streak-tape::before { top: 0; }
+.streak-tape::after { bottom: 0; }
+
+.streak-tape-track {
+    display: inline-block;
+    white-space: nowrap;
+    padding-top: 14px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--user-ink);
+    animation: marquee 10s linear infinite;
+}
+
+.streak-alert.in .streak-tape {
+    animation: tapeIn 0.5s steps(10) 0.3s forwards;
+}
+
+.streak-alert.out .streak-tape {
+    clip-path: inset(0 0 0 0);
+    animation: tapeOut 0.3s steps(6) forwards;
+}
+
+.spark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--s);
+    height: var(--s);
+    background: var(--c);
+    clip-path: polygon(33% 0, 67% 0, 67% 33%, 100% 33%, 100% 67%, 67% 67%, 67% 100%, 33% 100%, 33% 67%, 0 67%, 0 33%, 33% 33%);
+    pointer-events: none;
+    animation: sparkOut var(--dur) steps(8) var(--delay) forwards;
+    opacity: 0;
+}
+
+@keyframes cardIn {
+    0% { transform: translateY(160px); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes cardOut {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(80px); opacity: 0; }
+}
+
+@keyframes blockBump {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes letterDrop {
+    0% { bottom: 24px; visibility: visible; }
+    100% { bottom: 0; visibility: visible; }
+}
+
+@keyframes letterWave {
+    0% { top: 0; }
+    100% { top: -6px; }
+}
+
+@keyframes tapeIn {
+    0% { clip-path: inset(0 18% 0 18%); }
+    100% { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes tapeOut {
+    0% { clip-path: inset(0 0 0 0); }
+    100% { clip-path: inset(0 18% 0 18%); }
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+@keyframes sparkOut {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0.25); opacity: 0; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; }
+}

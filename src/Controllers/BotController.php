@@ -138,16 +138,23 @@ final class BotController
 
     /** The sub-tabs of Profile → Chat bot: path => [label, view]. */
     public const SECTIONS = [
-        '/profile/bot'          => ['ui.label.bot_overview', 'overview'],
-        '/profile/bot/commands' => ['ui.label.bot_commands', 'commands'],
-        '/profile/bot/timers'   => ['ui.label.bot_timers', 'timers'],
-        '/profile/bot/logs'     => ['ui.label.bot_logs', 'logs'],
+        '/bot'          => ['ui.label.bot_overview', 'overview'],
+        '/bot/commands' => ['ui.label.bot_commands', 'commands'],
+        '/bot/timers'   => ['ui.label.bot_timers', 'timers'],
+        '/bot/logs'     => ['ui.label.bot_logs', 'logs'],
     ];
 
-    /** GET /profile/bot */
+    /** GET /profile/bot… — the chat bot moved to Stream tools (/bot…). */
+    public static function moved(): never
+    {
+        $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        redirect('/bot' . (preg_match('~/profile/bot(/[a-z]+)?$~', $path, $m) ? ($m[1] ?? '') : ''));
+    }
+
+    /** GET /bot */
     public static function profile(): void
     {
-        self::section('/profile/bot', static fn (int $userId): array => [
+        self::section('/bot', static fn (int $userId): array => [
             'channel' => ChatBot::channel($userId),
             'twitch'  => TwitchUser::connection($userId),
             'stats'   => ChatBot::statsSummary($userId),
@@ -156,50 +163,54 @@ final class BotController
         ]);
     }
 
-    /** GET /profile/bot/commands — the built-in commands as the channel uses them, and the streamer's own. */
+    /** GET /bot/commands — the built-in commands as the channel uses them, and the streamer's own. */
     public static function commands(): void
     {
-        self::section('/profile/bot/commands', static fn (int $userId): array => [
+        self::section('/bot/commands', static fn (int $userId): array => [
             'commands' => ChatBot::commandsFor($userId),
             'custom'   => ChatBot::customCommands($userId),
         ]);
     }
 
-    /** GET /profile/bot/timers */
+    /** GET /bot/timers */
     public static function timers(): void
     {
-        self::section('/profile/bot/timers', static fn (int $userId): array => [
+        self::section('/bot/timers', static fn (int $userId): array => [
             'timers' => ChatBot::timers($userId),
         ]);
     }
 
-    /** GET /profile/bot/logs */
+    /** GET /bot/logs */
     public static function logs(): void
     {
-        self::section('/profile/bot/logs', static fn (int $userId): array => [
+        self::section('/bot/logs', static fn (int $userId): array => [
             'log' => ChatBot::recentLog($userId, 200),
         ]);
     }
 
-    /** Renders one sub-tab inside the profile frame, with the bot's account and the sub-menu. */
+    /** Renders one sub-tab inside Stream tools, with the bot's account and the sub-menu. */
     private static function section(string $path, callable $data): void
     {
         Auth::requireLogin();
 
         if (!ChatBot::isAvailable()) {
-            redirect('/profile');
+            redirect('/overlays');
         }
 
         $userId = (int) Auth::id();
 
-        ProfileController::renderTab('/profile/bot', 'profile/bot', [
-            'section' => $path,
-            'account' => ChatBot::account(),
-            'sectionData' => $data($userId),
-        ]);
+        View::render('stream/frame', [
+            'tab'     => '/bot',
+            'tabView' => 'bot/index',
+            'tabData' => [
+                'section'     => $path,
+                'account'     => ChatBot::account(),
+                'sectionData' => $data($userId),
+            ],
+        ], __('ui.nav.chat_bot') . ' · ' . __(self::SECTIONS[$path][0]));
     }
 
-    /** POST /profile/bot/custom — adds a custom command, or changes one. */
+    /** POST /bot/custom — adds a custom command, or changes one. */
     public static function saveCustom(): void
     {
         Auth::requireLogin();
@@ -214,10 +225,10 @@ final class BotController
             flash('error', $e->getMessage());
         }
 
-        redirect('/profile/bot/commands');
+        redirect('/bot/commands');
     }
 
-    /** POST /profile/bot/custom/delete */
+    /** POST /bot/custom/delete */
     public static function deleteCustom(): void
     {
         Auth::requireLogin();
@@ -226,10 +237,10 @@ final class BotController
         ChatBot::deleteCustom((int) Auth::id(), filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0);
 
         flash('success', __('ui.message.deleted'));
-        redirect('/profile/bot/commands');
+        redirect('/bot/commands');
     }
 
-    /** POST /profile/bot/timer — adds a timed message, or changes one. */
+    /** POST /bot/timer — adds a timed message, or changes one. */
     public static function saveTimer(): void
     {
         Auth::requireLogin();
@@ -244,10 +255,10 @@ final class BotController
             flash('error', $e->getMessage());
         }
 
-        redirect('/profile/bot/timers');
+        redirect('/bot/timers');
     }
 
-    /** POST /profile/bot/timer/delete */
+    /** POST /bot/timer/delete */
     public static function deleteTimer(): void
     {
         Auth::requireLogin();
@@ -256,10 +267,10 @@ final class BotController
         ChatBot::deleteTimer((int) Auth::id(), filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0);
 
         flash('success', __('ui.message.deleted'));
-        redirect('/profile/bot/timers');
+        redirect('/bot/timers');
     }
 
-    /** POST /profile/bot — adds the bot to the streamer's channel, or removes it. */
+    /** POST /bot — adds the bot to the streamer's channel, or removes it. */
     public static function toggleChannel(): void
     {
         Auth::requireLogin();
@@ -270,16 +281,16 @@ final class BotController
 
         if ($on && TwitchUser::connection($userId) === null) {
             flash('error', __('ui.message.bot_needs_twitch'));
-            redirect('/profile/bot');
+            redirect('/bot');
         }
 
         ChatBot::setChannel($userId, $on);
 
         flash('success', __($on ? 'ui.message.bot_added' : 'ui.message.bot_removed'));
-        redirect('/profile/bot');
+        redirect('/bot');
     }
 
-    /** POST /profile/bot/recheck — the streamer just modded (or unmodded) the bot: look again now. */
+    /** POST /bot/recheck — the streamer just modded (or unmodded) the bot: look again now. */
     public static function recheck(): void
     {
         Auth::requireLogin();
@@ -288,10 +299,10 @@ final class BotController
         ChatBot::recheck((int) Auth::id());
 
         flash('success', __('ui.message.bot_rechecking'));
-        redirect('/profile/bot');
+        redirect('/bot');
     }
 
-    /** POST /profile/bot/command — the streamer's own version of a command, or back to the default. */
+    /** POST /bot/command — the streamer's own version of a command, or back to the default. */
     public static function personalCommand(): void
     {
         Auth::requireLogin();
@@ -312,6 +323,6 @@ final class BotController
             flash('error', $e->getMessage());
         }
 
-        redirect('/profile/bot/commands');
+        redirect('/bot/commands');
     }
 }

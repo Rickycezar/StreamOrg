@@ -3,5 +3,6 @@
   "tom-select": "2.6.2",
   "fullcalendar": "6.1.21",
   "@fullcalendar/core": "6.1.21",
-  "@fontsource-variable/plus-jakarta-sans": "5.3.0"
+  "@fontsource-variable/plus-jakarta-sans": "5.3.0",
+  "comfy.js": "1.1.29"
 }

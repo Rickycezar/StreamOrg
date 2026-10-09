@@ -35,7 +35,7 @@ $active = $channel !== null && $channel['is_enabled'] && !$channel['is_blocked']
             </p>
             <p class="muted small"><?= e(sprintf(__('ui.message.bot_try_it'), $prefix . $heartbeat)) ?></p>
         <?php endif; ?>
-        <form method="post" action="<?= e(url('/profile/bot')) ?>">
+        <form method="post" action="<?= e(url('/bot')) ?>">
             <?= Csrf::field() ?>
             <input type="hidden" name="enabled" value="<?= $active ? '0' : '1' ?>">
             <button type="submit" class="btn <?= $active ? '' : 'primary' ?>"><?= e(sprintf(__($active ? 'ui.action.bot_remove' : 'ui.action.bot_add'), $bot)) ?></button>
@@ -67,7 +67,7 @@ $active = $channel !== null && $channel['is_enabled'] && !$channel['is_blocked']
                 <code>/mod <?= e($bot) ?></code>
             </div>
         </div>
-        <form method="post" action="<?= e(url('/profile/bot/recheck')) ?>" class="inline-actions">
+        <form method="post" action="<?= e(url('/bot/recheck')) ?>" class="inline-actions">
             <?= Csrf::field() ?>
             <span class="muted small"><?= e(__('ui.message.bot_access_recheck')) ?></span>
             <button type="submit" class="btn small"><?= e(__('ui.action.bot_recheck')) ?></button>

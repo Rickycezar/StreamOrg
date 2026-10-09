@@ -132,7 +132,7 @@ private preview. Preview access: streamorg@outlook.com.
 
 ### Chat bot
 - **One bot for every channel** (`bot/`, a small Node service): it joins the
-  Twitch chat of streamers who add it from *Profile → Chat bot* (or whom an
+  Twitch chat of streamers who add it from *Stream tools → Chat bot* (or whom an
   admin adds) and answers commands. For now there is one, `!heartbeat`, to
   check it is listening.
 - **A real Twitch chat bot**: it uses Twitch's chat API (EventSub through a
@@ -151,12 +151,48 @@ private preview. Preview access: streamorg@outlook.com.
   (`{target}` is the first word after the command, for shout-outs) and
   messages the bot posts while they are live, each at most every so many
   minutes and only after so many viewer messages, so it never talks into an
-  empty chat. Profile → Chat bot is organised in tabs: overview, commands,
+  empty chat. Stream tools → Chat bot is organised in tabs: overview, commands,
   timed messages and the bot's log for that channel.
 - **Managed from the administration**: the Twitch account the bot speaks as,
   on/off, the command prefix, the default commands, blocking a channel, and
   the bot's live status and recent activity. Changes reach the bot within
   seconds. No chat messages are stored.
+
+### Overlays
+- **Stream tools** (in the account menu) gathers overlays, the media
+  library and the chat bot.
+- **Browser sources for OBS** (*Stream tools → Overlays*): a streamer adds an
+  overlay from a type, sets it up beside a live preview that follows every
+  change before it is saved, and pastes its link into OBS. Saved changes and
+  tests reach the open overlay within seconds. Types: a **custom alert**
+  (message, image, sound; a Test button or a chat command), a **shoutout**
+  (`!so name`: the channel's picture, category and title, looked up by
+  StreamOrg), a **watch-streak alert** (pixel-art card, big streaks with the
+  full show, sounds per streak and per viewer) and the **chat** (cards or
+  outlined text, emotes, rewards, subs, bits, streaks, GIFs, bots hidden).
+- **Advanced mode**: every setting as text (`name = value`, `#` comments,
+  `[blocks]` for sound options and rules per streak or viewer, Portuguese or
+  English names), read forgivingly with skipped lines listed by number, and
+  CSS of the streamer's own on top of the overlay's look (administrators can
+  switch custom CSS off).
+- **Bot replies**: the custom alert, shoutout and watch-streak overlays
+  carry a message the chat bot sends when someone fires the alert's
+  command, a moderator gives a shoutout (with the channel's category and
+  title) or a viewer shares a watch streak (a text for usual streaks and one
+  for the big ones).
+- **Sounds per viewer**: shoutouts and watch streaks can play a viewer's own
+  sound, set in the simple form (or in advanced mode, with colours and
+  dedications).
+- **Secret links**: the key travels after the `#` of the link (never sent to
+  a server, so never in logs); a new link retires the old one at once.
+- **Media library**: sounds (MP3, OGG, WAV) and images (PNG, JPEG, GIF,
+  WebP) for overlays and anything else that plays sounds. A sound can be a
+  **sprite**: parts marked once while listening, each picked on its own.
+  Administrators keep a **shared library** every streamer can use.
+- **Administration → Overlays**: overlays on or off for everyone, which types
+  streamers may add, limits (overlays per streamer, file sizes, media per
+  streamer), how often overlays check for changes, the address overlay links
+  use (ready for an overlay subdomain) and an optional live connection.
 
 ### Viewers
 - Winners sign in **as viewers, with Twitch only**, and see **My prizes**:
@@ -390,7 +426,14 @@ the repository.
   with no inline script, `frame-ancestors 'none'`, `nosniff`, HSTS over HTTPS,
   and only `http(s)` links ever rendered from stored data.
 - **Uploads**: profile pictures are decoded and re-encoded (256×256 WebP)
-  before they are stored; nothing uploaded is served as sent.
+  before they are stored. Media library files are accepted by what they
+  contain (never SVG), stored under random names with the extension of their
+  real type, and limited per file and per user.
+- **Overlays**: overlay pages are served before any session starts, run
+  sandboxed (an origin of their own, no access to StreamOrg's pages or
+  cookies), may be framed only by StreamOrg (the preview) and may reach only
+  StreamOrg, Twitch chat and the emote and font services. Their key is kept
+  hashed (to find it) and encrypted (to show the link again).
 - **Webhooks**: Twitch live-tracking messages are accepted only with a valid
   HMAC-SHA256 signature, less than ten minutes old and never twice.
 - **Giveaways**: nothing leaves the vault when a prize is added. A
@@ -625,4 +668,15 @@ is described in [CHANGELOG.md](CHANGELOG.md) and tagged in git as
 `v<version>`. To release: bump `VERSION`, add the release to the changelog,
 commit, then `git tag -a v0.7.0 -m "StreamOrg 0.7.0"` and
 `git push origin v0.7.0`.
+
+Production builds only when a version changes: in Coolify, the site's Watch
+Paths is `VERSION` and the bot's is `bot/package.json`. Pushes without a new
+version wait on GitHub until the next release.
+
+The chat bot has its own version in `bot/package.json`, its own
+[changelog](bot/CHANGELOG.md) and tags (`bot-v0.4.0`). Database migrations
+only run when the site is released: a bot change that needs one goes out
+with a site release, site first. `streamorg.requiresMigration` in the bot's
+`package.json` names the migration it needs, and the bot waits until it is
+applied.
 

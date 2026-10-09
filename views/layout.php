@@ -35,6 +35,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
     <?php endif; ?>
     <script src="<?= e($asset('/assets/vendor/turbo.js')) ?>" defer data-turbo-track="reload"></script>
     <script src="<?= e($asset('/assets/vendor/tom-select.js')) ?>" defer data-turbo-track="reload"></script>
+    <script src="<?= e($asset('/assets/sound.js')) ?>" defer data-turbo-track="reload"></script>
     <script src="<?= e($asset('/assets/app.js')) ?>" defer data-turbo-track="reload"></script>
 </head>
 <body class="<?= $user !== null ? 'has-topbar' : '' ?>">
@@ -95,6 +96,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     '/admin/import'     => __('ui.nav.import'),
                     '/admin/api'        => __('ui.nav.api_settings'),
                     '/admin/bot'        => __('ui.nav.chat_bot'),
+                    '/admin/overlays'   => __('ui.nav.overlays'),
                     '/admin/notifications' => __('ui.nav.notifications'),
                     '/admin/winners'    => __('ui.nav.winners'),
                     '/admin/errors'     => __('ui.nav.errors'),
@@ -209,6 +211,13 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-2a2 2 0 0 0-1 3.7A1.5 1.5 0 0 1 12 21zM7.5 11h.01M10 7h.01M15 7.5h.01"/></svg>
                 </span>
                 <?= e(__('ui.label.profile_appearance')) ?>
+            </a>
+
+            <a class="usermenu-row" href="<?= e(url('/overlays')) ?>">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v12H3zM8 21h8M12 17v4M7 9l3 2-3 2M12 13h4"/></svg>
+                </span>
+                <?= e(__('ui.nav.stream_tools')) ?>
             </a>
 
             <?php if (TwitchUser::connection((int) $user['id']) !== null || Viewers::forUser((int) $user['id']) !== null): ?>

@@ -1,6 +1,7 @@
 /**
  * Everything the bot reads from and writes to the StreamOrg database
- * (tables from 032_chat_bot.sql and 033_bot_chat_api_and_viewer_stats.sql).
+ * (tables from 032_chat_bot.sql and 033_bot_chat_api_and_viewer_stats.sql,
+ * and the overlays' chat replies from 045_overlays.sql).
  * Tokens are decrypted on the way in and encrypted on the way out, exactly
  * as the PHP app stores them.
  */
@@ -16,9 +17,24 @@ export class Store {
         this.crypto = crypto;
     }
 
-    /** Whether the app's migrations have created the bot tables yet. */
-    async ready() {
-        const { rows } = await this.pool.query("SELECT to_regclass('bot_account') IS NOT NULL AS ready");
+    /**
+     * Whether the database is ready for this version of the bot: the
+     * migration it needs has been applied by the site (or, without one
+     * named, the bot tables exist).
+     *
+     * @param {?string} migration e.g. "034_bot_custom_commands_and_timers"
+     */
+    async ready(migration = null) {
+        if (!migration) {
+            const { rows } = await this.pool.query("SELECT to_regclass('bot_account') IS NOT NULL AS ready");
+            return rows[0].ready;
+        }
+
+        const { rows } = await this.pool.query(
+            `SELECT to_regclass('schema_migrations') IS NOT NULL
+                    AND EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1) AS ready`,
+            [migration]
+        ).catch(() => ({ rows: [{ ready: false }] }));
         return rows[0].ready;
     }
 
@@ -284,6 +300,29 @@ export class Store {
         } finally {
             client.release();
         }
+    }
+
+    /**
+     * The overlays whose settings carry chat replies (custom alert,
+     * shoutout, watch streak), switched on, oldest first, with the administrators'
+     * overlay switches.
+     */
+    async overlayReplies() {
+        const settings = await this.pool.query(
+            "SELECT key, value FROM app_settings WHERE key IN ('overlay.enabled', 'overlay.types_off')"
+        );
+        const value = (key, fallback) => settings.rows.find((r) => r.key === key)?.value ?? fallback;
+        const { rows } = await this.pool.query(
+            `SELECT user_id, type, settings FROM overlays
+              WHERE is_enabled AND type IN ('alert', 'shoutout', 'watch_streak')
+              ORDER BY created_at, id`
+        );
+
+        return {
+            enabled: value('overlay.enabled', '1') === '1',
+            typesOff: String(value('overlay.types_off', '')).split(',').map((t) => t.trim()).filter(Boolean),
+            rows: rows.map((row) => ({ userId: Number(row.user_id), type: row.type, settings: row.settings || {} })),
+        };
     }
 
     /** Every command row: the defaults (userId null) and the streamers' own versions. */

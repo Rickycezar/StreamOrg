@@ -15,6 +15,7 @@ declare(strict_types=1);
 final class Twitch
 {
     private const TOKEN_KEY = 'twitch_app_token';
+    private const SHARED_TOKEN_KEY = 'twitch.app_token';
 
     /** @var array{enabled:bool, client_id:string, client_secret:string}|null */
     private static ?array $settings = null;
@@ -142,6 +143,30 @@ final class Twitch
             'broadcaster_type' => isset($row['broadcaster_type']) && $row['broadcaster_type'] !== ''
                 ? (string) $row['broadcaster_type'] : null,
             'url'              => 'https://twitch.tv/' . $login,
+        ];
+    }
+
+    /**
+     * A channel's current category and title, by broadcaster id.
+     *
+     * @return array{category_id:?string, category:?string, title:string}|null
+     */
+    public static function channel(string $broadcasterId): ?array
+    {
+        if (!ctype_digit($broadcasterId) || !self::isConfigured()) {
+            return null;
+        }
+
+        $row = self::get('channels', ['broadcaster_id' => $broadcasterId])['data'][0] ?? null;
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        return [
+            'category_id' => !empty($row['game_id']) ? (string) $row['game_id'] : null,
+            'category'    => !empty($row['game_name']) ? (string) $row['game_name'] : null,
+            'title'       => (string) ($row['title'] ?? ''),
         ];
     }
 
@@ -373,12 +398,23 @@ final class Twitch
         return implode('&', $parts);
     }
 
-    /** App access token, cached in the session for its stated lifetime. */
+    /**
+     * App access token, cached for its stated lifetime: in the session, and
+     * for requests without one (overlays) encrypted in app_settings, so
+     * they do not ask Twitch for a new token every time.
+     */
     private static function token(): ?string
     {
         $cached = $_SESSION[self::TOKEN_KEY] ?? null;
 
+        if (!is_array($cached) && session_status() !== PHP_SESSION_ACTIVE) {
+            $shared = Crypto::decrypt((string) Settings::get(self::SHARED_TOKEN_KEY, ''));
+            $cached = $shared !== null ? json_decode($shared, true) : null;
+        }
+
         if (is_array($cached) && ($cached['expires'] ?? 0) > time() + 60) {
+            $_SESSION[self::TOKEN_KEY] = $cached;
+
             return (string) $cached['token'];
         }
 
@@ -399,6 +435,10 @@ final class Twitch
             'token'   => (string) $data['access_token'],
             'expires' => time() + (int) ($data['expires_in'] ?? 3600),
         ];
+
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            Settings::set(self::SHARED_TOKEN_KEY, Crypto::encrypt((string) json_encode($_SESSION[self::TOKEN_KEY])), null);
+        }
 
         return (string) $data['access_token'];
     }

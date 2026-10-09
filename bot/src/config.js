@@ -6,7 +6,13 @@ import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-/** @returns {{appKey: string, database: object, healthPort: number, pollSeconds: number, version: string}} */
+/**
+ * requiresMigration (package.json, "streamorg"): the newest StreamOrg
+ * migration this version of the bot needs. Migrations only run when the
+ * site is released, so the bot waits until it is applied (see Store.ready).
+ *
+ * @returns {{appKey: string, database: object, healthPort: number, pollSeconds: number, version: string, requiresMigration: ?string}}
+ */
 export function loadConfig(env = process.env) {
     const appKey = String(env.APP_KEY || '').trim();
 
@@ -20,6 +26,7 @@ export function loadConfig(env = process.env) {
         healthPort: parseInt(env.BOT_HEALTH_PORT || '8080', 10),
         pollSeconds: parseInt(env.BOT_POLL_SECONDS || '60', 10),
         version: pkg.version,
+        requiresMigration: (pkg.streamorg && pkg.streamorg.requiresMigration) || null,
     };
 }
 

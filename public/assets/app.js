@@ -4444,6 +4444,593 @@
         if (lang) document.documentElement.lang = lang.content;
     }
 
+    /** Stream-safe secret fields (overlay links): shown only while focused. */
+    document.addEventListener('focusin', function (event) {
+        const field = event.target.closest && event.target.closest('input[data-reveal-on-focus]');
+        if (!field) return;
+        field.type = 'text';
+        field.select();
+    });
+    document.addEventListener('focusout', function (event) {
+        const field = event.target.closest && event.target.closest('input[data-reveal-on-focus]');
+        if (field) field.type = 'password';
+    });
+
+    let studioSound = null;
+    let studioPlayback = null;
+
+    /** Plays a sound (or a part of it) through the shared SoundLib, stopping the one before. */
+    function studioPlay(src, options) {
+        if (typeof window.SoundLib !== 'function') return null;
+        if (!studioSound) studioSound = new window.SoundLib('');
+        if (studioPlayback) studioPlayback.stop();
+        studioPlayback = studioSound.play(src, options || {});
+        return studioPlayback;
+    }
+
+    function studioStop() {
+        if (studioPlayback) studioPlayback.stop();
+        studioPlayback = null;
+    }
+
+    document.addEventListener('turbo:before-cache', studioStop);
+
+    function readJson(root, selector, fallback) {
+        const el = root.querySelector(selector);
+        if (!el) return fallback;
+        try { return JSON.parse(el.textContent); } catch (e) { return fallback; }
+    }
+
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = text;
+        return node;
+    }
+
+    function seconds(value) {
+        const n = Math.max(0, Number(value) || 0);
+        const m = Math.floor(n / 60);
+        const s = n - m * 60;
+        return m + ':' + (s < 10 ? '0' : '') + s.toFixed(2);
+    }
+
+    function megabytes(bytes) {
+        return (bytes / 1048576).toFixed(1);
+    }
+
+    /** A sound file's length, measured in the browser before upload (null when it cannot be read). */
+    async function soundLength(file) {
+        const Context = window.AudioContext || window.webkitAudioContext;
+        if (!Context) return null;
+
+        try {
+            const context = new Context();
+            const decoded = await context.decodeAudioData(await file.arrayBuffer());
+            context.close();
+            return decoded.duration;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Media library: uploads (drop, paste a pick), and per asset a player,
+     * rename, the sprite segment editor (start and end marked while
+     * listening) and delete. Shared media in a user's library is read-only.
+     */
+    function mediaLibrary(box) {
+        const S = readJson(box, '[data-media-strings]', {});
+        const sharedLibrary = box.dataset.shared === '1';
+        const list = box.querySelector('[data-media-list]');
+        const empty = box.querySelector('[data-media-empty]');
+        const input = box.querySelector('[data-media-input]');
+        const drop = box.querySelector('[data-media-drop]');
+        const error = box.querySelector('[data-media-error]');
+        const usage = box.querySelector('[data-media-usage]');
+        let assets = readJson(box, '[data-media-assets]', []);
+
+        const fail = function (message) {
+            error.textContent = message || '';
+            error.hidden = !message;
+        };
+
+        const setUsage = function (bytes) {
+            if (!usage || bytes === null || bytes === undefined) return;
+            usage.textContent = (S.usage || '%s / %s MB').replace('%s', megabytes(bytes)).replace('%s', megabytes(parseInt(usage.dataset.quota, 10) || 0));
+        };
+
+        const segmentRow = function (segment, audio, rows, onChange) {
+            const row = el('div', 'segment-row');
+            row.dataset.key = segment.key || '';
+
+            const name = el('input');
+            name.type = 'text';
+            name.maxLength = 40;
+            name.value = segment.name || '';
+            name.placeholder = S.segment_name;
+            name.setAttribute('aria-label', S.segment_name);
+            name.dataset.part = 'name';
+
+            const timeField = function (value, label, part) {
+                const wrap = el('span', 'segment-time');
+                const field = el('input');
+                field.type = 'number';
+                field.min = '0';
+                field.step = '0.01';
+                field.value = Number(value || 0).toFixed(2);
+                field.setAttribute('aria-label', label);
+                field.dataset.part = part;
+                const mark = el('button', 'btn small ghost', S.mark_short);
+                mark.type = 'button';
+                mark.title = S.mark + ' (' + label + ')';
+                mark.addEventListener('click', function () {
+                    field.value = audio.currentTime.toFixed(2);
+                    onChange();
+                });
+                wrap.append(el('small', 'muted', label), field, mark);
+                return wrap;
+            };
+
+            const start = timeField(segment.start, S.start, 'start');
+            const end = timeField((segment.start || 0) + (segment.duration || 0), S.end, 'end');
+
+            const play = el('button', 'btn small', '▶');
+            play.type = 'button';
+            play.title = S.play;
+            play.addEventListener('click', function () {
+                const from = Number(start.querySelector('input').value) || 0;
+                const to = Number(end.querySelector('input').value) || 0;
+                audio.pause();
+                if (to > from) studioPlay(audio.currentSrc || audio.src, { start: from, duration: to - from });
+            });
+
+            const remove = el('button', 'btn small danger-btn', '×');
+            remove.type = 'button';
+            remove.title = S.remove;
+            remove.addEventListener('click', function () {
+                row.remove();
+                onChange();
+            });
+
+            row.addEventListener('input', onChange);
+            row.append(name, start, end, play, remove);
+            rows.append(row);
+        };
+
+        const readSegments = function (rows) {
+            return Array.prototype.map.call(rows.querySelectorAll('.segment-row'), function (row) {
+                const start = Number(row.querySelector('[data-part="start"]').value) || 0;
+                const end = Number(row.querySelector('[data-part="end"]').value) || 0;
+                return { key: row.dataset.key, name: row.querySelector('[data-part="name"]').value, start: start, duration: Math.max(0, end - start) };
+            });
+        };
+
+        const card = function (asset) {
+            const editable = sharedLibrary || !asset.shared;
+            const item = el('article', 'media-item kind-' + asset.kind);
+            const head = el('div', 'media-head');
+
+            if (asset.kind === 'image') {
+                const img = el('img', 'media-thumb');
+                img.src = asset.url;
+                img.alt = '';
+                img.loading = 'lazy';
+                head.append(img);
+            } else {
+                const icon = el('span', 'media-icon', '♪');
+                icon.setAttribute('aria-hidden', 'true');
+                head.append(icon);
+            }
+
+            const titleBox = el('div', 'media-title');
+            let nameField = null;
+
+            if (editable) {
+                nameField = el('input');
+                nameField.type = 'text';
+                nameField.maxLength = 80;
+                nameField.value = asset.name;
+                nameField.setAttribute('aria-label', S.name);
+                titleBox.append(nameField);
+            } else {
+                titleBox.append(el('strong', '', asset.name));
+            }
+
+            const meta = [];
+            if (asset.duration) meta.push(seconds(asset.duration));
+            if (asset.width) meta.push(asset.width + '×' + asset.height);
+            meta.push(megabytes(asset.bytes) + ' MB');
+            const metaLine = el('small', 'muted', meta.join(' · '));
+            if (asset.shared && !sharedLibrary) metaLine.prepend(el('span', 'badge', S.shared), ' ');
+            titleBox.append(metaLine);
+            head.append(titleBox);
+            item.append(head);
+
+            let rows = null;
+            let audio = null;
+
+            if (asset.kind === 'sound') {
+                audio = el('audio', 'media-audio');
+                audio.controls = true;
+                audio.preload = 'none';
+                audio.src = asset.url;
+                item.append(audio);
+
+                const details = el('details', 'media-segments');
+                const summary = el('summary', '', S.segments + ' (' + asset.segments.length + ')');
+                details.append(summary);
+                rows = el('div', 'segment-rows');
+
+                if (editable) {
+                    details.append(el('p', 'muted small', S.segments_hint));
+                    asset.segments.forEach(function (segment) { segmentRow(segment, audio, rows, changed); });
+                    details.append(rows);
+                    const add = el('button', 'btn small', '+ ' + S.add_segment);
+                    add.type = 'button';
+                    add.addEventListener('click', function () {
+                        const at = audio.currentTime || 0;
+                        segmentRow({ key: '', name: '', start: at, duration: Math.min(1, (asset.duration || at + 1) - at) }, audio, rows, changed);
+                        changed();
+                    });
+                    details.append(add);
+                } else {
+                    asset.segments.forEach(function (segment) {
+                        const row = el('div', 'segment-row readonly');
+                        const play = el('button', 'btn small', '▶');
+                        play.type = 'button';
+                        play.addEventListener('click', function () { studioPlay(asset.url, { start: segment.start, duration: segment.duration }); });
+                        row.append(play, el('span', '', segment.name), el('small', 'muted', seconds(segment.start) + ' – ' + seconds(segment.start + segment.duration)));
+                        rows.append(row);
+                    });
+                    details.append(rows);
+                }
+
+                if (editable || asset.segments.length) item.append(details);
+            }
+
+            let save = null;
+
+            function changed() {
+                if (save) save.disabled = false;
+            }
+
+            if (editable) {
+                const actions = el('div', 'card-actions');
+                save = el('button', 'btn small primary', S.save);
+                save.type = 'button';
+                save.disabled = true;
+                nameField.addEventListener('input', changed);
+
+                save.addEventListener('click', async function () {
+                    save.disabled = true;
+                    const result = await postJson('/media-library/update', {
+                        id: asset.id,
+                        name: nameField.value,
+                        segments: JSON.stringify(rows ? readSegments(rows) : [])
+                    });
+
+                    if (!result.ok) {
+                        save.disabled = false;
+                        fail(result.error);
+                        return;
+                    }
+
+                    fail('');
+                    assets = assets.map(function (a) { return a.id === asset.id ? result.asset : a; });
+                    item.replaceWith(card(result.asset));
+                });
+
+                const remove = el('button', 'btn small danger-btn', S.delete);
+                remove.type = 'button';
+                remove.addEventListener('click', async function () {
+                    if (!(await confirmModal(S.delete, S.delete_confirm))) return;
+                    const result = await postJson('/media-library/delete', { id: asset.id });
+
+                    if (!result.ok) {
+                        fail(result.error);
+                        return;
+                    }
+
+                    assets = assets.filter(function (a) { return a.id !== asset.id; });
+                    item.remove();
+                    if (!sharedLibrary) setUsage(result.usage);
+                    empty.hidden = assets.length > 0;
+                });
+
+                actions.append(save, remove);
+                item.append(actions);
+            }
+
+            return item;
+        };
+
+        const render = function () {
+            list.replaceChildren.apply(list, assets.map(card));
+            empty.hidden = assets.length > 0;
+        };
+
+        const upload = async function (file) {
+            const pending = el('article', 'media-item uploading', S.uploading + ' ' + file.name);
+            list.prepend(pending);
+            empty.hidden = true;
+
+            const body = new FormData();
+            body.append('file', file, file.name);
+            body.append('_token', csrf());
+            if (sharedLibrary) body.append('shared', '1');
+
+            if (/^audio\//.test(file.type) || /\.(mp3|ogg|wav)$/i.test(file.name)) {
+                const length = await soundLength(file);
+                if (length) body.append('duration', String(length));
+            }
+
+            let result;
+            try {
+                const response = await fetch(url('/media-library'), { method: 'POST', headers: { 'X-CSRF-Token': csrf(), 'Accept': 'application/json' }, body: body });
+                result = await response.json();
+            } catch (e) {
+                result = { ok: false, error: e.message };
+            }
+
+            pending.remove();
+
+            if (!result.ok) {
+                fail(file.name + ': ' + result.error);
+                empty.hidden = assets.length > 0;
+                return;
+            }
+
+            fail('');
+            assets.unshift(result.asset);
+            list.prepend(card(result.asset));
+            if (!sharedLibrary) setUsage(result.usage);
+        };
+
+        const uploadAll = async function (files) {
+            for (const file of Array.prototype.slice.call(files)) {
+                await upload(file);
+            }
+        };
+
+        drop.addEventListener('click', function () { input.click(); });
+        drop.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                input.click();
+            }
+        });
+        input.addEventListener('change', function () {
+            uploadAll(input.files);
+            input.value = '';
+        });
+        ['dragenter', 'dragover'].forEach(function (type) {
+            drop.addEventListener(type, function (event) {
+                if (!event.dataTransfer || Array.prototype.indexOf.call(event.dataTransfer.types, 'Files') === -1) return;
+                event.preventDefault();
+                drop.classList.add('dragging');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (type) {
+            drop.addEventListener(type, function () { drop.classList.remove('dragging'); });
+        });
+        drop.addEventListener('drop', function (event) {
+            if (!event.dataTransfer || !event.dataTransfer.files.length) return;
+            event.preventDefault();
+            uploadAll(event.dataTransfer.files);
+        });
+
+        render();
+    }
+
+    onPage(function () {
+        document.querySelectorAll('[data-media-library]').forEach(mediaLibrary);
+    });
+
+    /**
+     * Tabs inside a form (the overlay's settings and its sounds per viewer):
+     * every panel stays in the form, only one shows; the open tab is
+     * remembered for the page while the browser tab lasts.
+     */
+    onPage(function () {
+        document.querySelectorAll('[data-form-tabs]').forEach(function (tabs) {
+            const form = tabs.closest('form');
+            const show = function (name) {
+                tabs.querySelectorAll('[data-form-tab]').forEach(function (tab) {
+                    const on = tab.dataset.formTab === name;
+                    tab.classList.toggle('active', on);
+                    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+                form.querySelectorAll('[data-form-panel]').forEach(function (panel) { panel.hidden = panel.dataset.formPanel !== name; });
+                try { sessionStorage.setItem(tabs.dataset.key, name); } catch (e) { }
+            };
+
+            tabs.addEventListener('click', function (event) {
+                const tab = event.target.closest('[data-form-tab]');
+                if (tab) show(tab.dataset.formTab);
+            });
+
+            let saved = null;
+            try { saved = sessionStorage.getItem(tabs.dataset.key); } catch (e) { }
+            if (saved && tabs.querySelector('[data-form-tab="' + saved + '"]')) show(saved);
+        });
+    });
+
+    /**
+     * Overlay settings page: the sound and image pickers, and the preview
+     * (the overlay page in a frame, scaled down). Every change, in the
+     * simple form or the advanced text and CSS, is read by StreamOrg as it
+     * would be saved and sent to the preview, with what the text had
+     * wrong; the preview's shoutout lookups go through this page. The
+     * other test reaches the overlay open in OBS.
+     */
+    onPage(function () {
+        const editor = document.querySelector('[data-overlay-editor]');
+        if (!editor) return;
+
+        const form = editor.querySelector('[data-overlay-form]');
+        const frame = editor.querySelector('[data-preview]');
+        const box = editor.querySelector('[data-preview-box]');
+        const result = editor.querySelector('[data-test-result]');
+        const unsaved = editor.querySelector('[data-unsaved]');
+        const warningsBox = editor.querySelector('[data-ini-warnings]');
+        const S = readJson(editor, '[data-overlay-strings]', {});
+        const media = {};
+        readJson(editor, '[data-overlay-media]', []).forEach(function (m) { media[m.id] = m; });
+
+        let current = null;
+        let pending = null;
+        let asked = 0;
+
+        const fillSegments = function (wrap) {
+            const asset = media[wrap.querySelector('[data-sound-asset]').value];
+            const select = wrap.querySelector('[data-sound-segment]');
+            const chosen = select.value || select.dataset.chosen || '';
+            const segments = asset ? asset.segments : [];
+            select.replaceChildren(new Option(S.whole, ''));
+            segments.forEach(function (s) { select.add(new Option(s.name + ' (' + seconds(s.start) + ')', s.key, false, s.key === chosen)); });
+            select.dataset.chosen = '';
+            wrap.querySelector('[data-sound-segment-wrap]').hidden = segments.length === 0;
+        };
+
+        const showThumb = function (wrap) {
+            const asset = media[wrap.querySelector('[data-image-asset]').value];
+            const img = wrap.querySelector('[data-image-thumb]');
+            img.hidden = !asset;
+            if (asset) img.src = asset.url;
+        };
+
+        const soundOf = function (field) {
+            const asset = media[field.querySelector('[data-sound-asset]').value];
+            if (!asset) return null;
+            const key = field.querySelector('[data-sound-segment]').value;
+            const segment = asset.segments.filter(function (s) { return s.key === key; })[0];
+            return {
+                url: asset.url,
+                start: segment ? segment.start : 0,
+                duration: segment ? segment.duration : null,
+                volume: Number(field.querySelector('input[type="range"]').value)
+            };
+        };
+
+        const send = function (message) {
+            if (frame.contentWindow) frame.contentWindow.postMessage(message, '*');
+        };
+
+        const sendSettings = function () {
+            if (current) send({ type: 'streamorg-preview-settings', settings: current.settings, css: current.css, channel: S.channel, channel_id: S.channel_id });
+        };
+
+        const showWarnings = function (warnings) {
+            if (!warningsBox) return;
+            const list = warningsBox.querySelector('ul');
+            list.replaceChildren.apply(list, (warnings || []).map(function (w) {
+                return el('li', '', (w.line > 0 ? S.line.replace('%d', w.line) + ': ' : '') + w.message);
+            }));
+            warningsBox.hidden = !(warnings || []).length;
+        };
+
+        /** Asks StreamOrg what the form or text gives now (the latest answer wins). */
+        const refresh = async function () {
+            const body = new URLSearchParams(new FormData(form));
+            body.delete('switch_to');
+            const ticket = ++asked;
+            let answer;
+            try { answer = await postJson('/overlays/preview', body); } catch (e) { return; }
+            if (ticket !== asked || !answer.ok) return;
+            current = answer;
+            showWarnings(answer.warnings);
+            sendSettings();
+        };
+
+        const scale = function () {
+            const width = parseInt(box.dataset.width, 10) || 1920;
+            frame.style.transform = 'scale(' + (box.clientWidth / width) + ')';
+        };
+
+        const initSound = function (field) {
+            fillSegments(field);
+            field.querySelector('[data-sound-asset]').addEventListener('change', function () { fillSegments(field); });
+            field.querySelector('[data-sound-play]').addEventListener('click', function () {
+                const sound = soundOf(field);
+                if (sound) studioPlay(sound.url, { start: sound.start, duration: sound.duration, volume: sound.volume });
+            });
+        };
+
+        editor.querySelectorAll('.kind-sound').forEach(initSound);
+
+        editor.querySelectorAll('[data-rules]').forEach(function (rules) {
+            const rows = rules.querySelector('[data-rule-rows]');
+            const template = rules.querySelector('[data-rule-template]');
+            let next = parseInt(rules.dataset.next, 10) || 0;
+
+            rules.querySelector('[data-rule-add]').addEventListener('click', function () {
+                const row = template.content.firstElementChild.cloneNode(true);
+                const index = String(next++);
+                row.querySelectorAll('[name]').forEach(function (input) { input.name = input.name.replace('__i__', index); });
+                rows.append(row);
+                row.querySelectorAll('.kind-sound').forEach(initSound);
+                row.querySelector('input[type="text"]').focus();
+                changed(60);
+            });
+
+            rules.addEventListener('click', function (event) {
+                const remove = event.target.closest('[data-rule-remove]');
+                if (!remove) return;
+                remove.closest('[data-rule-row]').remove();
+                changed(60);
+            });
+        });
+
+        editor.querySelectorAll('.kind-image').forEach(function (field) {
+            showThumb(field);
+            field.querySelector('[data-image-asset]').addEventListener('change', function () { showThumb(field); });
+        });
+
+        const changed = function (delay) {
+            unsaved.hidden = false;
+            clearTimeout(pending);
+            pending = setTimeout(refresh, delay);
+        };
+
+        form.addEventListener('input', function () { changed(300); });
+        form.addEventListener('change', function () { changed(60); });
+
+        frame.addEventListener('load', function () {
+            if (current) sendSettings(); else refresh();
+        });
+        refresh();
+        scale();
+        if (window.ResizeObserver) new ResizeObserver(scale).observe(box);
+
+        window.addEventListener('message', async function (event) {
+            if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'streamorg-preview-lookup') return;
+            let channel = null;
+            try {
+                const response = await fetch(url('/overlays/lookup?id=' + encodeURIComponent(editor.dataset.id) + '&login=' + encodeURIComponent(event.data.login)), { headers: { 'Accept': 'application/json' } });
+                channel = (await response.json()).channel || null;
+            } catch (e) { }
+            send({ type: 'streamorg-preview-lookup-result', id: event.data.id, channel: channel });
+        });
+
+        editor.querySelectorAll('[data-test-preview]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                sendSettings();
+                send({ type: 'streamorg-preview-test', payload: { event: button.dataset.testPreview, user: S.sample, label: S.test_label } });
+            });
+        });
+
+        editor.querySelectorAll('[data-test-live]').forEach(function (button) {
+            button.addEventListener('click', async function () {
+                button.disabled = true;
+                const answer = await postJson('/overlays/test', { id: editor.dataset.id, event: button.dataset.testLive });
+                button.disabled = false;
+                result.textContent = answer.ok ? S.sent : answer.error;
+                result.hidden = false;
+            });
+        });
+    });
+
     function runPageInits() {
         loadGlobals();
         applyDocumentMeta();

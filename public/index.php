@@ -45,6 +45,11 @@ if ($requestPath === '/twitch/eventsub' && ($_SERVER['REQUEST_METHOD'] ?? '') ==
     TwitchEventController::receive();
 }
 
+if (str_starts_with($requestPath . '/', '/overlay/')) {
+    Lang::setLocale((string) Config::get('app.locale', 'en'));
+    OverlayController::dispatch($requestPath, (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+}
+
 if ($hasSession || !in_array($requestPath, ['/', '/language'], true)) {
     Auth::start();
 }
@@ -105,10 +110,14 @@ $routes = [
         '/profile/password'  => [ProfileController::class, 'passwordPage'],
         '/profile/appearance' => [ProfileController::class, 'appearance'],
         '/profile/defaults'  => [ProfileController::class, 'defaults'],
-        '/profile/bot'       => [BotController::class, 'profile'],
-        '/profile/bot/commands' => [BotController::class, 'commands'],
-        '/profile/bot/timers' => [BotController::class, 'timers'],
-        '/profile/bot/logs'  => [BotController::class, 'logs'],
+        '/bot'               => [BotController::class, 'profile'],
+        '/bot/commands'      => [BotController::class, 'commands'],
+        '/bot/timers'        => [BotController::class, 'timers'],
+        '/bot/logs'          => [BotController::class, 'logs'],
+        '/profile/bot'       => [BotController::class, 'moved'],
+        '/profile/bot/commands' => [BotController::class, 'moved'],
+        '/profile/bot/timers' => [BotController::class, 'moved'],
+        '/profile/bot/logs'  => [BotController::class, 'moved'],
         '/admin/bot'         => [BotController::class, 'admin'],
         '/admin/bot/connect' => [BotController::class, 'connect'],
         '/profile/security'  => [ProfileController::class, 'security'],
@@ -141,6 +150,11 @@ $routes = [
         '/support/message'   => [SupportController::class, 'thread'],
         '/support/survey'    => [SupportController::class, 'survey'],
         '/embargoes'         => [EmbargoController::class, 'index'],
+        '/overlays'          => [OverlayStudioController::class, 'index'],
+        '/overlays/media'    => [OverlayStudioController::class, 'media'],
+        '/overlays/edit'     => [OverlayStudioController::class, 'edit'],
+        '/overlays/lookup'   => [OverlayStudioController::class, 'lookup'],
+        '/admin/overlays'    => [OverlayStudioController::class, 'admin'],
         '/streamers'         => [StreamerController::class, 'index'],
         '/streamers/search'  => [StreamerController::class, 'search'],
         '/collabs'           => [CollabController::class, 'index'],
@@ -202,6 +216,16 @@ $routes = [
         '/embargoes'         => [EmbargoController::class, 'store'],
         '/embargoes/update'  => [EmbargoController::class, 'update'],
         '/embargoes/delete'  => [EmbargoController::class, 'delete'],
+        '/overlays'          => [OverlayStudioController::class, 'store'],
+        '/overlays/update'   => [OverlayStudioController::class, 'update'],
+        '/overlays/new-link' => [OverlayStudioController::class, 'newLink'],
+        '/overlays/delete'   => [OverlayStudioController::class, 'delete'],
+        '/overlays/test'     => [OverlayStudioController::class, 'test'],
+        '/overlays/preview'  => [OverlayStudioController::class, 'preview'],
+        '/admin/overlays'    => [OverlayStudioController::class, 'saveAdmin'],
+        '/media-library'     => [MediaController::class, 'upload'],
+        '/media-library/update' => [MediaController::class, 'update'],
+        '/media-library/delete' => [MediaController::class, 'delete'],
         '/preferences'       => [PreferenceController::class, 'save'],
         '/profile'           => [ProfileController::class, 'update'],
         '/profile/password'  => [ProfileController::class, 'password'],
@@ -213,13 +237,13 @@ $routes = [
         '/profile/avatar/remove' => [ProfileController::class, 'avatarRemove'],
         '/profile/defaults'  => [ProfileController::class, 'saveDefaults'],
         '/profile/defaults/content' => [ProfileController::class, 'saveContentDefaults'],
-        '/profile/bot'       => [BotController::class, 'toggleChannel'],
-        '/profile/bot/command' => [BotController::class, 'personalCommand'],
-        '/profile/bot/recheck' => [BotController::class, 'recheck'],
-        '/profile/bot/custom' => [BotController::class, 'saveCustom'],
-        '/profile/bot/custom/delete' => [BotController::class, 'deleteCustom'],
-        '/profile/bot/timer' => [BotController::class, 'saveTimer'],
-        '/profile/bot/timer/delete' => [BotController::class, 'deleteTimer'],
+        '/bot'       => [BotController::class, 'toggleChannel'],
+        '/bot/command' => [BotController::class, 'personalCommand'],
+        '/bot/recheck' => [BotController::class, 'recheck'],
+        '/bot/custom' => [BotController::class, 'saveCustom'],
+        '/bot/custom/delete' => [BotController::class, 'deleteCustom'],
+        '/bot/timer' => [BotController::class, 'saveTimer'],
+        '/bot/timer/delete' => [BotController::class, 'deleteTimer'],
         '/admin/bot/settings' => [BotController::class, 'settings'],
         '/admin/bot/command' => [BotController::class, 'defaultCommand'],
         '/admin/bot/channel' => [BotController::class, 'block'],

@@ -7,6 +7,9 @@
  *   made the bot a moderator);
  * - it replies with Send Chat Message, also with the app token;
  * - it posts the streamers' timed messages while they are live (Timers);
+ * - it answers custom alerts, shoutouts and watch streaks with the replies
+ *   set on the streamer's overlays (OverlayReplies); watch streaks arrive as chat
+ *   notifications, subscribed to only in channels that have such a reply;
  * - it records simple viewer statistics while channels are live (Tracker),
  *   only in channels whose chat it can read.
  *
@@ -17,6 +20,7 @@
  */
 import { CommandBook, Cooldowns, BUILTINS, allowed, render } from './commands.js';
 import { EventSubSocket } from './eventsub.js';
+import { OverlayReplies } from './overlays.js';
 import { Helix } from './helix.js';
 import { Timers } from './timers.js';
 import { Tracker } from './tracker.js';
@@ -30,6 +34,10 @@ const SEND_LIMIT = 20;
 const SEND_WINDOW = 30_000;
 const MESSAGE_MAX = 500;
 const TIMERS_EVERY = 30_000;
+const SHOUTOUT_AGAIN_AFTER = 60_000;
+const ALERT_AGAIN_AFTER = 5_000;
+const CHAT = 'channel.chat.message';
+const NOTICES = 'channel.chat.notification';
 
 /** EventSub chat badges -> {broadcaster: '1', moderator: '1', …} */
 export function badgesOf(event) {
@@ -54,6 +62,9 @@ export class Bot {
         this.account = null;
         this.channels = new Map();
         this.subscriptions = new Map();
+        this.notices = new Map();
+        this.replies = new OverlayReplies();
+        this.shoutedAt = new Map();
         this.access = new Map();
         this.commands = new CommandBook();
         this.cooldowns = new Cooldowns();
@@ -127,7 +138,15 @@ export class Bot {
     }
 
     async load() {
-        if (!(await this.store.ready())) return this.idle('Waiting for the StreamOrg database migrations');
+        const needs = this.config && this.config.requiresMigration;
+
+        if (!(await this.store.ready(needs))) {
+            const detail = needs
+                ? `Waiting for StreamOrg migration ${needs} (release the site first)`
+                : 'Waiting for the StreamOrg database migrations';
+            if (this.detail !== detail) console.log(`StreamOrg bot: ${detail}`);
+            return this.idle(detail);
+        }
 
         const previous = this.account;
         this.account = await this.store.account();
@@ -139,12 +158,16 @@ export class Bot {
 
         this.commands.load(await this.store.commands(), await this.store.customCommands());
         this.timers.load(await this.store.timers());
+        this.replies.load(await this.store.overlayReplies());
 
         const channels = await this.store.channels();
         this.channels = new Map(channels.map((c) => [c.twitchId, c]));
         this.followReadable();
 
-        if (previous && previous.userId !== this.account.userId) this.subscriptions.clear();
+        if (previous && previous.userId !== this.account.userId) {
+            this.subscriptions.clear();
+            this.notices.clear();
+        }
 
         if (Date.now() - this.validatedAt > VALIDATE_EVERY) await this.validate();
 
@@ -235,8 +258,44 @@ export class Bot {
             await this.subscribe(channel, conduitId);
         }
 
+        await this.syncNotices(conduitId, fresh);
         this.followReadable();
         this.setState('connected', this.summary());
+    }
+
+    /**
+     * Chat notifications (watch streaks) only in readable channels whose
+     * streamer set a watch-streak reply; removed when they no longer have one.
+     */
+    async syncNotices(conduitId, fresh) {
+        if (fresh) this.notices = await this.existingSubscriptions(conduitId, NOTICES);
+
+        const wanted = new Set([...this.channels.values()]
+            .filter((c) => this.subscriptions.has(c.twitchId) && this.replies.wantsNotices(c.userId))
+            .map((c) => c.twitchId));
+
+        for (const [broadcasterId, sub] of [...this.notices]) {
+            if (!wanted.has(broadcasterId) || sub.botId !== this.account.userId) {
+                await this.helix.app('DELETE', 'eventsub/subscriptions', { query: { id: sub.id } });
+                this.notices.delete(broadcasterId);
+            }
+        }
+
+        for (const broadcasterId of wanted) {
+            if (this.notices.has(broadcasterId)) continue;
+
+            const result = await this.helix.app('POST', 'eventsub/subscriptions', {
+                body: {
+                    type: NOTICES,
+                    version: '1',
+                    condition: { broadcaster_user_id: broadcasterId, user_id: this.account.userId },
+                    transport: { method: 'conduit', conduit_id: conduitId },
+                },
+            });
+
+            if (result.status === 202) this.notices.set(broadcasterId, { id: result.data.data[0].id, botId: this.account.userId });
+            else if (result.status === 409) this.notices = await this.existingSubscriptions(conduitId, NOTICES);
+        }
     }
 
     /** Statistics and timers only concern channels whose chat the bot can read. */
@@ -244,13 +303,13 @@ export class Bot {
         this.tracker.setChannels([...this.channels.values()].filter((c) => this.subscriptions.has(c.twitchId)));
     }
 
-    /** @returns {Promise<Map<string, {id: string, botId: string}>>} this conduit's chat subscriptions, by broadcaster */
-    async existingSubscriptions(conduitId) {
+    /** @returns {Promise<Map<string, {id: string, botId: string}>>} this conduit's subscriptions of a type, by broadcaster */
+    async existingSubscriptions(conduitId, type = CHAT) {
         const found = new Map();
         let after;
 
         do {
-            const page = await this.helix.app('GET', 'eventsub/subscriptions', { query: { type: 'channel.chat.message', after } });
+            const page = await this.helix.app('GET', 'eventsub/subscriptions', { query: { type, after } });
             if (page.status !== 200) break;
 
             for (const sub of page.data.data || []) {
@@ -268,7 +327,7 @@ export class Bot {
     async subscribe(channel, conduitId) {
         const result = await this.helix.app('POST', 'eventsub/subscriptions', {
             body: {
-                type: 'channel.chat.message',
+                type: CHAT,
                 version: '1',
                 condition: { broadcaster_user_id: channel.twitchId, user_id: this.account.userId },
                 transport: { method: 'conduit', conduit_id: conduitId },
@@ -370,11 +429,18 @@ export class Bot {
         });
 
         this.socket.on('notification', ({ type, event }) => {
-            if (type === 'channel.chat.message') this.onChat(event).catch((e) => console.error('chat:', e.message));
+            if (type === CHAT) this.onChat(event).catch((e) => console.error('chat:', e.message));
+            if (type === NOTICES) this.onNotice(event).catch((e) => console.error('notice:', e.message));
         });
 
         this.socket.on('revocation', (subscription) => {
             const broadcasterId = String(subscription.condition?.broadcaster_user_id || '');
+
+            if (subscription.type === NOTICES) {
+                this.notices.delete(broadcasterId);
+                return;
+            }
+
             const channel = this.channels.get(broadcasterId);
             this.subscriptions.delete(broadcasterId);
             this.followReadable();
@@ -409,18 +475,27 @@ export class Bot {
         this.tracker.countMessage(channel.twitchId, { id: user.id, login: user.login, name: user.displayName });
         if (this.tracker.isLive(channel.twitchId)) this.timers.countMessage(channel.userId);
 
-        await this.answer({ channel, id: event.message_id, text: event.message?.text || '', user });
+        const text = event.message?.text || '';
+        if (await this.answer({ channel, id: event.message_id, text, user })) return;
+        await this.alerted(channel, event.message_id, text, user);
+        await this.shoutout(channel, text, user);
     }
 
-    /** Runs the command a chat message calls, if any, within its permission and cooldown. */
+    /**
+     * Runs the command a chat message calls, if any, within its permission
+     * and cooldown.
+     *
+     * @returns {Promise<boolean>} whether the message called one of the bot's commands
+     */
     async answer({ channel, id, text, user }) {
-        if (!this.account) return;
+        if (!this.account) return false;
 
         const command = this.commands.match(channel.userId, this.account.prefix, text);
-        if (!command || !allowed(command.permission, user.badges)) return;
+        if (!command) return false;
+        if (!allowed(command.permission, user.badges)) return true;
 
         const privileged = 'broadcaster' in user.badges || 'moderator' in user.badges;
-        if (!privileged && !this.cooldowns.take(`${channel.userId}:${command.code}:${command.trigger}`, command.cooldown)) return;
+        if (!privileged && !this.cooldowns.take(`${channel.userId}:${command.code}:${command.trigger}`, command.cooldown)) return true;
 
         const values = BUILTINS[command.code]({
             channel: channel.login,
@@ -431,6 +506,72 @@ export class Bot {
 
         if (await this.say(channel, render(command.response, values), id)) {
             await this.store.log(channel.userId, 'info', `Answered ${this.account.prefix}${command.trigger}`);
+        }
+
+        return true;
+    }
+
+    /** A custom alert fired from chat: each alert overlay's reply (once every few seconds per command). */
+    async alerted(channel, id, text, user) {
+        for (const alert of this.replies.alert(channel.userId, text, user.badges)) {
+            const key = `${channel.userId}:alert:${alert.command}:${alert.reply}`;
+            const now = Date.now();
+            if (now - (this.shoutedAt.get(key) || 0) < ALERT_AGAIN_AFTER) continue;
+            this.shoutedAt.set(key, now);
+
+            if (await this.say(channel, render(alert.reply, { user: user.displayName, channel: channel.login }), id)) {
+                await this.store.log(channel.userId, 'info', `Answered the alert !${alert.command}`);
+            }
+        }
+    }
+
+    /**
+     * A shoutout with the shoutout overlay's commands: the reply set on the
+     * overlay, with the channel's name, category and title (once a minute
+     * per channel shouted out).
+     */
+    async shoutout(channel, text, user) {
+        const asked = this.replies.shoutout(channel.userId, text, user.badges);
+        if (!asked) return;
+
+        const key = `${channel.userId}:${asked.target}`;
+        const now = Date.now();
+        if (now - (this.shoutedAt.get(key) || 0) < SHOUTOUT_AGAIN_AFTER) return;
+        this.shoutedAt.set(key, now);
+
+        const found = await this.helix.app('GET', 'users', { query: { login: asked.target } });
+        const target = found.data?.data?.[0];
+        if (found.status !== 200 || !target) return;
+
+        const info = await this.helix.app('GET', 'channels', { query: { broadcaster_id: target.id } });
+        const live = info.data?.data?.[0] || {};
+
+        const values = {
+            user: user.displayName,
+            name: target.display_name || target.login,
+            login: target.login,
+            category: live.game_name || '',
+            title: live.title || '',
+        };
+
+        if (await this.say(channel, render(asked.reply, values))) {
+            await this.store.log(channel.userId, 'info', `Answered a shoutout to ${target.login}`);
+        }
+    }
+
+    /** A chat notification: a watch streak shared in chat gets the overlay's reply. */
+    async onNotice(event) {
+        const channel = this.channels.get(String(event.broadcaster_user_id));
+        if (!channel || event.notice_type !== 'watch_streak' || !event.watch_streak) return;
+
+        const count = Number(event.watch_streak.streak_count) || 0;
+        const reply = this.replies.streak(channel.userId, count);
+        if (!reply) return;
+
+        const values = { user: event.chatter_user_name || event.chatter_user_login || '', streak: count };
+
+        if (await this.say(channel, render(reply, values))) {
+            await this.store.log(channel.userId, 'info', `Answered a watch streak of ${count}`);
         }
     }
 

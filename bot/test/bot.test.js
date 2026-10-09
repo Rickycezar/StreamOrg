@@ -41,16 +41,17 @@ function fakeHelix(overrides = {}) {
     };
 }
 
-function fakeStore() {
+function fakeStore(replies = { enabled: true, typesOff: [], rows: [] }) {
     const logs = [];
     const access = {};
     const sentTimers = [];
+    let conduit = null;
     return {
         logs,
         access,
         ready: async () => true,
-        account: async () => ({ enabled: true, prefix: '!', login: 'streamorg', userId: '999', accessToken: 't', refreshToken: 'r', expiresAt: Date.now() + 3_600_000, conduitId: null }),
-        saveConduit: async () => {},
+        account: async () => ({ enabled: true, prefix: '!', login: 'streamorg', userId: '999', accessToken: 't', refreshToken: 'r', expiresAt: Date.now() + 3_600_000, conduitId: conduit }),
+        saveConduit: async (id) => { conduit = id; },
         twitchApp: async () => ({ clientId: 'id', clientSecret: 'secret' }),
         commands: async () => [
             { userId: null, code: 'heartbeat', trigger: 'heartbeat', response: '💓 @{user} in {channel}', enabled: true, permission: 'everyone', cooldown: 30 },
@@ -65,6 +66,7 @@ function fakeStore() {
             { userId: 5, code: 'custom', trigger: 'so', response: 'Go follow @{target}!', enabled: true, permission: 'moderator', cooldown: 0 },
             { userId: 5, code: 'custom', trigger: 'discord', response: 'Discord: example.gg', enabled: true, permission: 'everyone', cooldown: 30 },
         ],
+        overlayReplies: async () => replies,
         timers: async () => [{ id: 1, userId: 5, message: 'Welcome to {channel}!', intervalMs: 10 * 60_000, minMessages: 2, lastSentAt: 0 }],
         timerSent: async (id) => { sentTimers.push(id); },
         sentTimers,
@@ -77,8 +79,8 @@ function fakeStore() {
 
 const offline = async () => ({ ok: true, status: 200, json: async () => ({ login: 'streamorg', user_id: '999', expires_in: 3600 }) });
 
-async function started(overrides) {
-    const store = fakeStore();
+async function started(overrides, replies) {
+    const store = fakeStore(replies);
     const helix = fakeHelix(overrides);
     const bot = new Bot({ store, config: { pollSeconds: 60, version: 'test' }, SocketImpl: FakeSocket, helix, fetchImpl: offline });
     await bot.load();
@@ -211,4 +213,98 @@ test('timed messages wait for their interval and enough chat, and only while liv
     await bot.onChat(chat('100', 'b'));
     await bot.postTimers(start + 15 * 60_000);
     assert.equal(posted().length, 1, 'the interval restarts after posting');
+});
+
+test('waits for the migration it needs, then starts', async () => {
+    const store = fakeStore();
+    let applied = false;
+    const asked = [];
+    store.ready = async (migration) => { asked.push(migration); return applied; };
+
+    const bot = new Bot({ store, config: { pollSeconds: 60, version: 'test', requiresMigration: '099_future' }, SocketImpl: FakeSocket, helix: fakeHelix(), fetchImpl: offline });
+    await bot.load();
+
+    assert.equal(bot.state, 'idle');
+    assert.match(bot.detail, /099_future/);
+    assert.deepEqual(asked, ['099_future']);
+
+    applied = true;
+    await bot.load();
+    assert.doesNotMatch(String(bot.detail), /099_future/, 'it goes on once the site applied the migration');
+    await bot.stop();
+});
+
+const overlays = {
+    enabled: true,
+    typesOff: [],
+    rows: [
+        { userId: 9, type: 'shoutout', settings: { commands: ['so', 'sh'], roles: ['broadcaster', 'mod'], bot_reply: 'Follow {name} ({category}): twitch.tv/{login}' } },
+        { userId: 5, type: 'shoutout', settings: { commands: ['so'], roles: ['mod'], bot_reply: 'Overlay reply for {name}' } },
+        { userId: 5, type: 'watch_streak', settings: { bot_reply: '', bot_reply_big: '{user} reached {streak} streams!', big_streaks: [10, 20] } },
+        { userId: 9, type: 'alert', settings: { command: 'alerta', roles: ['vip'], bot_reply: '🚨 {user} fired the alert!' } },
+        { userId: 9, type: 'alert', settings: { command: 'quiet', roles: ['everyone'], bot_reply: '' } },
+    ],
+};
+
+const twitchUsers = {
+    'GET users': ({ query }) => ({ status: 200, data: { data: query.login === 'gaules' ? [{ id: '42', login: 'gaules', display_name: 'Gaules' }] : [] } }),
+    'GET channels': () => ({ status: 200, data: { data: [{ game_name: 'Counter-Strike', title: 'Major' }] } }),
+};
+
+test('a shoutout gets the overlay\'s reply, from the overlay\'s roles, once a minute per channel', async () => {
+    const { bot, helix } = await started(twitchUsers, overlays);
+    const mod = [{ set_id: 'moderator', id: '1' }];
+
+    await bot.onChat(chat('200', '!sh @Gaules', [], 'Viewer'));
+    await bot.onChat(chat('200', '!sh @Gaules hype', mod, 'Mod'));
+    await bot.onChat(chat('200', '!so gaules', mod, 'Mod'));
+    await bot.onChat(chat('200', '!so nobody_here', mod, 'Mod'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Follow Gaules (Counter-Strike): twitch.tv/gaules']);
+});
+
+test('a bot command with the same name answers instead of the overlay', async () => {
+    const { bot, helix } = await started(twitchUsers, overlays);
+
+    await bot.onChat(chat('100', '!so @gaules', [{ set_id: 'moderator', id: '1' }], 'Mod'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Go follow @gaules!']);
+});
+
+test('watch streaks: notices only where a reply is set, and only the big ones here', async () => {
+    const { bot, helix } = await started(twitchUsers, overlays);
+    const notices = helix.calls.filter((c) => c.method === 'POST' && c.body?.type === 'channel.chat.notification');
+
+    assert.deepEqual(notices.map((c) => c.body.condition.broadcaster_user_id), ['100']);
+
+    const streak = (count) => ({ broadcaster_user_id: '100', chatter_user_name: 'Fan', notice_type: 'watch_streak', watch_streak: { streak_count: count } });
+    await bot.onNotice(streak(3));
+    await bot.onNotice(streak(20));
+    await bot.onNotice({ broadcaster_user_id: '100', notice_type: 'resub' });
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Fan reached 20 streams!']);
+});
+
+test('overlays switched off by the administrators send nothing, and their notices go', async () => {
+    const replies = { ...overlays };
+    const { bot, helix } = await started(twitchUsers, replies);
+
+    replies.enabled = false;
+    await bot.load();
+
+    await bot.onChat(chat('200', '!sh @gaules', [{ set_id: 'broadcaster', id: '1' }], 'Hoku'));
+    assert.equal(helix.calls.filter((c) => c.path === 'chat/messages').length, 0);
+    assert.ok(helix.calls.some((c) => c.method === 'DELETE' && c.query.id === 'sub-100' && bot.notices.size === 0));
+});
+
+test('a custom alert fired from chat gets its reply, by its roles, not twice in a row', async () => {
+    const { bot, helix } = await started(twitchUsers, overlays);
+    const vip = [{ set_id: 'vip', id: '1' }];
+
+    await bot.onChat(chat('200', '!alerta', [], 'Viewer'));
+    await bot.onChat(chat('200', '!alerta', vip, 'Vip'));
+    await bot.onChat(chat('200', '!alerta now', vip, 'Vip'));
+    await bot.onChat(chat('200', '!quiet', vip, 'Vip'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['🚨 Vip fired the alert!']);
 });

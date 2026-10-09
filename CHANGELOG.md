@@ -5,6 +5,28 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.7.0 — 2026-10-09
+
+Overlays for OBS, and a new Stream tools section. Needs bot 0.4.0 for the
+chat replies (release the site first).
+
+### Overlays
+- Stream tools in the account menu: overlays, media library and the chat
+  bot (moved from the profile; old addresses redirect).
+- Overlays: browser sources for OBS, set up beside a live preview, with
+  secret links and test buttons. Types: custom alert, shoutout,
+  watch-streak alert and chat, each with the size to give it in OBS.
+- The chat bot answers custom alerts, shoutouts and watch streaks with
+  messages set on those overlays (bot 0.4.0).
+- Sounds per viewer for shoutouts and watch streaks, in a tab of their own.
+- Advanced mode: the settings as text (key = value, comments, blocks for
+  sounds and rules per streak or viewer) with skipped lines listed, and
+  custom CSS.
+- Media library for sounds and images, with sound sprites (parts marked
+  while listening); a shared library managed by administrators.
+- Administration → Overlays: switches, types, limits, link address and live
+  connection, for administrators only.
+
 ## 0.6.0 — 2026-10-08
 
 The first numbered release, covering everything built so far.

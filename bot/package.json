@@ -1,8 +1,11 @@
 {
   "name": "streamorg-bot",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "StreamOrg chat bot: answers chat commands in the channels that added it.",
+  "streamorg": {
+    "requiresMigration": "045_overlays"
+  },
   "type": "module",
   "main": "src/index.js",
   "engines": {

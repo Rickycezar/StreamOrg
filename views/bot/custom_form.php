@@ -8,7 +8,7 @@
 $command ??= null;
 $value = static fn (string $key, mixed $default) => $command[$key] ?? $default;
 ?>
-<form id="<?= e($formId) ?>" method="post" action="<?= e(url('/profile/bot/custom')) ?>" class="subform hidden">
+<form id="<?= e($formId) ?>" method="post" action="<?= e(url('/bot/custom')) ?>" class="subform hidden">
     <?= Csrf::field() ?>
     <?php if ($command !== null): ?><input type="hidden" name="id" value="<?= (int) $command['id'] ?>"><?php endif; ?>
     <div class="grid">

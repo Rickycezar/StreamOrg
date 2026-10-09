@@ -1,0 +1,209 @@
+/*
+ * Chat (from the chat_*_new pages): the channel's chat as cards, newest at
+ * the bottom. Two themes: "cards" (dark glass cards, the name above each
+ * card) and "outline" (no cards, outlined bold text, name and message on
+ * one line, from the chat made for Lia). Highlighted messages, rewards and
+ * subs, bits and watch streaks get their own look; GIFs show at 300px.
+ * The settings set --chat-font-size, --chat-emote-size, --chat-card,
+ * --chat-text, --chat-highlight and --chat-reward; body gets
+ * theme-<theme> and align-<side>.
+ */
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --chat-font-size: 22px;
+    --chat-emote-size: 32px;
+    --chat-card: #0f0f12;
+    --chat-text: #e0e0e0;
+    --chat-highlight: #ffd700;
+    --chat-reward: #00e5ff;
+}
+
+body.overlay-chat {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    color: var(--chat-text);
+    font-size: var(--chat-font-size);
+}
+
+.chatContainer {
+    padding: 20px;
+    padding-top: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 45px;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.align-right .chatContainer {
+    align-items: flex-end;
+}
+
+.chatMessage {
+    background: color-mix(in srgb, var(--chat-card) 85%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px 18px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    animation: slideInFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    opacity: 0;
+    transform-origin: left center;
+    justify-content: flex-start;
+    align-items: flex-start;
+    position: relative;
+    max-width: 100%;
+    flex-shrink: 0;
+}
+
+.chatMessage.leaving {
+    animation: fadeAway 0.6s ease forwards;
+}
+
+.chatMessage.gif .message img {
+    width: 300px;
+    height: auto;
+}
+
+.chatMessage.highlight {
+    border-left: 4px solid var(--chat-highlight);
+    background: color-mix(in srgb, var(--chat-highlight) 15%, rgba(15, 15, 18, 0.9));
+    box-shadow: 0 4px 15px color-mix(in srgb, var(--chat-highlight) 20%, transparent);
+}
+
+.chatMessage.reward {
+    border-left: 4px solid var(--chat-reward);
+    background: color-mix(in srgb, var(--chat-reward) 15%, rgba(15, 15, 18, 0.95));
+    box-shadow: 0 4px 15px color-mix(in srgb, var(--chat-reward) 20%, transparent);
+}
+
+.chatMessage.gradient-bg {
+    background: linear-gradient(135deg, rgba(90, 30, 150, 0.9), rgba(200, 40, 80, 0.9), rgba(40, 100, 200, 0.9));
+    background-size: 300% 300%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(200, 40, 80, 0.3);
+    animation: slideInFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, bgAnimate 4s ease infinite;
+}
+
+.chatMessage .username {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    position: absolute;
+    top: -1.6em;
+    left: 0;
+}
+
+.align-right .chatMessage .username {
+    left: auto;
+    right: 0;
+}
+
+.chatMessage .name {
+    font-weight: 700;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+.chatMessage .system-text {
+    font-size: 0.68em;
+    font-weight: 600;
+    color: #ffca28;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+    width: 100%;
+}
+
+.chatMessage .message {
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.badges {
+    display: none;
+    gap: 4px;
+}
+
+.show-badges .badges {
+    display: flex;
+}
+
+.emote {
+    vertical-align: middle;
+    height: var(--chat-emote-size);
+    margin: -4px 0;
+}
+
+.theme-outline .chatContainer {
+    padding: 0;
+    gap: 10px;
+}
+
+.theme-outline .chatMessage {
+    background: none;
+    backdrop-filter: none;
+    border: 0;
+    box-shadow: none;
+    padding: 4px 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: baseline;
+    font-family: monospace;
+    filter: drop-shadow(-1px -1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px 1px 0 #000) drop-shadow(1px 1px 0 #000);
+}
+
+.theme-outline.align-left .chatMessage {
+    justify-content: flex-start;
+}
+
+.theme-outline .chatMessage .username {
+    position: static;
+}
+
+.theme-outline .chatMessage .message {
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.theme-outline .chatMessage .system-text {
+    font-size: 0.76em;
+    border: 0;
+    flex-basis: 100%;
+}
+
+.theme-outline .chatMessage.highlight,
+.theme-outline .chatMessage.reward,
+.theme-outline .chatMessage.gradient-bg {
+    background: none;
+    border: 0;
+    box-shadow: none;
+}
+
+.theme-outline .badges {
+    font-size: 0.68em;
+}
+
+@keyframes bgAnimate {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes slideInFade {
+    0% { opacity: 0; transform: translateX(-30px) scale(0.95); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes fadeAway {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}

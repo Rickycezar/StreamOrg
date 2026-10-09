@@ -8,7 +8,7 @@
 $timer ??= null;
 $value = static fn (string $key, mixed $default) => $timer[$key] ?? $default;
 ?>
-<form id="<?= e($formId) ?>" method="post" action="<?= e(url('/profile/bot/timer')) ?>" class="subform hidden">
+<form id="<?= e($formId) ?>" method="post" action="<?= e(url('/bot/timer')) ?>" class="subform hidden">
     <?= Csrf::field() ?>
     <?php if ($timer !== null): ?><input type="hidden" name="id" value="<?= (int) $timer['id'] ?>"><?php endif; ?>
     <label>

@@ -23,13 +23,7 @@ final class ProfileController
     /** The tabs this user sees: Chat bot only once an admin has set the bot up. */
     public static function tabs(): array
     {
-        return self::TABS + (ChatBot::isAvailable() ? ['/profile/bot' => 'ui.nav.chat_bot'] : []);
-    }
-
-    /** Renders a tab owned by another controller inside the profile frame. */
-    public static function renderTab(string $path, string $template, array $data = []): void
-    {
-        self::tab($path, $template, $data);
+        return self::TABS;
     }
 
     /** Renders one tab inside the shared profile frame and sub-menu. */
