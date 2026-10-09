@@ -233,8 +233,8 @@ private preview. Preview access: streamorg@outlook.com.
   with the latest messages and a page with all of them, each in the user's
   own language.
 - **"How it works" guides** for the dashboard, the key vault, content, the
-  content defaults, giveaways, embargoes, collabs and planning a collab
-  together:
+  content defaults, giveaways, embargoes, collabs, planning a collab
+  together, overlays, the media library and the chat bot:
   plain-language walkthroughs with small drawings, opened in their own window
   from a button beside the page title.
 - **See and end your sessions**: every sign-in is listed with its browser,
@@ -245,6 +245,14 @@ private preview. Preview access: streamorg@outlook.com.
   encrypted credentials and per-user data isolation throughout.
 
 ### Administration
+- **A menu by subject** (people, catalogue, community, stream tools,
+  support, system) and an **overview** of what needs attention (open
+  errors, bug reports and messages with news, the chat bot), how StreamOrg
+  is used (accounts, activity, planned content, keys, giveaways, overlays,
+  live channels), the newest accounts and the latest additions.
+- **User data**: every account's content, key vaults, collabs and streamer
+  lists, read-only, by account, status and words. Key codes, their
+  fingerprints and the notes on keys are never shown.
 - **Users**: add accounts (with a generated password shown once), edit them,
   deactivate them, reset passwords and delete them, with guard rails for your
   own account and the last administrator.

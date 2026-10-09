@@ -402,6 +402,119 @@ $arts = [
         . $bar(26, 72.5, 70, 'ha-text')
         . $r(104, 64, 66, 22, 'ha-twitchbg', 6) . $bar(112, 72.5, 50, 'ha-twitch')
         . $r(176, 64, 40, 22, 'ha-okbg', 6) . $bar(182, 72.5, 28, 'ha-ok'),
+
+    'overlays.add' =>
+        $r(14, 20, 100, 110, 'ha-panel', 8) . $bar(24, 32, 60, 'ha-text')
+        . $r(24, 46, 80, 18, 'ha-bg', 5) . $bar(30, 52.5, 50) . $path('M92 53l4 4 4-4', 'ha-stroke')
+        . $r(24, 72, 80, 18, 'ha-bg', 5) . $bar(30, 78.5, 40)
+        . $r(24, 100, 60, 18, 'ha-accent', 6) . $bar(34, 106.5, 40, 'ha-white-fill')
+        . $path('M120 75h20', 'ha-stroke-accent') . $path('M134 69l7 6-7 6', 'ha-stroke-accent')
+        . $r(150, 30, 76, 36, 'ha-panel', 6) . $dot(166, 48, 8, 'ha-soft') . $bar(180, 45.5, 36, 'ha-text')
+        . $r(150, 74, 76, 36, 'ha-panel', 6) . $dot(166, 92, 8, 'ha-twitchbg') . $bar(180, 89.5, 30, 'ha-text'),
+
+    'overlays.obs' =>
+        $r(12, 22, 140, 100, 'ha-bg', 8) . $r(12, 22, 140, 14, 'ha-panel', 8) . $dot(22, 29, 2.5, 'ha-danger') . $dot(30, 29, 2.5, 'ha-warn') . $dot(38, 29, 2.5, 'ha-ok')
+        . $r(26, 46, 112, 62, 'ha-panel', 4) . $r(70, 86, 60, 16, 'ha-twitchbg', 4) . $bar(76, 91.5, 40, 'ha-twitch')
+        . $r(162, 40, 66, 70, 'ha-panel', 7) . $bar(170, 50, 40, 'ha-text') . $r(170, 62, 50, 12, 'ha-soft', 4) . $bar(174, 65.5, 40, 'ha-accent')
+        . $bar(170, 82, 22, 'ha-text') . $bar(198, 82, 22, 'ha-text') . $r(170, 94, 34, 10, 'ha-accent', 5),
+
+    'overlays.settings' =>
+        $r(10, 18, 104, 116, 'ha-panel', 8)
+        . $bar(20, 30, 40, 'ha-text') . $r(20, 40, 84, 12, 'ha-bg', 4)
+        . $bar(20, 60, 30, 'ha-text') . $r(20, 70, 40, 12, 'ha-bg', 4) . $r(66, 70, 38, 12, 'ha-accent', 4)
+        . $bar(20, 92, 36, 'ha-text') . $r(20, 102, 84, 4, 'ha-line', 2) . $dot(78, 104, 5, 'ha-accent')
+        . $r(122, 30, 108, 66, 'ha-bg', 6) . $r(146, 50, 60, 26, 'ha-panel', 5) . $path('M146 50h60v26h-60z', 'ha-stroke-accent') . $bar(154, 60.5, 44, 'ha-text')
+        . $r(122, 104, 50, 16, 'ha-soft', 5) . $r(180, 104, 50, 16, 'ha-panel', 5) . $path('M150 108l6 4-6 4z', 'ha-accent'),
+
+    'overlays.viewers' =>
+        $r(14, 16, 212, 20, 'ha-bg', 6) . $r(18, 19, 70, 14, 'ha-panel', 5) . $r(92, 19, 70, 14, 'ha-soft', 5) . $bar(102, 23.5, 50, 'ha-accent')
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="14" y="%d" width="212" height="40" rx="7" class="ha-panel"/><circle cx="32" cy="%d" r="9" class="%s"/><rect x="48" y="%d" width="60" height="5" rx="2.5" class="ha-text"/><rect x="120" y="%d" width="64" height="12" rx="4" class="ha-bg"/><path d="M196 %dl6 4-6 4z" class="ha-accent"/>',
+            44 + $i * 48, 64 + $i * 48, $i === 0 ? 'ha-twitchbg' : 'ha-okbg', 61.5 + $i * 48, 58 + $i * 48, 60 + $i * 48
+        ), range(0, 1))),
+
+    'overlays.bot' =>
+        $r(14, 20, 120, 110, 'ha-panel', 8)
+        . $bar(24, 34, 70, 'ha-text') . $r(24, 46, 70, 12, 'ha-twitchbg', 6) . $bar(30, 49.5, 50, 'ha-twitch')
+        . $bar(24, 70, 60, 'ha-text') . $r(24, 82, 96, 30, 'ha-soft', 6) . $bar(30, 89, 70, 'ha-accent') . $bar(30, 99, 50, 'ha-accent')
+        . $path('M138 90c20 0 24-30 40-30', 'ha-stroke-accent-dash') . $path('M172 54l7 6-8 5', 'ha-stroke-accent')
+        . $r(176, 30, 54, 70, 'ha-bg', 8) . $dot(203, 52, 12, 'ha-accent') . $r(195, 47, 16, 10, 'ha-white-fill', 3)
+        . $dot(199, 52, 1.6, 'ha-accent') . $dot(207, 52, 1.6, 'ha-accent') . $bar(186, 78, 34, 'ha-text') . $bar(190, 88, 26),
+
+    'overlays.advanced' =>
+        $r(14, 16, 212, 20, 'ha-bg', 6) . $r(18, 19, 60, 14, 'ha-panel', 5) . $r(82, 19, 60, 14, 'ha-accent', 5) . $bar(90, 23.5, 44, 'ha-white-fill')
+        . $r(14, 42, 130, 94, 'ha-panel', 7)
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="24" y="%d" width="%d" height="5" rx="2.5" class="%s"/>', 54 + $i * 12, [40, 70, 56, 30, 64, 48, 60][$i], $i === 0 || $i === 3 ? 'ha-line' : ($i === 4 ? 'ha-accent' : 'ha-text')
+        ), range(0, 6)))
+        . $r(152, 42, 74, 94, 'ha-bg', 7) . $bar(162, 54, 40, 'ha-twitch') . $bar(170, 66, 46, 'ha-text') . $bar(170, 78, 34, 'ha-text') . $bar(162, 90, 10, 'ha-twitch')
+        . $r(162, 104, 54, 22, 'ha-warnbg', 5) . $bar(168, 112.5, 40, 'ha-warn'),
+
+    'overlays.link' =>
+        $r(16, 46, 150, 26, 'ha-panel', 6) . implode('', array_map(static fn (int $i): string => sprintf('<circle cx="%d" cy="59" r="2.6" class="ha-text"/>', 28 + $i * 10), range(0, 12)))
+        . $r(172, 46, 52, 26, 'ha-soft', 6) . $bar(182, 56.5, 32, 'ha-accent')
+        . $r(30, 86, 180, 46, 'ha-bg', 8) . $r(44, 98, 22, 22, 'ha-accent', 6) . $path('M50 108v-3a5 5 0 0 1 10 0v3', 'ha-stroke-white') . $r(48, 108, 14, 9, 'ha-white-fill', 2)
+        . $bar(76, 102, 110, 'ha-text') . $bar(76, 114, 80),
+
+    'media.upload' =>
+        $r(16, 18, 208, 54, 'ha-bg', 10) . $path('M16 18h208v54H16z', 'ha-stroke-accent-dash')
+        . $path('M120 30v24M110 40l10-10 10 10', 'ha-stroke-accent')
+        . $r(16, 84, 98, 50, 'ha-panel', 8) . $dot(36, 109, 12, 'ha-soft') . $path('M33 103v12l9-6z', 'ha-accent') . $bar(54, 102, 50, 'ha-text') . $bar(54, 112, 30)
+        . $r(126, 84, 98, 50, 'ha-panel', 8) . $r(134, 92, 34, 34, 'ha-warnbg', 6) . $dot(151, 109, 9, 'ha-warn') . $bar(176, 102, 40, 'ha-text') . $bar(176, 112, 26),
+
+    'media.sprites' =>
+        $r(14, 24, 212, 40, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<rect x="%d" y="%d" width="4" height="%d" rx="2" class="%s"/>', 22 + $i * 8, 44 - [6, 12, 8, 16, 4, 2, 10, 14, 6, 3, 12, 16, 8, 4, 2, 9, 13, 5, 3, 11, 15, 7, 4, 10, 6][$i % 25], 2 * [6, 12, 8, 16, 4, 2, 10, 14, 6, 3, 12, 16, 8, 4, 2, 9, 13, 5, 3, 11, 15, 7, 4, 10, 6][$i % 25], ($i >= 2 && $i <= 7) ? 'ha-accent' : (($i >= 15 && $i <= 20) ? 'ha-ok' : 'ha-line')), range(0, 24)))
+        . $r(14, 76, 104, 26, 'ha-soft', 6) . $bar(22, 86.5, 50, 'ha-accent') . $path('M96 84l6 5-6 5z', 'ha-accent')
+        . $r(122, 76, 104, 26, 'ha-okbg', 6) . $bar(130, 86.5, 50, 'ha-ok') . $path('M204 84l6 5-6 5z', 'ha-ok')
+        . $r(14, 112, 64, 22, 'ha-panel', 6) . $bar(22, 120.5, 44, 'ha-text'),
+
+    'media.pick' =>
+        $r(14, 24, 120, 104, 'ha-panel', 8) . $bar(24, 36, 40, 'ha-text') . $r(24, 46, 100, 16, 'ha-bg', 5) . $bar(30, 51.5, 50)
+        . $r(24, 66, 100, 46, 'ha-panel', 5) . $r(28, 70, 92, 12, 'ha-soft', 4) . $bar(34, 73.5, 50, 'ha-accent') . $bar(34, 88, 60) . $bar(34, 100, 40)
+        . $path('M138 76h22', 'ha-stroke-accent') . $path('M154 70l7 6-7 6', 'ha-stroke-accent')
+        . $r(166, 40, 62, 72, 'ha-bg', 8) . $r(178, 60, 38, 30, 'ha-panel', 5) . $path('M190 70l12 5-12 5z', 'ha-accent'),
+
+    'media.shared' =>
+        $r(14, 30, 96, 92, 'ha-panel', 8) . $dot(36, 50, 9, 'ha-soft') . $bar(52, 47.5, 46, 'ha-text') . $dot(36, 76, 9, 'ha-soft') . $bar(52, 73.5, 40, 'ha-text') . $dot(36, 102, 9, 'ha-soft') . $bar(52, 99.5, 50, 'ha-text')
+        . $r(130, 30, 96, 92, 'ha-bg', 8) . $r(140, 40, 76, 16, 'ha-accent', 5) . $bar(148, 45.5, 50, 'ha-white-fill')
+        . $dot(152, 76, 9, 'ha-okbg') . $bar(168, 73.5, 40, 'ha-text') . $dot(152, 102, 9, 'ha-okbg') . $bar(168, 99.5, 46, 'ha-text'),
+
+    'bot.add' =>
+        $r(14, 22, 130, 106, 'ha-panel', 8) . $bar(26, 36, 70, 'ha-text') . $r(110, 32, 26, 12, 'ha-okbg', 6)
+        . $bar(26, 56, 100) . $bar(26, 68, 80) . $r(26, 92, 90, 22, 'ha-accent', 6) . $bar(38, 100.5, 66, 'ha-white-fill')
+        . $path('M148 75h18', 'ha-stroke-accent') . $path('M160 69l7 6-7 6', 'ha-stroke-accent')
+        . $r(172, 34, 56, 82, 'ha-twitchbg', 8) . $dot(200, 62, 14, 'ha-twitch') . $r(191, 56, 18, 12, 'ha-white-fill', 3) . $bar(184, 90, 32, 'ha-twitch'),
+
+    'bot.access' =>
+        $r(14, 30, 100, 94, 'ha-panel', 8) . $dot(64, 58, 14, 'ha-okbg') . $path('M57 58l5 5 9-10', 'ha-stroke-ok') . $bar(30, 84, 68, 'ha-text') . $bar(38, 96, 52)
+        . $bar(116, 75, 8, 'ha-text')
+        . $r(126, 30, 100, 94, 'ha-panel', 8) . $dot(176, 58, 14, 'ha-soft') . $path('M170 52l12 12M182 52l-12 12', 'ha-stroke-accent') . $bar(142, 84, 68, 'ha-text') . $r(150, 96, 52, 12, 'ha-bg', 4),
+
+    'bot.commands' =>
+        $r(14, 18, 212, 116, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="26" y="%d" width="40" height="14" rx="4" class="ha-soft"/><rect x="32" y="%d" width="28" height="5" rx="2.5" class="ha-accent"/><rect x="76" y="%d" width="%d" height="5" rx="2.5" class="ha-text"/><rect x="180" y="%d" width="34" height="12" rx="6" class="%s"/>',
+            30 + $i * 26, 34.5 + $i * 26, 34.5 + $i * 26, [90, 70, 84, 60][$i], 31 + $i * 26, $i === 2 ? 'ha-bg' : 'ha-okbg'
+        ), range(0, 3))),
+
+    'bot.custom' =>
+        $r(14, 20, 212, 112, 'ha-panel', 8)
+        . $bar(26, 34, 40, 'ha-text') . $r(26, 44, 80, 16, 'ha-bg', 5) . $bar(32, 49.5, 10, 'ha-accent') . $bar(46, 49.5, 40, 'ha-text')
+        . $bar(124, 34, 40, 'ha-text') . $r(124, 44, 90, 16, 'ha-bg', 5) . $bar(130, 49.5, 60)
+        . $bar(26, 72, 40, 'ha-text') . $r(26, 82, 188, 34, 'ha-bg', 5) . $bar(32, 90, 120, 'ha-text') . $r(156, 88, 44, 9, 'ha-soft', 4) . $bar(32, 102, 80),
+
+    'bot.timers' =>
+        $dot(64, 75, 42, 'ha-panel') . $dot(64, 75, 34, 'ha-bg') . $path('M64 75V52M64 75l16 10', 'ha-stroke-accent') . $dot(64, 75, 3, 'ha-accent')
+        . $r(122, 30, 104, 26, 'ha-panel', 6) . $bar(132, 40.5, 70, 'ha-text')
+        . $r(122, 62, 104, 26, 'ha-soft', 6) . $bar(132, 72.5, 80, 'ha-accent')
+        . $r(122, 94, 104, 26, 'ha-panel', 6) . $bar(132, 104.5, 60, 'ha-text'),
+
+    'bot.logs' =>
+        $r(14, 20, 120, 112, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<circle cx="28" cy="%d" r="3" class="%s"/><rect x="38" y="%d" width="%d" height="5" rx="2.5" class="ha-text"/>', 36 + $i * 16, $i === 3 ? 'ha-warn' : 'ha-ok', 33.5 + $i * 16, [80, 66, 84, 70, 58, 76][$i]), range(0, 5)))
+        . $r(144, 20, 82, 112, 'ha-bg', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<rect x="%d" y="%d" width="12" height="%d" rx="3" class="ha-accent"/>', 156 + $i * 18, 120 - [40, 64, 52, 80][$i], [40, 64, 52, 80][$i]), range(0, 3))),
 ];
 ?>
 <svg viewBox="0 0 240 150" class="ha" role="presentation"><?= $arts[$art] ?? '' ?></svg>

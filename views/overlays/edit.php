@@ -18,7 +18,10 @@ $images   = array_values(array_filter($media, static fn (array $m): bool => $m['
 ?>
 <div class="page-head">
     <h1><?= e($overlay['name']) ?> <span class="badge"><?= e(__('ui.overlay_type.' . $overlay['type'])) ?></span></h1>
-    <a class="btn small" href="<?= e(url('/overlays')) ?>">← <?= e(__('ui.nav.overlays')) ?></a>
+    <div class="page-actions">
+        <?php $helpPage = 'overlays'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+        <a class="btn small" href="<?= e(url('/overlays')) ?>">← <?= e(__('ui.nav.overlays')) ?></a>
+    </div>
 </div>
 
 <?php if (!$typeOn): ?>

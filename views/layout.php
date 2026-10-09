@@ -85,32 +85,69 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
 
         if (Auth::isAdmin()) {
             $nav[] = [
-                'label'    => __('ui.nav.admin'),
-                'children' => [
-                    '/admin'            => __('ui.label.overview'),
-                    '/admin/users'      => __('ui.nav.users'),
-                    '/admin/games'      => __('ui.nav.games'),
-                    '/admin/publishers' => __('ui.nav.publishers'),
-                    '/admin/developers' => __('ui.nav.developers'),
-                    '/admin/key-sites'  => __('ui.nav.key_sites'),
-                    '/admin/import'     => __('ui.nav.import'),
-                    '/admin/api'        => __('ui.nav.api_settings'),
-                    '/admin/bot'        => __('ui.nav.chat_bot'),
-                    '/admin/overlays'   => __('ui.nav.overlays'),
-                    '/admin/notifications' => __('ui.nav.notifications'),
-                    '/admin/winners'    => __('ui.nav.winners'),
-                    '/admin/errors'     => __('ui.nav.errors'),
-                    '/admin/bugs'       => __('ui.nav.bug_tracker'),
-                    '/admin/feedback'   => __('ui.nav.feedback_inbox'),
-                    '/admin/surveys'    => __('ui.nav.surveys'),
-                    '/admin/settings'   => __('ui.nav.settings'),
-                    '/admin/testimonials' => __('ui.nav.testimonials'),
-                    '/admin/lang'       => __('ui.nav.languages'),
+                'label'  => __('ui.nav.admin'),
+                'groups' => [
+                    __('ui.nav.admin_people') => [
+                        '/admin'       => __('ui.label.overview'),
+                        '/admin/users' => __('ui.nav.users'),
+                        '/admin/data'  => __('ui.admin_data.title'),
+                    ],
+                    __('ui.nav.catalog') => [
+                        '/admin/games'      => __('ui.nav.games'),
+                        '/admin/publishers' => __('ui.nav.publishers'),
+                        '/admin/developers' => __('ui.nav.developers'),
+                        '/admin/key-sites'  => __('ui.nav.key_sites'),
+                        '/admin/import'     => __('ui.nav.import'),
+                    ],
+                    __('ui.nav.admin_community') => [
+                        '/admin/notifications' => __('ui.nav.notifications'),
+                        '/admin/winners'       => __('ui.nav.winners'),
+                        '/admin/testimonials'  => __('ui.nav.testimonials'),
+                    ],
+                    __('ui.nav.stream_tools') => [
+                        '/admin/bot'      => __('ui.nav.chat_bot'),
+                        '/admin/overlays' => __('ui.nav.overlays'),
+                    ],
+                    __('ui.nav.support') => [
+                        '/admin/bugs'     => __('ui.nav.bug_tracker'),
+                        '/admin/feedback' => __('ui.nav.feedback_inbox'),
+                        '/admin/surveys'  => __('ui.nav.surveys'),
+                        '/admin/errors'   => __('ui.nav.errors'),
+                    ],
+                    __('ui.nav.admin_system') => [
+                        '/admin/settings' => __('ui.nav.settings'),
+                        '/admin/api'      => __('ui.nav.api_settings'),
+                        '/admin/lang'     => __('ui.nav.languages'),
+                    ],
                 ],
             ];
         }
 
         foreach ($nav as $i => $item):
+            if (isset($item['groups'])):
+                $paths = array_merge(...array_map('array_keys', array_values($item['groups'])));
+                $on    = array_filter($paths, $isHere) !== [];
+                ?>
+                <div class="navgroup <?= $on ? 'active' : '' ?>">
+                    <button type="button" class="navtop" aria-expanded="false"
+                            aria-controls="navmenu-<?= $i ?>"><?= e($item['label']) ?></button>
+                    <div class="navmenu navmenu-grouped" id="navmenu-<?= $i ?>">
+                        <?php foreach ($item['groups'] as $groupLabel => $children): ?>
+                            <div class="navmenu-group">
+                                <span class="navmenu-heading"><?= e($groupLabel) ?></span>
+                                <?php foreach ($children as $childPath => $childLabel):
+                                    $childOn = $isHere($childPath) && ($childPath !== '/admin' || $here === '/admin'); ?>
+                                    <a href="<?= e(url($childPath)) ?>" class="<?= $childOn ? 'active' : '' ?>"
+                                       <?= $childOn ? 'aria-current="page"' : '' ?>><?= e($childLabel) ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php
+                continue;
+            endif;
+
             if (!isset($item['children'])):
                 $on = $isHere($item['path']);
                 ?>

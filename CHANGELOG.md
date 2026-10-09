@@ -5,6 +5,20 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.8.0 — 2026-10-09
+
+Administration by subject, user data screens, and guides for the stream tools.
+
+### Administration
+- The administration menu is grouped by subject, and the overview shows
+  what needs attention, how StreamOrg is used, the newest accounts and the
+  latest additions.
+- User data: every account's content, key vaults (never the codes or the
+  keys' notes), collabs and streamers, read-only, with filters.
+
+### Stream tools
+- "How it works" guides for overlays, the media library and the chat bot.
+
 ## 0.7.0 — 2026-10-09
 
 Overlays for OBS, and a new Stream tools section. Needs bot 0.4.0 for the

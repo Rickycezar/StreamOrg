@@ -4,7 +4,10 @@
 $tabs = ['/overlays' => 'ui.overlay.tab_overlays', '/overlays/media' => 'ui.nav.media_library']
       + (ChatBot::isAvailable() ? ['/bot' => 'ui.nav.chat_bot'] : []);
 ?>
-<h1><?= e(__('ui.nav.stream_tools')) ?></h1>
+<div class="page-head">
+    <h1><?= e(__('ui.nav.stream_tools')) ?></h1>
+    <?php $helpPage = ['/overlays' => 'overlays', '/overlays/media' => 'media', '/bot' => 'bot'][$tab] ?? 'overlays'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+</div>
 
 <div class="profile-layout">
     <nav class="subnav" aria-label="<?= e(__('ui.nav.stream_tools')) ?>">

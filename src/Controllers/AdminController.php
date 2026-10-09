@@ -3,21 +3,16 @@ declare(strict_types=1);
 
 final class AdminController
 {
+    /** GET /admin — what needs attention, how StreamOrg is used, the newest accounts and additions, and every admin page by subject. */
     public static function index(): void
     {
         Auth::requireAdmin();
 
-        $pdo = Database::connection();
-
-        $counts = [
-            'games'      => (int) $pdo->query('SELECT count(*) FROM games')->fetchColumn(),
-            'publishers' => (int) $pdo->query('SELECT count(*) FROM publishers')->fetchColumn(),
-            'developers' => (int) $pdo->query('SELECT count(*) FROM developers')->fetchColumn(),
-            'key_sites'  => (int) $pdo->query('SELECT count(*) FROM key_platforms')->fetchColumn(),
-        ];
-
         View::render('admin/index', [
-            'counts'    => $counts,
+            'attention' => AdminOverview::attention(),
+            'activity'  => AdminOverview::activity(),
+            'accounts'  => AdminOverview::newestAccounts(),
+            'latest'    => AdminOverview::latest(),
             'providers' => Providers::all(),
         ], __('ui.nav.admin'));
     }

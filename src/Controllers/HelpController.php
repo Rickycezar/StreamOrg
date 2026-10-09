@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 /**
  * "How it works" pages for the dashboard, the key vault, content, the
- * content defaults (prefixes and counters), giveaways, embargoes, collabs
- * and planning a collab together, opened in their own small window like the vault security explainer:
+ * content defaults (prefixes and counters), giveaways, embargoes, collabs,
+ * planning a collab together, and the stream tools (overlays, the media
+ * library, the chat bot), opened in their own small window like the vault security explainer:
  * what the person can do there, in plain words, with small drawings.
  * The words live in the language files (ui.help.<page>.*).
  */
@@ -20,6 +21,9 @@ final class HelpController
         'embargoes' => ['what', 'kinds', 'several', 'release', 'warnings', 'uncovered'],
         'collabs'   => ['streamers', 'idea', 'cast', 'plan', 'together', 'title'],
         'together'  => ['invite', 'join', 'own', 'time', 'agree', 'leave'],
+        'overlays'  => ['add', 'obs', 'settings', 'viewers', 'bot', 'advanced', 'link'],
+        'media'     => ['upload', 'sprites', 'pick', 'shared'],
+        'bot'       => ['add', 'access', 'commands', 'custom', 'timers', 'logs'],
     ];
 
     public static function dashboard(): void
@@ -60,6 +64,21 @@ final class HelpController
     public static function together(): void
     {
         self::show('together');
+    }
+
+    public static function overlays(): void
+    {
+        self::show('overlays');
+    }
+
+    public static function media(): void
+    {
+        self::show('media');
+    }
+
+    public static function bot(): void
+    {
+        self::show('bot');
     }
 
     private static function show(string $page): void
