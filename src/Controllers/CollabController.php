@@ -12,7 +12,7 @@ declare(strict_types=1);
 final class CollabController
 {
     private const STATUSES = ['idea', 'proposed', 'agreed', 'scheduled', 'done', 'cancelled'];
-    private const ROLES    = ['host', 'co_host', 'guest', 'raid'];
+    public const ROLES     = ['host', 'co_host', 'guest', 'raid'];
 
     public static function index(): void
     {
@@ -51,15 +51,17 @@ final class CollabController
         $counts = array_column($stmt->fetchAll(), 'total', 'status');
 
         $stmt = $pdo->prepare(
-            'SELECT cs.collab_id, cs.streamer_id FROM collab_streamers cs
+            'SELECT cs.collab_id, cs.streamer_id, cs.role FROM collab_streamers cs
                JOIN collabs c ON c.id = cs.collab_id WHERE c.user_id = ?'
         );
         $stmt->execute([$userId]);
 
-        $cast = [];
+        $cast      = [];
+        $castRoles = [];
 
         foreach ($stmt->fetchAll() as $row) {
             $cast[(int) $row['collab_id']][] = (int) $row['streamer_id'];
+            $castRoles[(int) $row['collab_id']][(int) $row['streamer_id']] = (string) $row['role'];
         }
 
         $linked = CollabSessions::linkedUsers((int) $userId, array_merge([], ...array_values($cast)));
@@ -85,6 +87,7 @@ final class CollabController
             'collabs'   => $collabs,
             'counts'    => $counts,
             'cast'      => $cast,
+            'castRoles' => $castRoles,
             'filters'   => $filters,
             'statuses'  => self::STATUSES,
             'roles'     => self::ROLES,
@@ -124,7 +127,7 @@ final class CollabController
                 trim((string) ($_POST['notes'] ?? '')) ?: null,
             ]);
 
-            self::syncCast($pdo, (int) $stmt->fetchColumn(), $_POST['streamers'] ?? []);
+            CollabCast::save($pdo, (int) $stmt->fetchColumn(), (int) Auth::id(), (array) ($_POST['streamers'] ?? []), (array) ($_POST['roles'] ?? []));
             $pdo->commit();
         } catch (Throwable $e) {
             $pdo->rollBack();
@@ -137,7 +140,10 @@ final class CollabController
         redirect('/collabs');
     }
 
-    /** AJAX: inline edit, cast included. */
+    /**
+     * AJAX: inline edit, cast included (no streamer ticked empties it); the
+     * lives still planned from the collab follow its cast and credit.
+     */
     public static function update(): void
     {
         Auth::requireLogin();
@@ -176,11 +182,15 @@ final class CollabController
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
         }
 
+        $followed = 0;
+
         if (array_key_exists('streamers', $_POST)) {
-            self::syncCast($pdo, $id, $_POST['streamers']);
+            $before = CollabCast::names($pdo, $id);
+            CollabCast::save($pdo, $id, (int) Auth::id(), (array) $_POST['streamers'], (array) ($_POST['roles'] ?? []));
+            $followed = CollabCast::followPlanned($pdo, $id, (int) Auth::id(), $before);
         }
 
-        json_response(['ok' => true, 'message' => __('ui.message.saved')]);
+        json_response(['ok' => true, 'message' => $followed > 0 ? sprintf(__('ui.message.collab_saved_lives'), $followed) : __('ui.message.saved')]);
     }
 
     public static function delete(): void
@@ -265,7 +275,7 @@ final class CollabController
                 Auth::id(),
                 $platformId,
                 $id,
-                $collab['title'],
+                CollabCast::retitle((string) $collab['title'], '', CollabCast::credit(ContentDefaults::collabPrefix((int) Auth::id()), CollabCast::names($pdo, $id))),
                 $scheduled,
                 (new DateTimeImmutable('+30 days'))->format('Y-m-d H:i:sP'),
             ]);
@@ -395,40 +405,5 @@ final class CollabController
         $id = $stmt->fetchColumn();
 
         return $id === false ? null : (int) $id;
-    }
-
-    /** Replaces a collab's cast with the given streamer ids, ours only. */
-    private static function syncCast(PDO $pdo, int $collabId, mixed $ids): void
-    {
-        $ids = array_values(array_unique(array_filter(
-            array_map('intval', is_array($ids) ? $ids : []),
-            static fn (int $v): bool => $v > 0
-        )));
-
-        $pdo->prepare('DELETE FROM collab_streamers WHERE collab_id = ?')->execute([$collabId]);
-
-        if ($ids === []) {
-            return;
-        }
-
-        $insert = $pdo->prepare(
-            'INSERT INTO collab_streamers (collab_id, streamer_id, role, confirmation)
-             SELECT ?, s.id, ?, ?
-               FROM streamers s WHERE s.id = ? AND s.user_id = ?
-             ON CONFLICT DO NOTHING'
-        );
-
-        $roles = is_array($_POST['roles'] ?? null) ? $_POST['roles'] : [];
-
-        foreach ($ids as $streamerId) {
-            $role = $roles[$streamerId] ?? 'guest';
-            $insert->execute([
-                $collabId,
-                in_array($role, self::ROLES, true) ? $role : 'guest',
-                'invited',
-                $streamerId,
-                Auth::id(),
-            ]);
-        }
     }
 }

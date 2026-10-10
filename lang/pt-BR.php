@@ -2255,6 +2255,7 @@ return [
         ],
 
         'message' => [
+            'collab_saved_lives' => 'Salvo. %d live(s) planejada(s) agora têm este elenco no título.',
             'overlay_saved_warnings' => 'Overlay salvo. %d linha(s) das configurações foram ignoradas; veja a lista embaixo do texto.',
             'overlay_type_off' => 'Este tipo de overlay está desligado no momento.',
             'overlay_limit' => 'Você pode ter até %d overlays.',

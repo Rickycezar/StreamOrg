@@ -2037,9 +2037,8 @@
 
         const output = form.querySelector('.edit-result');
         const submit = form.querySelector('button[type=submit]');
-        const payload = { id: form.dataset.id };
-
-        new FormData(form).forEach(function (value, name) { payload[name] = value; });
+        const payload = new URLSearchParams(new FormData(form));
+        payload.set('id', form.dataset.id);
 
         submit.disabled = true;
         output.textContent = '…';
@@ -2052,7 +2051,7 @@
 
             if (!await confirmModal(result.title || '', result.error || '')) return;
 
-            payload.confirm = '1';
+            payload.set('confirm', '1');
             submit.disabled = true;
             output.textContent = '…';
             result = await postJson(form.dataset.endpoint, payload);

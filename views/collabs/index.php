@@ -1,6 +1,7 @@
 <?php
 /** @var array $collabs @var array $counts @var array $cast @var array $filters
  *  @var array $statuses @var array $roles @var array $streamers @var array $platforms
+ *  @var array<int, array<int, string>> $castRoles each collab's cast roles, by streamer
  *  @var list<array> $together joint plans the user is in @var array<int,int> $onStreamOrg cast members on StreamOrg, by collab
  *  @var array<int,int> $sessions active joint plan, by collab */
 ?>
@@ -240,6 +241,7 @@
                             <fieldset class="inset">
                                 <legend><?= e(__('ui.field.streamers')) ?></legend>
                                 <?php require __DIR__ . '/_cast_add.php'; ?>
+                                <input type="hidden" name="streamers[]" value="">
                                 <div class="cast-list">
                                     <?php foreach ($streamers as $s): ?>
                                         <label class="cast-row">
@@ -248,7 +250,7 @@
                                             <span class="cast-name"><?= e($s['name']) ?><?php if (isset($linked[(int) $s['id']])): ?> <span class="badge on-streamorg" title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span><?php endif; ?></span>
                                             <select name="roles[<?= (int) $s['id'] ?>]" class="cast-role">
                                                 <?php foreach ($roles as $role): ?>
-                                                    <option value="<?= e($role) ?>" <?= $role === 'guest' ? 'selected' : '' ?>>
+                                                    <option value="<?= e($role) ?>" <?= $role === ($castRoles[(int) $row['id']][(int) $s['id']] ?? 'guest') ? 'selected' : '' ?>>
                                                         <?= e(code_label('collab_role', $role)) ?>
                                                     </option>
                                                 <?php endforeach; ?>

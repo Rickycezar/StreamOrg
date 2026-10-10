@@ -5,6 +5,15 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.8.1 — 2026-10-10
+
+### Fixed
+- Editing a collab with several people (for example, to mark it scheduled)
+  kept only one of them; every person now stays, with their role,
+  confirmation and notes.
+- Lives still planned from a collab follow its cast: their collaborators
+  and the "ft." credit in their title change with it.
+
 ## 0.8.0 — 2026-10-09
 
 Administration by subject, user data screens, and guides for the stream tools.

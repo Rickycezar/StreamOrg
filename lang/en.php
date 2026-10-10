@@ -2256,6 +2256,7 @@ return [
         ],
 
         'message' => [
+            'collab_saved_lives' => 'Saved. %d planned live(s) now have this cast in their title.',
             'overlay_saved_warnings' => 'Overlay saved. %d line(s) of the settings were skipped; see the list under the text.',
             'overlay_type_off' => 'This kind of overlay is switched off for now.',
             'overlay_limit' => 'You can have up to %d overlays.',
