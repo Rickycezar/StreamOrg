@@ -5,6 +5,12 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.8.2 — 2026-10-12
+
+### Fixed
+- The chat bot follows overlay changes at once (it used to take up to a
+  minute), so a shoutout or alert right after saving gets its reply.
+
 ## 0.8.1 — 2026-10-10
 
 ### Fixed

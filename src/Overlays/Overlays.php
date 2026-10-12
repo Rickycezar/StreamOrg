@@ -12,6 +12,8 @@ declare(strict_types=1);
  * database keeps its hash (to find the overlay) and an encrypted copy (so
  * the owner can copy the link again); a new key retires the old one.
  *
+ * Every change also tells the chat bot (NOTIFY streamorg_bot), which
+ * answers with the replies set on alerts, shoutouts and watch streaks.
  * Every change an open overlay must react to (new settings, a test) is a
  * signal: kept for an hour for overlays that check for changes, and sent
  * at once as a NOTIFY on streamorg_overlay for a live connection.
@@ -52,8 +54,10 @@ final class Overlays
             'INSERT INTO overlays (user_id, type, name, key_hash, key_secret, settings) VALUES (?, ?, ?, ?, ?, CAST(? AS jsonb)) RETURNING id'
         );
         $stmt->execute([$userId, $type, $name, hash('sha256', $key), Crypto::encrypt($key), json_encode(OverlayTypes::defaults($type), JSON_UNESCAPED_UNICODE)]);
+        $id = (int) $stmt->fetchColumn();
+        ChatBot::notify();
 
-        return (int) $stmt->fetchColumn();
+        return $id;
     }
 
     /**
@@ -112,6 +116,7 @@ final class Overlays
         ]);
 
         self::signal($overlayId, 'settings');
+        ChatBot::notify();
 
         return $warnings;
     }
@@ -129,6 +134,7 @@ final class Overlays
         Database::connection()->prepare('UPDATE overlays SET advanced = ?, version = version + 1, updated_at = now() WHERE id = ?')
             ->execute([$advanced ? 'true' : 'false', $overlayId]);
         self::signal($overlayId, 'settings');
+        ChatBot::notify();
     }
 
     /**
@@ -249,6 +255,7 @@ final class Overlays
     public static function delete(int $overlayId, int $userId): void
     {
         Database::connection()->prepare('DELETE FROM overlays WHERE id = ? AND user_id = ?')->execute([$overlayId, $userId]);
+        ChatBot::notify();
     }
 
     /**

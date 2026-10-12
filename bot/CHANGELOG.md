@@ -10,6 +10,13 @@ released, so a bot change that needs a database change is released
 together with the site, site first; until the migration is applied the bot
 waits (and says so in its health check and logs) instead of running.
 
+## 0.4.1 — 2026-10-12
+- Lead Moderators count as moderators (Twitch gives them a
+  lead_moderator badge instead of moderator), for commands, shoutouts
+  and alerts.
+- Shoutouts it does not answer are logged with the reason (not one of the
+  overlay's roles, no channel with that name).
+
 ## 0.4.0 — 2026-10-09
 - Answers custom alerts fired from chat (each alert overlay's command and
   roles, at most every 5 seconds per command) with the alert's reply.

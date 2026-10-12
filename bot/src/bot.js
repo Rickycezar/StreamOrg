@@ -39,10 +39,15 @@ const ALERT_AGAIN_AFTER = 5_000;
 const CHAT = 'channel.chat.message';
 const NOTICES = 'channel.chat.notification';
 
-/** EventSub chat badges -> {broadcaster: '1', moderator: '1', …} */
+/**
+ * EventSub chat badges -> {broadcaster: '1', moderator: '1', …}. A Lead
+ * Moderator shows the lead_moderator badge instead of moderator; they are
+ * a moderator for every check.
+ */
 export function badgesOf(event) {
     const badges = {};
     for (const badge of event.badges || []) badges[badge.set_id] = badge.id;
+    if ('lead_moderator' in badges && !('moderator' in badges)) badges.moderator = badges.lead_moderator;
     return badges;
 }
 
@@ -534,6 +539,11 @@ export class Bot {
         const asked = this.replies.shoutout(channel.userId, text, user.badges);
         if (!asked) return;
 
+        if (!asked.allowed) {
+            await this.store.log(channel.userId, 'info', `Ignored !${asked.command} ${asked.target}: whoever typed it is not one of the roles set on the shoutout overlay`);
+            return;
+        }
+
         const key = `${channel.userId}:${asked.target}`;
         const now = Date.now();
         if (now - (this.shoutedAt.get(key) || 0) < SHOUTOUT_AGAIN_AFTER) return;
@@ -541,7 +551,13 @@ export class Bot {
 
         const found = await this.helix.app('GET', 'users', { query: { login: asked.target } });
         const target = found.data?.data?.[0];
-        if (found.status !== 200 || !target) return;
+
+        if (found.status !== 200 || !target) {
+            await this.store.log(channel.userId, 'warn', found.status === 200
+                ? `Shoutout to ${asked.target}: no Twitch channel with that name`
+                : `Shoutout to ${asked.target}: Twitch did not answer (${found.status})`);
+            return;
+        }
 
         const info = await this.helix.app('GET', 'channels', { query: { broadcaster_id: target.id } });
         const live = info.data?.data?.[0] || {};

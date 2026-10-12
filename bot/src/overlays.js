@@ -13,7 +13,7 @@
 /** Overlay roles -> chat badges that hold them (the broadcaster always may). */
 const ROLE_BADGES = {
     broadcaster: ['broadcaster'],
-    mod: ['moderator'],
+    mod: ['moderator', 'lead_moderator'],
     vip: ['vip'],
     subscriber: ['subscriber', 'founder'],
 };
@@ -89,17 +89,18 @@ export class OverlayReplies {
     }
 
     /**
-     * The shoutout a chat message asks for: "!so @name" by someone allowed.
+     * The shoutout a chat message asks for ("!so @name"), and whether the
+     * person who typed it may give one; null when it is not a shoutout.
      *
-     * @returns {{target: string, reply: string}|null}
+     * @returns {{command: string, target: string, reply: string, allowed: boolean}|null}
      */
     shoutout(userId, text, badges) {
         const rule = this.shoutouts.get(userId);
         const match = /^!(\w+)\s+@?([A-Za-z0-9_]{1,25})\b/.exec(String(text || '').trim());
 
-        if (!rule || !match || !rule.commands.includes(match[1].toLowerCase()) || !holdsRole(rule.roles, badges)) return null;
+        if (!rule || !match || !rule.commands.includes(match[1].toLowerCase())) return null;
 
-        return { target: match[2].toLowerCase(), reply: rule.reply };
+        return { command: match[1].toLowerCase(), target: match[2].toLowerCase(), reply: rule.reply, allowed: holdsRole(rule.roles, badges) };
     }
 
     /** The reply for a watch streak, or null when that kind of streak has none. */

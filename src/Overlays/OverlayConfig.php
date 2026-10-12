@@ -147,6 +147,8 @@ final class OverlayConfig
         foreach ($values as $key => $value) {
             Settings::set($key, $value, $adminId);
         }
+
+        ChatBot::notify();
     }
 
     private static function get(string $key): string

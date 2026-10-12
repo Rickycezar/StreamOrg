@@ -308,3 +308,21 @@ test('a custom alert fired from chat gets its reply, by its roles, not twice in 
 
     assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['🚨 Vip fired the alert!']);
 });
+
+test('a lead moderator counts as a moderator, and an ignored shoutout says why', async () => {
+    const { bot, helix, store } = await started(twitchUsers, overlays);
+
+    await bot.onChat(chat('200', '!sh @gaules', [{ set_id: 'lead_moderator', id: '1' }], 'Lead'));
+    await bot.onChat(chat('200', '!ping', [{ set_id: 'lead_moderator', id: '1' }], 'Lead'));
+    await bot.onChat(chat('200', '!so somebody', [{ set_id: 'vip', id: '1' }], 'Vipper'));
+    await bot.onChat(chat('200', '!so nobody_here', [{ set_id: 'broadcaster', id: '1' }], 'Hoku'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Follow Gaules (Counter-Strike): twitch.tv/gaules', 'pong Lead']);
+    assert.ok(store.logs.some((l) => l.userId === 9 && /Ignored !so somebody/.test(l.message)));
+    assert.ok(store.logs.some((l) => l.userId === 9 && /nobody_here: no Twitch channel/.test(l.message)));
+    assert.ok(store.logs.every((l) => !/Vipper|Lead\b/.test(l.message)), 'No viewer names in the log.');
+});
+
+test('badges: lead_moderator also reads as moderator', () => {
+    assert.deepEqual(badgesOf({ badges: [{ set_id: 'lead_moderator', id: '1' }] }), { lead_moderator: '1', moderator: '1' });
+});
