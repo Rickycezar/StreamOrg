@@ -10,6 +10,11 @@ released, so a bot change that needs a database change is released
 together with the site, site first; until the migration is applied the bot
 waits (and says so in its health check and logs) instead of running.
 
+## 0.5.3 — 2026-10-14
+- `!today` and `!week` name each content by its games, in order ("Hades +
+  Celeste"), or by its Twitch category when it has none; the title only
+  when it has neither.
+
 ## 0.5.2 — 2026-10-14
 - `!heartbeat` ends with the bot's version (" · v0.5.2") when the streamer
   or a moderator types it, added after the reply's own text so no wording

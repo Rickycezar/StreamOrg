@@ -86,17 +86,18 @@ test('prizes: the link of the named giveaway; without a name it asks which, and 
     assert.deepEqual(await runLookup('prizes', ctx('prizes', '!premios', prizes, { store: one })), ['🎁 Prêmios de Só um: https://streamorg.com.br/giveaway?g=aaa']);
 });
 
-test('the schedule: times in the streamer\'s timezone, live marked, hashtags left out', async () => {
+test('the schedule: times in the streamer\'s timezone, the games (or the category), live marked', async () => {
     const rows = [
-        { title: '[Steam Deck] Vamos jogar #keymailer #Indie', start: '2026-10-14T22:00:00Z', status: 'planned' },
-        { title: 'Ao vivo agora', start: '2026-10-14T18:00:00Z', status: 'live' },
+        { title: '[Steam Deck] Vamos jogar #keymailer', games: ['Hades', 'Celeste'], category: 'Games + Demos', start: '2026-10-14T22:00:00Z', status: 'planned' },
+        { title: 'Papo com o chat', games: [], category: 'Just Chatting', start: '2026-10-14T18:00:00Z', status: 'live' },
+        { title: 'Surpresa #segredo', games: [], category: null, start: '2026-10-14T23:30:00Z', status: 'planned' },
     ];
     const today = await runLookup('today', ctx('today', '!hoje', command('today', '📅 Hoje: {list}', { none: 'Nada.' }), { store: store({ schedule: async () => rows }) }));
 
-    assert.deepEqual(today, ['📅 Hoje: 19:00 [Steam Deck] Vamos jogar · 🔴 15:00 Ao vivo agora']);
+    assert.deepEqual(today, ['📅 Hoje: 19:00 Hades + Celeste · 🔴 15:00 Just Chatting · 20:30 Surpresa']);
 
     const week = await runLookup('week', ctx('week', '!semana', command('week', '{list}', { none: 'Nada.' }), { store: store({ schedule: async () => rows.slice(0, 1) }) }));
-    assert.match(week[0], /^qua\.?,? 14\/10,? 19:00 \[Steam Deck\] Vamos jogar$/);
+    assert.match(week[0], /^qua\.?,? 14\/10,? 19:00 Hades \+ Celeste$/);
 });
 
 test('watch time: their own, or someone else\'s by name; nothing recorded says so', async () => {

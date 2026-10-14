@@ -3,6 +3,8 @@
  * giveaways (list them, enter one by chat, link a giveaway's prize page),
  * its planned content (today, the next 7 days) and someone's watch time.
  *
+ * The schedule names each content by its games (or its Twitch category).
+ *
  * Each returns the messages to post: none when the command's message for
  * that outcome is empty, more than one when a list is too long for one.
  * Dates and times are in the streamer's language and timezone.
@@ -127,6 +129,12 @@ export function chatTitle(title) {
     return String(title || '').replace(/(^|\s)#[^\s#]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
 }
 
+/** What a planned content is called in the schedule: its games, else its Twitch category, else its title. */
+export function scheduleName(row) {
+    if (row.games && row.games.length) return row.games.join(' + ');
+    return row.category || chatTitle(row.title);
+}
+
 async function schedule(ctx, days) {
     const { locale, timezone } = ctx.channel;
     const rows = await ctx.store.schedule(ctx.channel.userId, timezone, days);
@@ -139,7 +147,7 @@ async function schedule(ctx, days) {
     const items = rows.map((row) => {
         const at = new Date(row.start);
         const when = days === 1 ? time.format(at) : `${day.format(at)} ${time.format(at)}`;
-        return `${row.status === 'live' ? '🔴 ' : ''}${when} ${chatTitle(row.title)}`;
+        return `${row.status === 'live' ? '🔴 ' : ''}${when} ${scheduleName(row)}`;
     });
 
     return splitList(ctx.command.response, { user: ctx.user.displayName }, items);

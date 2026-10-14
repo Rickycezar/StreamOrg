@@ -452,23 +452,34 @@ export class Store {
 
     /**
      * Planned (or live) content from the start of today, in the
-     * streamer's timezone, for this many days.
+     * streamer's timezone, for this many days: when, and its games in
+     * order (or its Twitch category when it has none).
      *
-     * @returns {Promise<Array<{title: string, start: Date, status: string}>>}
+     * @returns {Promise<Array<{title: string, games: string[], category: ?string, start: Date, status: string}>>}
      */
     async schedule(userId, timezone, days) {
         const { rows } = await this.pool.query(
-            `SELECT title, scheduled_start, status
-               FROM streams
-              WHERE user_id = $1 AND status IN ('planned', 'live') AND scheduled_start IS NOT NULL
-                AND (scheduled_start AT TIME ZONE $2)::date >= (now() AT TIME ZONE $2)::date
-                AND (scheduled_start AT TIME ZONE $2)::date < (now() AT TIME ZONE $2)::date + $3::int
-           ORDER BY scheduled_start, id
+            `SELECT s.title, s.scheduled_start, s.status, s.category_name,
+                    coalesce(array_agg(g.title ORDER BY sg.play_order, g.title) FILTER (WHERE g.id IS NOT NULL), '{}') AS games
+               FROM streams s
+          LEFT JOIN stream_games sg ON sg.stream_id = s.id
+          LEFT JOIN games g         ON g.id = sg.game_id
+              WHERE s.user_id = $1 AND s.status IN ('planned', 'live') AND s.scheduled_start IS NOT NULL
+                AND (s.scheduled_start AT TIME ZONE $2)::date >= (now() AT TIME ZONE $2)::date
+                AND (s.scheduled_start AT TIME ZONE $2)::date < (now() AT TIME ZONE $2)::date + $3::int
+           GROUP BY s.id
+           ORDER BY s.scheduled_start, s.id
               LIMIT 60`,
             [userId, timezone, days]
         );
 
-        return rows.map((row) => ({ title: row.title, start: row.scheduled_start, status: row.status }));
+        return rows.map((row) => ({
+            title: row.title,
+            games: row.games || [],
+            category: row.category_name || null,
+            start: row.scheduled_start,
+            status: row.status,
+        }));
     }
 
     /** @returns {Promise<?{id: string, name: string}>} a viewer the bot has seen, by login */
