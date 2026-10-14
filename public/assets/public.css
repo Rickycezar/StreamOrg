@@ -91,7 +91,11 @@ body.public .lp-btn.pub-twitch:hover { transform: translateY(-2px); text-decorat
 
 .pub-reveal { text-align: center; overflow: hidden; }
 .pub-reveal-game { display: flex; align-items: center; gap: 1rem; text-align: left; margin-bottom: 1.2rem; }
-.pub-reveal-game img { width: 72px; aspect-ratio: 2 / 3; border-radius: 8px; object-fit: cover; box-shadow: 0 10px 24px rgba(0, 0, 0, .5); }
+.pub-reveal-art { flex: none; display: block; width: 72px; aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden; background: linear-gradient(160deg, #1e3a8a, #312e81 60%, #4c1d95); box-shadow: 0 10px 24px rgba(0, 0, 0, .5); }
+.pub-reveal-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.is-wide { position: relative; }
+.is-wide img { position: relative; object-fit: contain; }
+.is-wide img.art-blur { position: absolute; inset: 0; object-fit: cover; filter: blur(10px) brightness(.55) saturate(1.2); transform: scale(1.25); }
 .pub-reveal-game h2 { margin: .15rem 0; }
 .pub-reveal-game small { color: var(--lp-muted); }
 .pub-code { display: flex; gap: .5rem; align-items: stretch; }

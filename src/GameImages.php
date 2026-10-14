@@ -105,6 +105,30 @@ final class GameImages
         return $urls;
     }
 
+    /**
+     * A game's box art for the public pages' tall (2:3) frames: its
+     * portrait, or else its widest picture, marked wide so it is shown
+     * whole over a blurred copy instead of cropped.
+     *
+     * @return array{url:string, wide:bool}|null
+     */
+    public static function boxArt(PDO $pdo, int $gameId): ?array
+    {
+        $urls = self::urls($pdo, $gameId);
+
+        if (isset($urls['portrait'])) {
+            return ['url' => $urls['portrait'], 'wide' => false];
+        }
+
+        foreach (['header', 'capsule', 'hero', 'thumb'] as $kind) {
+            if (isset($urls[$kind])) {
+                return ['url' => $urls[$kind], 'wide' => true];
+            }
+        }
+
+        return null;
+    }
+
     public static function publicUrl(string $path, string $version): string
     {
         return url('/' . $path) . '?v=' . substr(md5($version), 0, 8);

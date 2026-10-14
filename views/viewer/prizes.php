@@ -12,7 +12,7 @@ foreach ($prizes as $p) {
     $byStreamer[$p['streamer_name'] ?: $p['streamer_username']][] = $p;
 }
 
-$art = static fn (int $gameId): ?string => GameImages::urls(Database::connection(), $gameId)['portrait'] ?? null;
+$art = static fn (int $gameId): ?array => GameImages::boxArt(Database::connection(), $gameId);
 ?>
 <section class="pub-prizes-page">
     <header class="pub-hero">
@@ -49,7 +49,7 @@ $art = static fn (int $gameId): ?string => GameImages::urls(Database::connection
         <div class="pub-grid">
             <?php foreach ($list as $p): $field = 'prize-' . (int) $p['prize_id']; $src = $art((int) $p['game_id']); $redeem = $p['code'] ? Giveaways::redeemUrl($p['platform_code'], (string) $p['code']) : null; ?>
                 <article class="pub-card pub-prize-card">
-                    <span class="pub-prize-art"><?php if ($src): ?><img src="<?= e($src) ?>" alt="" loading="lazy"><?php endif; ?></span>
+                    <?= View::partial('viewer/_art', ['art' => $src, 'class' => 'pub-prize-art']) ?>
                     <div class="pub-prize-body">
                         <strong><?= e($p['game_title']) ?></strong>
                         <small><?= e(code_label('game_platform', $p['platform_code'])) ?> · <?= e(!empty($p['is_direct']) ? __('ui.label.direct_gift') : $p['title']) ?></small>

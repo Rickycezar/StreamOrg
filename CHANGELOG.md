@@ -5,6 +5,13 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## Unreleased
+
+### Fixed
+- Games without a portrait picture showed an empty frame on the public
+  prize page, My prizes and claim pages; they now show their wide picture
+  whole, over a blurred copy of it.
+
 ## 0.9.0 — 2026-10-14
 
 ### Added

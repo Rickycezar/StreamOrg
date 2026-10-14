@@ -10,7 +10,7 @@
 $g        = $giveaway;
 $streamer = $g['streamer_name'] ?: $g['streamer_username'];
 $avatar   = Avatars::url(['avatar_path' => $g['avatar_path'], 'avatar_updated_at' => $g['avatar_updated_at']]);
-$art      = static fn (int $gameId): ?string => GameImages::urls(Database::connection(), $gameId)['portrait'] ?? null;
+$art      = static fn (int $gameId): ?array => GameImages::boxArt(Database::connection(), $gameId);
 $open     = array_values(array_filter($prizes, static fn (array $p): bool => $p['winner_name'] === null));
 $won      = array_values(array_filter($prizes, static fn (array $p): bool => $p['winner_name'] !== null));
 
@@ -24,7 +24,7 @@ $status = match ($g['status']) {
 $card = static function (array $p) use ($art): void {
     $src = $art((int) $p['game_id']); ?>
     <article class="pub-card pub-prize-card<?= $p['winner_name'] !== null ? ' is-won' : '' ?>">
-        <span class="pub-prize-art"><?php if ($src): ?><img src="<?= e($src) ?>" alt="" loading="lazy"><?php endif; ?></span>
+        <?= View::partial('viewer/_art', ['art' => $src, 'class' => 'pub-prize-art']) ?>
         <div class="pub-prize-body">
             <strong><?= e($p['game_title']) ?></strong>
             <small><?= e(code_label('game_platform', $p['platform_code'])) ?></small>

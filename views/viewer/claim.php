@@ -35,7 +35,7 @@ $state = static function (string $icon, string $title, string $text, string $ton
         $streamer = $g['streamer_name'] ?: $g['streamer_username'];
         $avatar = Avatars::url(['avatar_path' => $g['avatar_path'], 'avatar_updated_at' => $g['avatar_updated_at']]);
         $mine = $viewer !== null && (string) $viewer['twitch_user_id'] === (string) $w['twitch_user_id'];
-        $art = static fn (int $gameId): ?string => GameImages::urls(Database::connection(), $gameId)['portrait'] ?? null;
+        $art = static fn (int $gameId): ?array => GameImages::boxArt(Database::connection(), $gameId);
     ?>
         <header class="pub-hero">
             <span class="pub-avatar">
@@ -53,7 +53,7 @@ $state = static function (string $icon, string $title, string $text, string $ton
                     <div class="confetti" aria-hidden="true"><?php for ($i = 0; $i < 24; $i++): ?><i style="--i: <?= $i ?>"></i><?php endfor; ?></div>
                 <?php endif; ?>
                 <div class="pub-reveal-game">
-                    <?php if ($src = $art((int) $prize['game_id'])): ?><img src="<?= e($src) ?>" alt=""><?php endif; ?>
+                    <?= View::partial('viewer/_art', ['art' => $art((int) $prize['game_id']), 'class' => 'pub-reveal-art']) ?>
                     <div>
                         <span class="lp-eyebrow"><?= e(__($celebrate ? 'ui.viewer.you_won' : 'ui.viewer.your_key')) ?></span>
                         <h2><?= e($prize['title']) ?></h2>
@@ -98,7 +98,7 @@ $state = static function (string $icon, string $title, string $text, string $ton
         <?php elseif ($claim['reserved'] !== null): $r = $claim['reserved']; $src = $art((int) $r['game_id']); ?>
             <div class="pub-card pub-reserved<?= $r['ready'] ? ' ready' : '' ?>">
                 <div class="pub-reveal-game">
-                    <?php if ($src): ?><img src="<?= e($src) ?>" alt=""><?php endif; ?>
+                    <?= View::partial('viewer/_art', ['art' => $src, 'class' => 'pub-reveal-art']) ?>
                     <div>
                         <span class="lp-eyebrow"><?= e(__($r['ready'] ? 'ui.viewer.reserved_ready_eyebrow' : 'ui.viewer.reserved_eyebrow')) ?></span>
                         <h2><?= e($r['title']) ?></h2>
@@ -134,7 +134,7 @@ $state = static function (string $icon, string $title, string $text, string $ton
                             <?php if ($pick): ?>
                                 <input type="radio" name="prize_id" value="<?= (int) $p['id'] ?>" <?= $i === 0 ? 'checked' : '' ?> required>
                             <?php endif; ?>
-                            <span class="pub-prize-art"><?php if ($src): ?><img src="<?= e($src) ?>" alt="" loading="lazy"><?php endif; ?></span>
+                            <?= View::partial('viewer/_art', ['art' => $src, 'class' => 'pub-prize-art']) ?>
                             <span class="pub-prize-text">
                                 <strong><?= e($p['title']) ?></strong>
                                 <small><?= e(code_label('game_platform', $p['platform_code'])) ?></small>
