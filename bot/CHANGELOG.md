@@ -10,6 +10,11 @@ released, so a bot change that needs a database change is released
 together with the site, site first; until the migration is applied the bot
 waits (and says so in its health check and logs) instead of running.
 
+## 0.5.2 — 2026-10-14
+- `!heartbeat` ends with the bot's version (" · v0.5.2") when the streamer
+  or a moderator types it, added after the reply's own text so no wording
+  can drop or change it. Viewers get the usual reply.
+
 ## 0.5.1 — 2026-10-14
 - The join command (`!join` / `!participar`) is hidden for now: never
   answered, and the giveaway list no longer says how to enter by chat.

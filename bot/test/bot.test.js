@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { Bot, badgesOf } from '../src/bot.js';
+import { Bot, badgesOf, withVersion } from '../src/bot.js';
 
 class FakeSocket extends EventEmitter {
     constructor() { super(); this.stopped = true; this.connected = false; }
@@ -128,7 +128,7 @@ test('answers the default command through the chat API, then waits out its coold
     await bot.onChat(chat('100', '!heartbeat', [], 'streamorg', '999'));
 
     const sent = helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body);
-    assert.deepEqual(sent.map((b) => b.message), ['💓 @Viewer in museu_do_cass', '💓 @Mod in museu_do_cass']);
+    assert.deepEqual(sent.map((b) => b.message), ['💓 @Viewer in museu_do_cass', '💓 @Mod in museu_do_cass · vtest']);
     assert.equal(sent[0].sender_id, '999');
     assert.equal(sent[0].broadcaster_id, '100');
     assert.ok(sent[0].reply_parent_message_id);
@@ -142,7 +142,7 @@ test('a streamer\'s own version applies in their channel only', async () => {
     await bot.onChat(chat('200', '!ping'));
     await bot.onChat(chat('200', '!ping', [{ set_id: 'broadcaster', id: '1' }], 'Hoku'));
 
-    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['pong Hoku']);
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['pong Hoku · vtest'], 'Even a streamer\'s own wording keeps the version.');
 });
 
 test('a refused reply is logged, not retried', async () => {
@@ -328,7 +328,7 @@ test('a lead moderator counts as a moderator, and an ignored shoutout says why',
     await bot.onChat(chat('200', '!so somebody', [{ set_id: 'vip', id: '1' }], 'Vipper'));
     await bot.onChat(chat('200', '!so nobody_here', [{ set_id: 'broadcaster', id: '1' }], 'Hoku'));
 
-    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Follow Gaules (Counter-Strike): twitch.tv/gaules', 'pong Lead']);
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Follow Gaules (Counter-Strike): twitch.tv/gaules', 'pong Lead · vtest']);
     assert.ok(store.logs.some((l) => l.userId === 9 && /Ignored !so somebody/.test(l.message)));
     assert.ok(store.logs.some((l) => l.userId === 9 && /nobody_here: no Twitch channel/.test(l.message)));
     assert.ok(store.logs.every((l) => !/Vipper|Lead\b/.test(l.message)), 'No viewer names in the log.');
@@ -371,4 +371,17 @@ test('posts what the site asked, only in channels it reads', async () => {
 
     assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['🎁 Natal no ar!']);
     assert.ok(store.logs.some((l) => l.userId === 7 && /not reading/.test(l.message)));
+});
+
+test('the heartbeat shows the bot\'s version to the streamer and moderators only', async () => {
+    const { bot, helix } = await started();
+
+    await bot.onChat(chat('100', '!heartbeat', [], 'Viewer', 'u1'));
+    await bot.onChat(chat('100', '!heartbeat', [{ set_id: 'moderator', id: '1' }], 'Mod', 'u2'));
+    await bot.onChat(chat('100', '!heartbeat', [{ set_id: 'broadcaster', id: '1' }], 'Boss', 'u3'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message),
+        ['💓 @Viewer in museu_do_cass', '💓 @Mod in museu_do_cass · vtest', '💓 @Boss in museu_do_cass · vtest']);
+    assert.equal(withVersion('x'.repeat(600), '1.2.3').length, 500);
+    assert.match(withVersion('x'.repeat(600), '1.2.3'), / · v1\.2\.3$/);
 });

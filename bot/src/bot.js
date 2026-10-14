@@ -58,6 +58,15 @@ const CHAT = 'channel.chat.message';
 const NOTICES = 'channel.chat.notification';
 const FOLLOWS = 'channel.follow';
 
+/**
+ * The heartbeat's reply for the streamer and moderators: the bot's version
+ * added after the reply's own text, so no rewording can drop or change it.
+ */
+export function withVersion(text, version) {
+    const tag = ` · v${version}`;
+    return String(text).slice(0, MESSAGE_MAX - tag.length) + tag;
+}
+
 /** A timezone Intl understands, or UTC. */
 function validTimezone(zone) {
     try {
@@ -647,6 +656,8 @@ export class Bot {
             }))];
 
         if (texts.length === 0) return true;
+
+        if (command.code === 'heartbeat' && privileged) texts[0] = withVersion(texts[0], this.config.version);
 
         if (await this.say(channel, texts, id, { key: `command:${command.code}:${command.trigger}` })) {
             await this.store.log(channel.userId, 'info', `Answered ${this.account.prefix}${command.trigger}`);
