@@ -15,16 +15,16 @@
     <tbody>
     <?php foreach ($rows as $r): ?>
         <tr>
-            <td data-col="user"><a href="<?= e($userLink($r)) ?>"><?= e($r['user_name']) ?></a></td>
-            <td data-col="name">
+            <td data-col="user" data-label="<?= e(__('ui.admin_data.user')) ?>"><a href="<?= e($userLink($r)) ?>"><?= e($r['user_name']) ?></a></td>
+            <td data-card-title data-col="name" data-label="<?= e(__('ui.field.name')) ?>">
                 <?= e($r['name']) ?>
                 <?php if ($r['is_favorite']): ?><span title="<?= e(__('ui.admin_data.favorite')) ?>">★</span><?php endif; ?>
                 <?php if ($r['on_streamorg']): ?><span class="badge ok"><?= e(__('ui.admin_data.on_streamorg')) ?></span><?php endif; ?>
             </td>
-            <td data-col="channels"><?= e((string) $r['channels']) ?></td>
-            <td data-col="type"><?= e((string) $r['broadcaster_type']) ?></td>
-            <td data-col="collabs" data-sort="<?= (int) $r['collab_count'] ?>"><?= (int) $r['collab_count'] ?></td>
-            <td data-col="created" data-sort="<?= e(sort_key($r['created_at'])) ?>"><?= e(fmt_date($r['created_at'])) ?></td>
+            <td data-col="channels" data-label="<?= e(__('ui.admin_data.channels')) ?>"><?= e((string) $r['channels']) ?></td>
+            <td data-col="type" data-label="<?= e(__('ui.admin_data.broadcaster_type')) ?>"><?= e((string) $r['broadcaster_type']) ?></td>
+            <td data-col="collabs" data-sort="<?= (int) $r['collab_count'] ?>" data-label="<?= e(__('ui.nav.collabs')) ?>"><?= (int) $r['collab_count'] ?></td>
+            <td data-col="created" data-sort="<?= e(sort_key($r['created_at'])) ?>" data-label="<?= e(__('ui.admin_data.created')) ?>"><?= e(fmt_date($r['created_at'])) ?></td>
         </tr>
     <?php endforeach; ?>
     </tbody>

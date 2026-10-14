@@ -49,11 +49,11 @@ $title  = __($isPublisher ? 'ui.nav.publishers' : 'ui.nav.developers');
             <tbody>
             <?php foreach ($rows as $row): ?>
                 <tr>
-                    <td><?= e($row['name']) ?></td>
-                    <td><?= safe_url($row['website']) ? '<a href="' . e(safe_url($row['website'])) . '" target="_blank" rel="noopener noreferrer">' . e($row['website']) . '</a>' : e($row['website'] ?: '—') ?></td>
-                    <td><?= e($row['country_code'] ?: '—') ?></td>
-                    <td><?= (int) $row['game_count'] ?></td>
-                    <td><?= $row['source_provider'] ? e(code_label('api_provider', $row['source_provider'])) : '—' ?></td>
+                    <td data-card-title data-label="<?= e(__('ui.field.name')) ?>"><?= e($row['name']) ?></td>
+                    <td data-label="<?= e(__('ui.field.website')) ?>"><?= safe_url($row['website']) ? '<a href="' . e(safe_url($row['website'])) . '" target="_blank" rel="noopener noreferrer">' . e($row['website']) . '</a>' : e($row['website'] ?: '—') ?></td>
+                    <td data-label="<?= e(__('ui.field.country')) ?>"><?= e($row['country_code'] ?: '—') ?></td>
+                    <td data-label="<?= e(__('ui.nav.games')) ?>"><?= (int) $row['game_count'] ?></td>
+                    <td data-label="<?= e(__('ui.field.source')) ?>"><?= $row['source_provider'] ? e(code_label('api_provider', $row['source_provider'])) : '—' ?></td>
                     <td class="rowactions">
                         <button type="button" class="btn small danger-btn row-delete"
                                 data-endpoint="/admin/catalogue/delete" data-kind="<?= e($kind) ?>"

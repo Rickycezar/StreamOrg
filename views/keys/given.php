@@ -62,11 +62,11 @@ $counts = array_count_values(array_column($rows, 'state'));
                                 </form>
                             <?php endif; ?>
                         </td>
-                        <td data-col="who">
+                        <td data-col="who" data-label="<?= e(__('ui.label.beneficiary')) ?>">
                             <a href="https://twitch.tv/<?= e(rawurlencode((string) $r['twitch_login'])) ?>" target="_blank" rel="noopener noreferrer"><strong><?= e((string) ($r['display_name'] ?: $r['twitch_login'])) ?></strong></a>
                             <small class="muted block">@<?= e((string) $r['twitch_login']) ?></small>
                         </td>
-                        <td data-col="key">
+                        <td data-card-title data-col="key" data-label="<?= e(__('ui.field.key')) ?>">
                             <?php if ($r['key_id']): ?>
                                 <?= e((string) $r['game_title']) ?>
                                 <small class="muted block"><?= e(code_label('game_platform', $r['platform_code']) . ($r['key_site'] ? ' · ' . code_label('key_platform', $r['key_site']) : '')) ?></small>
@@ -76,17 +76,17 @@ $counts = array_count_values(array_column($rows, 'state'));
                                 <span class="muted">—</span>
                             <?php endif; ?>
                         </td>
-                        <td data-col="from">
+                        <td data-col="from" data-label="<?= e(__('ui.label.given_from')) ?>">
                             <?php if ($r['is_direct']): ?>
                                 <span class="badge"><?= e(__('ui.label.direct_gift')) ?></span>
                             <?php else: ?>
                                 <a href="<?= e(url('/giveaways/show?id=' . (int) $r['giveaway_id'])) ?>"><?= e((string) $r['giveaway_title']) ?></a>
                             <?php endif; ?>
                         </td>
-                        <td data-col="how"><?= e(code_label('winner_method', $r['method'])) ?></td>
-                        <td data-col="sent" data-sort="<?= e(sort_key($r['sent_at'])) ?>"><?= e(fmt_datetime($r['sent_at'])) ?></td>
-                        <td data-col="taken" data-sort="<?= e(sort_key($r['claimed_at'])) ?>"><?= e($r['claimed_at'] ? fmt_datetime($r['claimed_at']) : '—') ?></td>
-                        <td data-col="state">
+                        <td data-col="how" data-label="<?= e(__('ui.label.given_how')) ?>"><?= e(code_label('winner_method', $r['method'])) ?></td>
+                        <td data-col="sent" data-sort="<?= e(sort_key($r['sent_at'])) ?>" data-label="<?= e(__('ui.label.given_sent')) ?>"><?= e(fmt_datetime($r['sent_at'])) ?></td>
+                        <td data-col="taken" data-sort="<?= e(sort_key($r['claimed_at'])) ?>" data-label="<?= e(__('ui.label.given_taken')) ?>"><?= e($r['claimed_at'] ? fmt_datetime($r['claimed_at']) : '—') ?></td>
+                        <td data-col="state" data-label="<?= e(__('ui.field.status')) ?>">
                             <span class="badge winner-<?= e($r['state']) ?>"><?= e(__('ui.label.winner_state_' . $r['state'])) ?></span>
                             <?php if ($r['state'] === 'waiting'): ?><small class="muted block"><?= e(sprintf(__('ui.label.given_until'), fmt_date($r['expires_at']))) ?></small><?php endif; ?>
                         </td>

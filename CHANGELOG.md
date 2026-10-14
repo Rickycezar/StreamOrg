@@ -16,6 +16,11 @@ Administration, and each release is tagged in git as `v<version>`.
   and when they took it — with links to copy or withdraw, and shortcuts
   to give a key or create a giveaway.
 - The vault shows each key's winner (or the giveaway it is a prize in).
+- Lists can be shown as cards: account menu → List view → Table / Cards.
+  It switches at once, without reloading, and is remembered for the
+  account. Each row becomes a card with its fields labelled, its actions
+  at the bottom, and the column headings as sort buttons; in the vault the
+  cards show the game's cover.
 
 ### Changed
 - Available keys can be added to giveaways too (they become "for

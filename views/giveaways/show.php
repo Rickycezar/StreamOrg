@@ -202,10 +202,10 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                                 </form>
                             <?php endif; ?>
                         </td>
-                        <td><?= e($p['game_title']) ?></td>
-                        <td><?= e(code_label('game_platform', $p['platform_code'])) ?></td>
-                        <td class="nowrap" data-sort="<?= e(sort_key($p['expires_at'])) ?>"><?= e($p['expires_at'] ? fmt_date($p['expires_at']) : '—') ?></td>
-                        <td>
+                        <td data-card-title data-label="<?= e(__('ui.field.game')) ?>"><?= e($p['game_title']) ?></td>
+                        <td data-label="<?= e(__('ui.field.platform')) ?>"><?= e(code_label('game_platform', $p['platform_code'])) ?></td>
+                        <td class="nowrap" data-sort="<?= e(sort_key($p['expires_at'])) ?>" data-label="<?= e(__('ui.field.redeem_by')) ?>"><?= e($p['expires_at'] ? fmt_date($p['expires_at']) : '—') ?></td>
+                        <td data-label="<?= e(__('ui.field.status')) ?>">
                             <?php if ($p['claimed_at']): ?>
                                 <span class="badge ok"><?= e(sprintf(__('ui.label.claimed_by'), $p['winner_login'])) ?></span>
                                 <small class="muted"><?= e(fmt_datetime($p['claimed_at'], 'd/m H:i')) ?></small>

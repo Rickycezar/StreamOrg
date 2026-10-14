@@ -2,6 +2,8 @@
 /** @var string $content */
 /** @var ?string $pageTitle */
 $user = Auth::user();
+$layoutPrefs = PreferenceController::all();
+$viewMode = PreferenceController::viewMode($layoutPrefs);
 
 $here = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
 $isHere = static function (string $path) use ($here): bool {
@@ -16,7 +18,7 @@ $brandSplit = str_contains($brand, 'Org')
 $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(dirname(__DIR__) . '/public' . $path) ?: 0);
 ?>
 <!DOCTYPE html>
-<html lang="<?= e(Lang::locale()) ?>" <?= Themes::htmlAttributes($user) ?>>
+<html lang="<?= e(Lang::locale()) ?>" <?= Themes::htmlAttributes($user) ?> data-view="<?= e($viewMode) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -239,6 +241,18 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 </span>
             </div>
 
+            <div class="usermenu-row usermenu-mode">
+                <span class="usermenu-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+                </span>
+                <span class="segmented small" role="radiogroup" aria-label="<?= e(__('ui.label.view_mode')) ?>">
+                    <?php foreach (['table', 'cards'] as $listView): ?>
+                        <button type="button" role="radio" data-set-view="<?= e($listView) ?>"
+                                aria-checked="<?= $viewMode === $listView ? 'true' : 'false' ?>"><?= e(__('ui.label.view_' . $listView)) ?></button>
+                    <?php endforeach; ?>
+                </span>
+            </div>
+
             <a class="usermenu-row" href="<?= e(url('/profile')) ?>">
                 <span class="usermenu-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
@@ -325,7 +339,7 @@ $globals = [
     'CSRF_TOKEN'        => Csrf::token(),
     'STREAMORG_SESSION' => Auth::clientMarker(),
     'BASE_URL'          => url('/'),
-    'STREAMORG_PREFS'   => PreferenceController::all() ?: new stdClass(),
+    'STREAMORG_PREFS'   => $layoutPrefs ?: new stdClass(),
     'STREAMORG_TWITCH_L' => [
         'heading'    => __('ui.action.twitch_send'),
         'channel'    => __('ui.label.twitch_channel'),

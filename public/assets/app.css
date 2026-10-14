@@ -1380,6 +1380,58 @@ td.rowactions .btn + .btn { margin-left: .3rem; }
 td.rowactions form { display: inline-block; }
 td.rowactions form + form { margin-left: .3rem; }
 
+.card-cover { display: none; }
+:root[data-view="cards"] table:has(td[data-label]) { display: block; min-width: 0; font-size: .84rem; }
+:root[data-view="cards"] .table-wrap:has(td[data-label]) { overflow: visible; }
+:root[data-view="cards"] table:has(td[data-label]) > thead { display: block; }
+:root[data-view="cards"] table:not([data-sortable]):has(td[data-label]) > thead { display: none; }
+:root[data-view="cards"] table:has(td[data-label]) > thead > tr { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-bottom: .75rem; }
+:root[data-view="cards"] table:has(td[data-label]) > thead > tr:hover { background: none; }
+:root[data-view="cards"] table:has(td[data-label]) > thead th { position: static; padding: 0; border: 0; background: none; }
+:root[data-view="cards"] table:has(td[data-label]) > thead th:not(:has(.th-sort)) { display: none; }
+:root[data-view="cards"] table:has(td[data-label]) > thead th::before,
+:root[data-view="cards"] table:has(td[data-label]) > thead th::after { content: none; }
+:root[data-view="cards"] table:has(td[data-label]) > thead .th-sort { padding: .25rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: .66rem; }
+:root[data-view="cards"] table:has(td[data-label]) > thead th[aria-sort] .th-sort { border-color: var(--accent-border); background: var(--accent-soft); }
+:root[data-view="cards"] table:has(td[data-label]) > tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: .8rem; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr {
+    display: flex; flex-wrap: wrap; align-content: flex-start; gap: .65rem 1rem; min-width: 0;
+    padding: .9rem 1rem; border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px);
+    background: var(--surface); box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s;
+}
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr:hover { background: var(--surface); border-color: var(--border-strong); box-shadow: 0 6px 18px rgba(var(--shadow-rgb), .12); }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td { display: block; flex: 1 1 calc(50% - .5rem); min-width: 0; padding: 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td[data-label]:empty { display: none; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: .18rem;
+    color: var(--muted); font-size: .64rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+}
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td[data-card-title] { order: -2; flex-basis: 100%; font-size: .98rem; font-weight: 600; line-height: 1.35; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td[data-card-title]::before { content: none; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td[data-card-title] small,
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td[data-card-title] .badge { font-weight: 400; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td.rowactions {
+    order: 99; flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .35rem; position: static;
+    margin-top: .1rem; padding-top: .7rem; border-top: 1px solid var(--border-soft); background: none;
+}
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td.rowactions::before,
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr > td.rowactions::after { content: none; }
+:root[data-view="cards"] table:has(td[data-label]) td.rowactions .btn + .btn,
+:root[data-view="cards"] table:has(td[data-label]) td.rowactions form + form { margin-left: 0; }
+:root[data-view="cards"] table:has(td[data-label]) td.rowactions .rowactions-menu { display: contents; }
+:root[data-view="cards"] table:has(td[data-label]) td.rowactions .row-more { display: none; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr.editrow { grid-column: 1 / -1; display: block; padding: 0; }
+:root[data-view="cards"] table:has(td[data-label]) > tbody > tr.editrow > td { display: block; padding: 1rem 1.1rem; }
+:root[data-view="cards"] table:has(td[data-label]) .keycell { flex-basis: 100%; }
+:root[data-view="cards"] table:has(td[data-label]) .keyfield { display: flex; }
+:root[data-view="cards"] table:has(td[data-label]) .keyfield .key-field { flex: 1; width: auto; min-width: 0; }
+:root[data-view="cards"] table:has(td[data-label]) .status-select { width: 100%; }
+:root[data-view="cards"] .card-cover {
+    display: block; width: calc(100% + 2rem); max-width: none; margin: -.9rem -1rem .7rem;
+    aspect-ratio: 460 / 215; object-fit: cover; background: var(--surface-2);
+    border-radius: calc(var(--radius) + 5px) calc(var(--radius) + 5px) 0 0;
+}
+
 tr.editrow > td { background: var(--surface-2); padding: 1rem 1.1rem; border-bottom: 2px solid var(--border); }
 tr.editrow:hover > td { background: var(--surface-2); }
 .inline-edit label { margin-bottom: .7rem; }
@@ -1638,6 +1690,8 @@ a.who:hover { text-decoration: none; color: var(--accent); }
 .profile-body > .card:last-child { margin-bottom: 0; }
 
 table.sessions tr.current td { background: var(--accent-soft); }
+:root[data-view="cards"] table.sessions > tbody > tr.current { border-color: var(--accent-border); background: var(--accent-soft); }
+:root[data-view="cards"] table.sessions > tbody > tr.current > td { background: none; }
 table.sessions .badge { margin-left: .4rem; }
 table.sessions form { display: inline; }
 

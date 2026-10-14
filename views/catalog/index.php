@@ -81,7 +81,7 @@
                             <span class="muted small"><?= e(__('ui.label.manual_entry')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="title">
+                    <td data-card-title data-col="title" data-label="<?= e(__('ui.field.title')) ?>">
                         <span class="game-cell">
                             <?php if ($game['thumb_path']): ?>
                                 <img class="picker-cover" alt="" loading="lazy"
@@ -92,9 +92,9 @@
                             <span class="game-title"><?= e($game['title']) ?></span>
                         </span>
                     </td>
-                    <td data-col="publisher"><?= e($game['publisher_name'] ?: '—') ?></td>
-                    <td data-col="developer"><?= e($game['developer_name'] ?: '—') ?></td>
-                    <td class="release-cell" data-col="release" data-sort="<?= e(sort_key($game['release_date'])) ?>">
+                    <td data-col="publisher" data-label="<?= e(__('ui.nav.publishers')) ?>"><?= e($game['publisher_name'] ?: '—') ?></td>
+                    <td data-col="developer" data-label="<?= e(__('ui.nav.developers')) ?>"><?= e($game['developer_name'] ?: '—') ?></td>
+                    <td class="release-cell" data-col="release" data-sort="<?= e(sort_key($game['release_date'])) ?>" data-label="<?= e(__('ui.field.release_date')) ?>">
                         <?php if ($game['release_date'] && $game['release_precision'] === 'day'): ?>
                             <?= e(fmt_date($game['release_date'])) ?>
                         <?php elseif ($game['release_date']): ?>
@@ -106,7 +106,7 @@
                             <span class="badge warn"><?= e(__('ui.label.no_release_date')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="source">
+                    <td data-col="source" data-label="<?= e(__('ui.field.source')) ?>">
                         <?php if ($game['source_provider']): ?>
                             <?= e(code_label('api_provider', $game['source_provider'])) ?>
                             <?php if ($game['source_synced_at']): ?>
@@ -116,7 +116,7 @@
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="keys"><?= (int) $game['my_keys'] ?></td>
+                    <td data-col="keys" data-label="<?= e(__('ui.nav.keys')) ?>"><?= (int) $game['my_keys'] ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

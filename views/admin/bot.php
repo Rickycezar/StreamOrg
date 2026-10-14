@@ -123,18 +123,18 @@ $tone  = match ($state) {
                         default                              => ['ok', 'ui.label.bot_active'],
                     }; ?>
                     <tr>
-                        <td><?= $channel['twitch_login'] ? e('#' . $channel['twitch_login']) : '—' ?></td>
-                        <td><?= e($channel['display_name'] ?: $channel['username']) ?></td>
-                        <td>
+                        <td data-card-title data-label="<?= e(__('ui.field.channel')) ?>"><?= $channel['twitch_login'] ? e('#' . $channel['twitch_login']) : '—' ?></td>
+                        <td data-label="<?= e(__('ui.field.user')) ?>"><?= e($channel['display_name'] ?: $channel['username']) ?></td>
+                        <td data-label="<?= e(__('ui.field.status')) ?>">
                             <span class="badge <?= $status[0] ?>"><?= e(__($status[1])) ?></span>
                             <?php if ($channel['last_error']): ?><br><small class="muted"><?= e($channel['last_error']) ?></small><?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="<?= e(__('ui.label.bot_access')) ?>">
                             <?php if ($channel['is_enabled']): ?>
                                 <?= View::partial('bot/access', ['access' => $channel['access'], 'chattersOk' => $channel['chatters_ok']]) ?>
                             <?php else: ?>—<?php endif; ?>
                         </td>
-                        <td><?= $channel['joined_at'] ? e(fmt_datetime($channel['joined_at'])) : '—' ?></td>
+                        <td data-label="<?= e(__('ui.label.bot_joined')) ?>"><?= $channel['joined_at'] ? e(fmt_datetime($channel['joined_at'])) : '—' ?></td>
                         <td class="rowactions">
                             <?php if ($channel['is_enabled'] || $channel['twitch_login'] !== null): ?>
                                 <form method="post" action="<?= e(url('/admin/bot/add')) ?>">

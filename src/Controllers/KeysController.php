@@ -137,7 +137,8 @@ final class KeysController
                        (k.key_type = 'review' AND g.release_date IS NOT NULL
                         AND g.release_date > CURRENT_DATE) AS playable_early,
                        k.is_placeholder, gift.prize_id, gift.giveaway_title, gift.is_direct,
-                       gift.winner_name, gift.winner_login, gift.winner_claimed_at
+                       gift.winner_name, gift.winner_login, gift.winner_claimed_at,
+                       cover.path AS cover_path, cover.updated_at AS cover_version
                   FROM game_keys k
                   JOIN games g            ON g.id  = k.game_id
                   JOIN game_platforms gp  ON gp.id = k.game_platform_id
@@ -158,6 +159,11 @@ final class KeysController
                       WHERE p.game_key_id = k.id
                    ORDER BY p.id DESC LIMIT 1
                  ) gift ON true
+             LEFT JOIN LATERAL (
+                     SELECT i.path, i.updated_at FROM game_images i
+                      WHERE i.game_id = k.game_id AND i.kind IN ('header', 'capsule')
+                   ORDER BY i.kind = 'header' DESC LIMIT 1
+                 ) cover ON true
                  WHERE k.user_id = :user_id";
     }
 

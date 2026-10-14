@@ -107,7 +107,7 @@
                         <button type="button" class="btn small" data-modal-form="#edit-streamer-<?= (int) $row['id'] ?>"
                                 data-modal-title="<?= e($row['name']) ?>"><?= e(__('ui.action.edit')) ?></button>
                     </td>
-                    <td data-col="name">
+                    <td data-card-title data-col="name" data-label="<?= e(__('ui.field.name')) ?>">
                         <span class="streamer-name">
                             <?php if ($row['avatar_url']): ?>
                                 <img class="avatar" src="<?= e($row['avatar_url']) ?>" alt="" loading="lazy" width="26" height="26">
@@ -126,15 +126,15 @@
                             </span>
                         </span>
                     </td>
-                    <td data-col="channels"><small><?= e($row['channels'] ?: '—') ?></small></td>
-                    <td data-col="type">
+                    <td data-col="channels" data-label="<?= e(__('ui.field.channels')) ?>"><small><?= e($row['channels'] ?: '—') ?></small></td>
+                    <td data-col="type" data-label="<?= e(__('ui.field.broadcaster_type')) ?>">
                         <?= $row['broadcaster_type']
                             ? '<span class="badge">' . e($row['broadcaster_type']) . '</span>'
                             : '<span class="muted">—</span>' ?>
                     </td>
-                    <td data-col="collabs"><?= (int) $row['collab_count'] ?></td>
-                    <td data-col="streams"><?= (int) $row['stream_count'] ?></td>
-                    <td data-col="source">
+                    <td data-col="collabs" data-label="<?= e(__('ui.nav.collabs')) ?>"><?= (int) $row['collab_count'] ?></td>
+                    <td data-col="streams" data-label="<?= e(__('ui.nav.content')) ?>"><?= (int) $row['stream_count'] ?></td>
+                    <td data-col="source" data-label="<?= e(__('ui.field.source')) ?>">
                         <?php if ($row['source_provider']): ?>
                             <?= e(code_label('streaming_platform', $row['source_provider'])) ?>
                             <?php if ($row['source_synced_at']): ?>

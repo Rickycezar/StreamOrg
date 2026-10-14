@@ -81,7 +81,7 @@ $link  = static fn (array $change): string => url('/admin/bugs?' . http_build_qu
                     <tr class="<?= $b['unread'] ? 'is-new' : '' ?>">
                         <td class="rowactions"><a class="btn small" href="<?= e(url('/admin/bugs/view?id=' . (int) $b['id'])) ?>"><?= e(__('ui.support.open_report')) ?></a></td>
                         <td data-sort="<?= (int) $b['id'] ?>" class="muted">#<?= (int) $b['id'] ?></td>
-                        <td>
+                        <td data-card-title data-label="<?= e(__('ui.support.f_title')) ?>">
                             <?php if ($b['unread']): ?><span class="support-dot" title="<?= e(__('ui.support.news')) ?>"></span><?php endif; ?>
                             <a href="<?= e(url('/admin/bugs/view?id=' . (int) $b['id'])) ?>" class="bug-table-title"><?= e($b['title']) ?></a>
                             <small class="muted block">
@@ -90,11 +90,11 @@ $link  = static fn (array $change): string => url('/admin/bugs?' . http_build_qu
                                 <?php if ((int) $b['comments'] > 0): ?> · 💬 <?= (int) $b['comments'] ?><?php endif; ?>
                             </small>
                         </td>
-                        <td data-sort="<?= array_search($b['priority'], array_reverse(BugReports::PRIORITIES), true) ?>"><span class="badge prio-<?= e($b['priority']) ?>"><?= e(__('ui.bug_priority.' . $b['priority'])) ?></span></td>
-                        <td data-sort="<?= array_search($b['impact'], BugReports::IMPACTS, true) ?>"><span class="badge impact-<?= e($b['impact']) ?>"><?= e(__('ui.bug_impact.' . $b['impact'])) ?></span></td>
-                        <td><span class="badge bug-<?= e($b['status']) ?>"><?= e(__('ui.bug_status.' . $b['status'])) ?></span></td>
-                        <td><?= e((string) $b['reporter']) ?></td>
-                        <td data-sort="<?= e(sort_key($b['updated_at'])) ?>" class="nowrap"><?= e(fmt_datetime($b['updated_at'], 'd/m H:i')) ?></td>
+                        <td data-sort="<?= array_search($b['priority'], array_reverse(BugReports::PRIORITIES), true) ?>" data-label="<?= e(__('ui.support.f_priority')) ?>"><span class="badge prio-<?= e($b['priority']) ?>"><?= e(__('ui.bug_priority.' . $b['priority'])) ?></span></td>
+                        <td data-sort="<?= array_search($b['impact'], BugReports::IMPACTS, true) ?>" data-label="<?= e(__('ui.support.f_impact')) ?>"><span class="badge impact-<?= e($b['impact']) ?>"><?= e(__('ui.bug_impact.' . $b['impact'])) ?></span></td>
+                        <td data-label="<?= e(__('ui.support.f_status')) ?>"><span class="badge bug-<?= e($b['status']) ?>"><?= e(__('ui.bug_status.' . $b['status'])) ?></span></td>
+                        <td data-label="<?= e(__('ui.support.f_reporter')) ?>"><?= e((string) $b['reporter']) ?></td>
+                        <td data-sort="<?= e(sort_key($b['updated_at'])) ?>" class="nowrap" data-label="<?= e(__('ui.support.f_updated')) ?>"><?= e(fmt_datetime($b['updated_at'], 'd/m H:i')) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

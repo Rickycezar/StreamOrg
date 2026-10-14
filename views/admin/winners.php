@@ -54,15 +54,15 @@ $removable = static fn (array $w): bool => in_array($w['state'], ['waiting', 'ex
                     $game     = $w['game_title'] ?? $w['removed_game'];
                     $platform = $w['platform_code'] ?? $w['removed_platform']; ?>
                     <tr class="state-<?= e($w['state']) ?>">
-                        <td>
+                        <td data-card-title data-label="<?= e(__('ui.label.winner')) ?>">
                             <a href="https://twitch.tv/<?= e(rawurlencode($w['twitch_login'])) ?>" target="_blank" rel="noopener noreferrer"><strong><?= e($w['display_name'] ?: $w['twitch_login']) ?></strong></a>
                             <small class="muted block">@<?= e($w['twitch_login']) ?> · <?= e(code_label('winner_method', $w['method'])) ?></small>
                         </td>
-                        <td>
+                        <td data-label="<?= e(__('ui.label.giveaway')) ?>">
                             <?= e($w['giveaway_title']) ?>
                             <small class="muted block"><?= e($w['streamer']) ?> · <?= e(code_label('giveaway_status', $w['giveaway_status'])) ?></small>
                         </td>
-                        <td>
+                        <td data-label="<?= e(__('ui.label.prize')) ?>">
                             <?php if ($game): ?>
                                 <?= e($game) ?>
                                 <?php if ($platform): ?><small class="muted block"><?= e(code_label('game_platform', $platform)) ?></small><?php endif; ?>
@@ -70,7 +70,7 @@ $removable = static fn (array $w): bool => in_array($w['state'], ['waiting', 'ex
                                 <span class="muted">—</span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="<?= e(__('ui.field.status')) ?>">
                             <span class="badge winner-<?= e($w['state']) ?>"><?= e(__('ui.label.winner_state_' . $w['state'])) ?></span>
                             <small class="muted block">
                                 <?= e(fmt_datetime($w['removed_at'] ?? $w['claimed_at'] ?? $w['created_at'], 'd/m/Y H:i')) ?>

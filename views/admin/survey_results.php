@@ -70,9 +70,9 @@
                 <tbody>
                 <?php foreach ($responses as $r): ?>
                     <tr>
-                        <td><?= e((string) $r['name']) ?></td>
-                        <td data-sort="<?= e(sort_key($r['updated_at'])) ?>"><?= e(fmt_datetime($r['updated_at'])) ?></td>
-                        <td><?= count($r['answers']) ?>/<?= count($questions) ?></td>
+                        <td data-card-title data-label="<?= e(__('ui.support.r_person')) ?>"><?= e((string) $r['name']) ?></td>
+                        <td data-sort="<?= e(sort_key($r['updated_at'])) ?>" data-label="<?= e(__('ui.support.r_when')) ?>"><?= e(fmt_datetime($r['updated_at'])) ?></td>
+                        <td data-label="<?= e(__('ui.support.r_answers')) ?>"><?= count($r['answers']) ?>/<?= count($questions) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

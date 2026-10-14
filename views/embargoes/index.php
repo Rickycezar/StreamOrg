@@ -98,21 +98,21 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
                             <?= e(__('ui.action.edit')) ?>
                         </button>
                     </td>
-                    <td>
+                    <td data-card-title data-label="<?= e(__('ui.field.game')) ?>">
                         <?= e($row['game_title']) ?>
                         <?php if ($row['label']): ?>
                             <small class="muted block"><?= e($row['label']) ?></small>
                         <?php endif; ?>
                     </td>
-                    <td><?= e(code_label('embargo_kind', $row['kind'])) ?></td>
-                    <td>
+                    <td data-label="<?= e(__('ui.field.kind')) ?>"><?= e(code_label('embargo_kind', $row['kind'])) ?></td>
+                    <td data-label="<?= e(__('ui.field.platform')) ?>">
                         <?php if ($row['platform_code']): ?>
                             <?= e(code_label('game_platform', $row['platform_code'])) ?>
                         <?php else: ?>
                             <span class="muted"><?= e(__('ui.label.all_platforms')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-sort="<?= e(sort_key($row['lifts_at'])) ?>">
+                    <td data-sort="<?= e(sort_key($row['lifts_at'])) ?>" data-label="<?= e(__('ui.field.lifts_at')) ?>">
                         <?= e(fmt_datetime($row['lifts_at'])) ?>
                         <?php if ($row['active']): ?>
                             <span class="badge danger"><?= e(__('ui.label.active')) ?></span>
@@ -120,8 +120,8 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
                             <span class="badge ok"><?= e(__('ui.label.lifted')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td><small class="muted"><?= e(code_label('embargo_source', $row['source'])) ?></small></td>
-                    <td><?= (int) $row['key_count'] ?></td>
+                    <td data-label="<?= e(__('ui.field.source')) ?>"><small class="muted"><?= e(code_label('embargo_source', $row['source'])) ?></small></td>
+                    <td data-label="<?= e(__('ui.nav.keys')) ?>"><?= (int) $row['key_count'] ?></td>
                 </tr>
                 <tr id="edit-emb-<?= (int) $row['id'] ?>" class="editrow hidden">
                     <td colspan="7">
@@ -174,8 +174,8 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
         <tbody>
         <?php foreach ($uncovered as $row): ?>
             <tr>
-                <td><?= e($row['title']) ?></td>
-                <td>
+                <td data-card-title data-label="<?= e(__('ui.field.game')) ?>"><?= e($row['title']) ?></td>
+                <td data-label="<?= e(__('ui.field.release_date')) ?>">
                     <?php if ($row['release_date'] && $row['release_precision'] === 'day'): ?>
                         <?= e(fmt_date($row['release_date'])) ?>
                     <?php elseif ($row['release_date']): ?>

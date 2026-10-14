@@ -178,23 +178,23 @@
                         <button type="button" class="btn small" data-modal-form="#edit-collab-<?= (int) $row['id'] ?>"
                                 data-modal-title="<?= e($row['title']) ?>"><?= e(__('ui.action.edit')) ?></button>
                     </td>
-                    <td data-col="title">
+                    <td data-card-title data-col="title" data-label="<?= e(__('ui.field.title')) ?>">
                         <?= e($row['title']) ?>
                         <?php if (!empty($row['notes'])): ?>
                             <small class="muted block"><?= e($row['notes']) ?></small>
                         <?php endif; ?>
                     </td>
-                    <td data-col="streamers">
+                    <td data-col="streamers" data-label="<?= e(__('ui.field.streamers')) ?>">
                         <?php if ($row['streamers']): ?>
                             <?= e($row['streamers']) ?>
                         <?php else: ?>
                             <span class="badge warn"><?= e(__('ui.label.no_streamers')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="platform"><?= e($row['platform_code'] ? code_label('streaming_platform', $row['platform_code']) : '—') ?></td>
-                    <td data-col="when" data-sort="<?= e(sort_key($row['proposed_at'])) ?>"><?= e($row['proposed_at'] ? fmt_datetime($row['proposed_at']) : '—') ?></td>
-                    <td data-col="status"><span class="badge"><?= e(code_label('collab_status', $row['status'])) ?></span></td>
-                    <td data-col="streams">
+                    <td data-col="platform" data-label="<?= e(__('ui.field.platform')) ?>"><?= e($row['platform_code'] ? code_label('streaming_platform', $row['platform_code']) : '—') ?></td>
+                    <td data-col="when" data-sort="<?= e(sort_key($row['proposed_at'])) ?>" data-label="<?= e(__('ui.field.proposed_at')) ?>"><?= e($row['proposed_at'] ? fmt_datetime($row['proposed_at']) : '—') ?></td>
+                    <td data-col="status" data-label="<?= e(__('ui.field.status')) ?>"><span class="badge"><?= e(code_label('collab_status', $row['status'])) ?></span></td>
+                    <td data-col="streams" data-label="<?= e(__('ui.nav.content')) ?>">
                         <?php if ((int) $row['stream_count'] > 0): ?>
                             <a href="<?= e(url('/content')) ?>"><?= (int) $row['stream_count'] ?></a>
                         <?php else: ?>
