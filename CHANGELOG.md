@@ -5,6 +5,12 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.9.3 — 2026-10-14
+
+### Changed
+- `!heartbeat` tells the streamer and moderators which version of the chat
+  bot answered (bot 0.5.2); its description and the bot guide say so.
+
 ## 0.9.2 — 2026-10-14
 
 ### Changed

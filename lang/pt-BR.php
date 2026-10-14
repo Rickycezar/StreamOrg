@@ -607,7 +607,7 @@ return [
             'broadcaster' => 'Só o streamer',
         ],
         'bot_command' => [
-            'heartbeat' => 'Confere se o bot está ouvindo: ele responde na hora.',
+            'heartbeat' => 'Confere se o bot está ouvindo: ele responde na hora. Para o streamer e os moderadores, também mostra a versão do bot no fim, que nenhum texto consegue tirar.',
             'giveaway' => 'Lista os sorteios abertos e indica o comando dos prêmios.',
             'join' => 'Inscreve no sorteio que aceita participação pelo chat: o comando e a palavra do sorteio (ou só o comando, quando há um só aberto).',
             'prizes' => 'Dá o link da página pública de prêmios de um sorteio: as chaves que ainda estão em jogo e as já ganhas. Sem nome, pergunta qual sorteio.',
@@ -696,7 +696,7 @@ return [
                 'timers_text' => "Mensagens que o bot manda enquanto você está ao vivo, a cada tantos minutos.\nElas também esperam um pouco de conversa entre uma e outra, para o bot nunca falar sozinho.",
                 'logs_title' => 'O que ele fez',
                 'logs_text' => "O registro mostra o que o bot fez no seu canal e o que a Twitch recusou.\nEnquanto você está ao vivo ele também conta as mensagens e, aproximadamente, quanto tempo cada espectador fica, guardado por 12 meses.",
-                'tips' => "Digite !heartbeat no seu chat para conferir se ele está ouvindo.\nO bot nunca inunda o chat: as respostas esperam a vez, e um comando digitado várias vezes de uma vez responde só uma.\nShoutouts, sequências e alertas personalizados podem fazer ele responder: veja a mensagem do bot de cada overlay.",
+                'tips' => "Digite !heartbeat no seu chat para conferir se ele está ouvindo; ele também diz a você (e aos seus moderadores) qual versão do bot respondeu.\nO bot nunca inunda o chat: as respostas esperam a vez, e um comando digitado várias vezes de uma vez responde só uma.\nShoutouts, sequências e alertas personalizados podem fazer ele responder: veja a mensagem do bot de cada overlay.",
             ],
             'together' => [
                 'title' => 'Planejando juntos',

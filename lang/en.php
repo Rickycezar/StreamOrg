@@ -608,7 +608,7 @@ return [
             'broadcaster' => 'Only the streamer',
         ],
         'bot_command' => [
-            'heartbeat' => 'Checks the bot is listening: it answers right away.',
+            'heartbeat' => 'Checks the bot is listening: it answers right away. For the streamer and moderators it also adds the bot\'s version at the end, which no wording can remove.',
             'giveaway' => 'Lists the open giveaways and points to the prizes command.',
             'join' => 'Enters a giveaway that takes entries by chat: the command and the giveaway keyword (or just the command, when only one is open).',
             'prizes' => 'Gives the link to a giveaway\'s public prize page: the keys still to win and the ones already won. Without a name, asks which giveaway.',
@@ -697,7 +697,7 @@ return [
                 'timers_text' => "Messages the bot posts while you are live, every so many minutes.\nThey also wait for enough chat in between, so the bot never talks into an empty chat.",
                 'logs_title' => 'What it did',
                 'logs_text' => "The log shows what the bot did in your channel and anything Twitch refused.\nWhile you are live it also counts messages and roughly how long each viewer stays, kept for 12 months.",
-                'tips' => "Type !heartbeat in your chat to check it is listening.\nThe bot never floods your chat: replies wait their turn, and a command typed many times at once answers once.\nShoutouts, watch streaks and custom alerts can make it reply: see each overlay's bot message.",
+                'tips' => "Type !heartbeat in your chat to check it is listening; it also tells you (and your moderators) which version of the bot answered.\nThe bot never floods your chat: replies wait their turn, and a command typed many times at once answers once.\nShoutouts, watch streaks and custom alerts can make it reply: see each overlay's bot message.",
             ],
             'together' => [
                 'title' => 'Planning together',
