@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 /**
  * Per-user interface preferences: which table columns are hidden on which
- * screen (columns.<table>), and their order (columns.<table>.order).
+ * screen (columns.<table>), their order (columns.<table>.order), and
+ * whether lists show as a table or as cards (view.mode).
  */
 final class PreferenceController
 {
@@ -69,9 +70,19 @@ final class PreferenceController
         json_response(['ok' => true]);
     }
 
-    /** columns.<table> or columns.<table>.order, for a table that has a column chooser. */
+    /** columns.<table> or columns.<table>.order, for a table that has a column chooser, or view.mode. */
     public static function allowed(string $key): bool
     {
-        return (bool) preg_match('/^columns\.(' . implode('|', self::TABLES) . ')(\.order)?$/', $key);
+        return $key === 'view.mode' || (bool) preg_match('/^columns\.(' . implode('|', self::TABLES) . ')(\.order)?$/', $key);
+    }
+
+    /**
+     * How lists are shown: 'table' or 'cards'.
+     *
+     * @param array<string, mixed> $prefs
+     */
+    public static function viewMode(array $prefs): string
+    {
+        return ($prefs['view.mode'][0] ?? 'table') === 'cards' ? 'cards' : 'table';
     }
 }

@@ -61,7 +61,7 @@
             $missing = $label === 'key_platform.' . $row['code'];
         ?>
             <tr>
-                <td>
+                <td data-card-title data-label="<?= e(__('ui.field.label')) ?>">
                     <?= e($missing ? $row['code'] : $label) ?>
                     <?php if ($missing): ?>
                         <a class="badge warn" href="<?= e(url('/admin/lang#code-labels')) ?>" title="<?= e(__('ui.message.code_needs_label')) ?>">
@@ -69,16 +69,16 @@
                         </a>
                     <?php endif; ?>
                 </td>
-                <td><code><?= e($row['code']) ?></code></td>
-                <td><?= safe_url($row['website']) ? '<a href="' . e(safe_url($row['website'])) . '" target="_blank" rel="noopener noreferrer">' . e($row['website']) . '</a>' : e($row['website'] ?: '—') ?></td>
-                <td>
+                <td data-label="<?= e(__('ui.field.code')) ?>"><code><?= e($row['code']) ?></code></td>
+                <td data-label="<?= e(__('ui.field.website')) ?>"><?= safe_url($row['website']) ? '<a href="' . e(safe_url($row['website'])) . '" target="_blank" rel="noopener noreferrer">' . e($row['website']) . '</a>' : e($row['website'] ?: '—') ?></td>
+                <td data-label="<?= e(__('ui.field.tags_content')) ?>">
                     <?php if ($row['tags_content']): ?>
                         <span class="badge ok"><?= e(__('ui.label.yes')) ?></span>
                     <?php else: ?>
                         <span class="badge"><?= e(__('ui.label.no')) ?></span>
                     <?php endif; ?>
                 </td>
-                <td><?= (int) $row['key_count'] ?></td>
+                <td data-label="<?= e(__('ui.nav.keys')) ?>"><?= (int) $row['key_count'] ?></td>
                 <td class="rowactions">
                     <button type="button" class="btn small" data-modal-form="#edit-site-<?= (int) $row['id'] ?>"
                             data-modal-title="<?= e($row['code']) ?>"><?= e(__('ui.action.edit')) ?></button>

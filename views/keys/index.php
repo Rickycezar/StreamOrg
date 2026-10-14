@@ -233,7 +233,11 @@
                             <?= e(__('ui.action.edit')) ?>
                         </button>
                     </td>
-                    <td data-col="game">
+                    <td data-card-title data-col="game" data-label="<?= e(__('ui.field.game')) ?>">
+                        <?php if ($key['cover_path']): ?>
+                            <img class="card-cover" loading="lazy" alt=""
+                                 src="<?= e(GameImages::publicUrl($key['cover_path'], (string) $key['cover_version'])) ?>">
+                        <?php endif; ?>
                         <?= e($key['game_title']) ?>
                         <?php if ($key['under_embargo']): ?>
                             <span class="badge danger"
@@ -250,11 +254,11 @@
                             <small class="muted block"><?= e($key['notes']) ?></small>
                         <?php endif; ?>
                     </td>
-                    <td data-col="platform"><?= e(code_label('game_platform', $key['game_platform_code'])) ?></td>
-                    <td data-col="source"><?= e(code_label('key_platform', $key['key_platform_code'])) ?></td>
-                    <td data-col="key_type"><?= e(code_label('key_type', $key['key_type'])) ?></td>
-                    <td data-col="content_type"><?= e(code_label('content_type', $key['content_type'])) ?></td>
-                    <td class="dates" data-col="redeem_by" data-sort="<?= e(sort_key($key['expires_at'] ?? null)) ?>">
+                    <td data-col="platform" data-label="<?= e(__('ui.field.platform')) ?>"><?= e(code_label('game_platform', $key['game_platform_code'])) ?></td>
+                    <td data-col="source" data-label="<?= e(__('ui.field.source')) ?>"><?= e(code_label('key_platform', $key['key_platform_code'])) ?></td>
+                    <td data-col="key_type" data-label="<?= e(__('ui.field.key_type')) ?>"><?= e(code_label('key_type', $key['key_type'])) ?></td>
+                    <td data-col="content_type" data-label="<?= e(__('ui.field.content_type')) ?>"><?= e(code_label('content_type', $key['content_type'])) ?></td>
+                    <td class="dates" data-col="redeem_by" data-sort="<?= e(sort_key($key['expires_at'] ?? null)) ?>" data-label="<?= e(__('ui.field.redeem_by')) ?>">
                         <?php if (!empty($key['expires_at'])): ?>
                             <small class="muted" title="<?= e(__('ui.label.redeem_by_hint')) ?>">
                                 <?= e(__('ui.label.redeem_by')) ?> <?= e(fmt_date($key['expires_at'])) ?>
@@ -263,7 +267,7 @@
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="status">
+                    <td data-col="status" data-label="<?= e(__('ui.field.status')) ?>">
                         <select class="status-select status-<?= e($key['status']) ?>" data-id="<?= (int) $key['id'] ?>"
                                 <?= $key['under_embargo'] ? 'data-embargo="' . e(fmt_datetime($key['embargo_until'])) . '" data-game="' . e($key['game_title']) . '"' : '' ?>>
                             <?php foreach ($statuses as $status): ?>
@@ -273,7 +277,7 @@
                             <?php endforeach; ?>
                         </select>
                     </td>
-                    <td data-col="winner">
+                    <td data-col="winner" data-label="<?= e(__('ui.field.winner')) ?>">
                         <?php if ($key['winner_login']): ?>
                             <a href="https://twitch.tv/<?= e(rawurlencode((string) $key['winner_login'])) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $key['winner_name']) ?></a>
                             <small class="muted block"><?= e($key['winner_claimed_at'] ? sprintf(__('ui.label.winner_claimed_on'), fmt_date($key['winner_claimed_at'])) : __('ui.label.winner_waiting')) ?><?= $key['is_direct'] ? ' · ' . e(__('ui.label.direct_gift')) : '' ?></small>
@@ -283,7 +287,7 @@
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td class="keycell" data-col="key_code">
+                    <td class="keycell" data-col="key_code" data-label="<?= e(__('ui.field.key_code')) ?>">
                         <div class="keyfield">
                             <input type="text" class="key-field masked" readonly
                                    data-id="<?= (int) $key['id'] ?>"

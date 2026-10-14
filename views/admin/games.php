@@ -85,18 +85,18 @@
             <tbody>
             <?php foreach ($games as $game): ?>
                 <tr>
-                    <td>
+                    <td data-card-title data-label="<?= e(__('ui.field.title')) ?>">
                         <?php if (safe_url($game['store_url'])): ?>
                             <a href="<?= e(safe_url($game['store_url'])) ?>" target="_blank" rel="noopener noreferrer"><?= e($game['title']) ?></a>
                         <?php else: ?>
                             <?= e($game['title']) ?>
                         <?php endif; ?>
                     </td>
-                    <td><?= e($game['publisher_name'] ?: '—') ?></td>
-                    <td><?= e($game['developer_name'] ?: '—') ?></td>
-                    <td><?= e(fmt_date($game['release_date'])) ?></td>
-                    <td><?= $game['source_provider'] ? e(code_label('api_provider', $game['source_provider'])) : '—' ?></td>
-                    <td>
+                    <td data-label="<?= e(__('ui.nav.publishers')) ?>"><?= e($game['publisher_name'] ?: '—') ?></td>
+                    <td data-label="<?= e(__('ui.nav.developers')) ?>"><?= e($game['developer_name'] ?: '—') ?></td>
+                    <td data-label="<?= e(__('ui.field.release_date')) ?>"><?= e(fmt_date($game['release_date'])) ?></td>
+                    <td data-label="<?= e(__('ui.field.source')) ?>"><?= $game['source_provider'] ? e(code_label('api_provider', $game['source_provider'])) : '—' ?></td>
+                    <td data-label="<?= e(__('ui.field.twitch_category')) ?>">
                         <?php if ($game['twitch_category_source'] === TwitchCategories::DEFAULT_SOURCE): ?>
                             <span class="badge" title="<?= e(__('ui.message.twitch_category_default_hint')) ?>"><?= e($game['twitch_category_name']) ?> · <?= e(__('ui.label.default')) ?></span>
                         <?php else: ?>

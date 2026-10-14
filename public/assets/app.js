@@ -4332,6 +4332,32 @@
         postJson('/profile/theme-mode', { mode: mode });
     });
 
+    /** Table or cards from the user menu: the lists change at once, saved in the background. */
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-set-view]');
+        if (!button) return;
+
+        const view = button.dataset.setView;
+
+        button.parentElement.querySelectorAll('[data-set-view]').forEach(function (b) {
+            b.setAttribute('aria-checked', b === button ? 'true' : 'false');
+        });
+
+        document.documentElement.dataset.view = view;
+        if (window.STREAMORG_PREFS) window.STREAMORG_PREFS['view.mode'] = [view];
+
+        postJson('/preferences', { key: 'view.mode', value: JSON.stringify([view]) });
+    });
+
+    /** A page from the cache or the server shows the view chosen now, not when it was rendered. */
+    document.addEventListener('turbo:load', function () {
+        const view = document.documentElement.dataset.view;
+
+        document.querySelectorAll('[data-set-view]').forEach(function (b) {
+            b.setAttribute('aria-checked', b.dataset.setView === view ? 'true' : 'false');
+        });
+    });
+
     /** Appearance tab: preview the chosen family and mode before saving. */
     document.addEventListener('change', function (event) {
         const form = event.target.closest('[data-appearance]');

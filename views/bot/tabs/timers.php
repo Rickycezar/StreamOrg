@@ -41,12 +41,12 @@
                                 <button type="submit" class="btn small danger-btn" data-confirm="<?= e(__('ui.message.bot_delete_timer')) ?>"><?= e(__('ui.action.delete')) ?></button>
                             </form>
                         </td>
-                        <td class="bot-reply">
+                        <td data-card-title class="bot-reply" data-label="<?= e(__('ui.field.bot_timer_message')) ?>">
                             <?= e(mb_strimwidth($timer['message'], 0, 90, '…')) ?>
                             <?php if (!$timer['is_enabled']): ?> <span class="badge off"><?= e(__('ui.label.off')) ?></span><?php endif; ?>
                         </td>
-                        <td class="nowrap"><?= e(sprintf(__('ui.label.bot_timer_rule_value'), (int) $timer['interval_minutes'], (int) $timer['min_messages'])) ?></td>
-                        <td data-sort="<?= e(sort_key($timer['last_sent_at'])) ?>"><?= $timer['last_sent_at'] ? e(fmt_datetime($timer['last_sent_at'])) : '—' ?></td>
+                        <td class="nowrap" data-label="<?= e(__('ui.label.bot_timer_rule')) ?>"><?= e(sprintf(__('ui.label.bot_timer_rule_value'), (int) $timer['interval_minutes'], (int) $timer['min_messages'])) ?></td>
+                        <td data-sort="<?= e(sort_key($timer['last_sent_at'])) ?>" data-label="<?= e(__('ui.label.bot_timer_last')) ?>"><?= $timer['last_sent_at'] ? e(fmt_datetime($timer['last_sent_at'])) : '—' ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

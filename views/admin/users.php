@@ -98,7 +98,7 @@ $value = static fn (string $key, string $default = ''): string => (string) ($old
             <tbody>
             <?php foreach ($users as $u): ?>
                 <tr class="<?= $u['is_active'] ? '' : 'user-inactive' ?>">
-                    <td class="user-cell">
+                    <td data-card-title class="user-cell" data-label="<?= e(__('ui.field.username')) ?>">
                         <?php $avatarUser = $u; $avatarSize = 'sm'; require dirname(__DIR__) . '/partials/avatar.php'; ?>
                         <strong><?= e($u['username']) ?></strong>
                         <?php if ($u['display_name'] && $u['display_name'] !== $u['username']): ?>
@@ -108,12 +108,12 @@ $value = static fn (string $key, string $default = ''): string => (string) ($old
                         <?php if (!$u['is_active']): ?><span class="badge warn"><?= e(__('ui.label.inactive')) ?></span><?php endif; ?>
                         <?php if ($u['vault_mode'] === 'private'): ?><span class="badge" title="<?= e(__('ui.label.vault_private')) ?>">🔒</span><?php endif; ?>
                     </td>
-                    <td><?= e($u['email']) ?></td>
-                    <td><span class="badge <?= $u['role'] === 'admin' ? 'early' : 'off' ?>"><?= e(code_label('user_role', $u['role'])) ?></span></td>
-                    <td><?= e($u['locale']) ?></td>
-                    <td><?= $u['twitch_login'] ? e($u['twitch_login']) : '<span class="muted">—</span>' ?></td>
-                    <td class="nowrap"><?= $u['last_seen'] ? e(fmt_datetime($u['last_seen'])) : '<span class="muted">' . e(__('ui.label.never')) . '</span>' ?></td>
-                    <td class="nowrap"><?= e(fmt_date($u['created_at'])) ?></td>
+                    <td data-label="<?= e(__('ui.field.email')) ?>"><?= e($u['email']) ?></td>
+                    <td data-label="<?= e(__('ui.field.role')) ?>"><span class="badge <?= $u['role'] === 'admin' ? 'early' : 'off' ?>"><?= e(code_label('user_role', $u['role'])) ?></span></td>
+                    <td data-label="<?= e(__('ui.field.language')) ?>"><?= e($u['locale']) ?></td>
+                    <td data-label="Twitch"><?= $u['twitch_login'] ? e($u['twitch_login']) : '<span class="muted">—</span>' ?></td>
+                    <td class="nowrap" data-label="<?= e(__('ui.field.last_active')) ?>"><?= $u['last_seen'] ? e(fmt_datetime($u['last_seen'])) : '<span class="muted">' . e(__('ui.label.never')) . '</span>' ?></td>
+                    <td class="nowrap" data-label="<?= e(__('ui.field.created_at')) ?>"><?= e(fmt_date($u['created_at'])) ?></td>
                     <td class="rowactions">
                         <button type="button" class="btn small" data-modal-form="#edit-user-<?= (int) $u['id'] ?>"
                                 data-modal-title="<?= e(sprintf(__('ui.label.edit_user'), $u['username'])) ?>"><?= e(__('ui.action.edit')) ?></button>

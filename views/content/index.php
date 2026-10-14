@@ -399,14 +399,14 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <?= e(__('ui.action.edit')) ?>
                         </button>
                     </td>
-                    <td data-col="scheduled" data-sort="<?= e(sort_key($row['scheduled_start'])) ?>">
+                    <td data-col="scheduled" data-sort="<?= e(sort_key($row['scheduled_start'])) ?>" data-label="<?= e(__('ui.field.scheduled')) ?>">
                         <?php if ($row['scheduled_start']): ?>
                             <?= e(fmt_datetime($row['scheduled_start'])) ?>
                         <?php else: ?>
                             <span class="badge"><?= e(__('ui.label.undated')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="title">
+                    <td data-card-title data-col="title" data-label="<?= e(__('ui.field.title')) ?>">
                         <?= e($row['title']) ?>
                         <?php if ($row['collab_session_id']): ?>
                             <a class="badge together-badge" href="<?= e(url(CollabSessions::LINK . (int) $row['collab_session_id'])) ?>">👥 <?= e(__('ui.label.together_badge')) ?></a>
@@ -417,9 +417,9 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <small class="muted block"><?= e($row['notes']) ?></small>
                         <?php endif; ?>
                     </td>
-                    <td data-col="game"><?= e($row['games'] ?: '—') ?></td>
-                    <td data-col="platform"><?= e(code_label('streaming_platform', $row['platform_code'])) ?></td>
-                    <td data-col="embargo" data-sort="<?= e(sort_key($row['embargo_until'] ?? null ?: ($row['expires_at'] ?? null))) ?>">
+                    <td data-col="game" data-label="<?= e(__('ui.field.game')) ?>"><?= e($row['games'] ?: '—') ?></td>
+                    <td data-col="platform" data-label="<?= e(__('ui.field.platform')) ?>"><?= e(code_label('streaming_platform', $row['platform_code'])) ?></td>
+                    <td data-col="embargo" data-sort="<?= e(sort_key($row['embargo_until'] ?? null ?: ($row['expires_at'] ?? null))) ?>" data-label="<?= e(__('ui.field.embargo')) ?>">
                         <?php if (!empty($row['embargo_until'])): ?>
                             <?= e(fmt_date($row['embargo_until'])) ?>
                             <?php if ($row['breaks_embargo']): ?>
@@ -431,7 +431,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="deadline" data-sort="<?= e(sort_key($row['deadline'])) ?>">
+                    <td data-col="deadline" data-sort="<?= e(sort_key($row['deadline'])) ?>" data-label="<?= e(__('ui.field.deadline')) ?>">
                         <?php if ($row['deadline']): ?>
                             <?= e(fmt_date($row['deadline'])) ?>
                             <?php if (!empty($row['misses_deadline'])): ?>
@@ -446,7 +446,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="key" data-sort="<?= (int) $row['game_count'] === 0 ? '' : e((string) ((int) $row['keyed_count'] / (int) $row['game_count'])) ?>">
+                    <td data-col="key" data-sort="<?= (int) $row['game_count'] === 0 ? '' : e((string) ((int) $row['keyed_count'] / (int) $row['game_count'])) ?>" data-label="<?= e(__('ui.field.key')) ?>">
                         <?php if ((int) $row['game_count'] === 0): ?>
                             <span class="muted">—</span>
                         <?php elseif ((int) $row['keyed_count'] === 0): ?>
@@ -455,7 +455,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <span class="badge ok"><?= (int) $row['keyed_count'] ?>/<?= (int) $row['game_count'] ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-col="status">
+                    <td data-col="status" data-label="<?= e(__('ui.field.status')) ?>">
                         <select class="status-select content-status" data-id="<?= (int) $row['id'] ?>">
                             <?php foreach ($statuses as $status): ?>
                                 <option value="<?= e($status) ?>" <?= $row['status'] === $status ? 'selected' : '' ?>>
