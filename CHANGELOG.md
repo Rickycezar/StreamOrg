@@ -5,7 +5,7 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
-## Unreleased
+## 0.9.0 — 2026-10-14
 
 ### Added
 - Give a key straight to someone, without a giveaway: from the vault (Give)
