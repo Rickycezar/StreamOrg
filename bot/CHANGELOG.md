@@ -10,7 +10,7 @@ released, so a bot change that needs a database change is released
 together with the site, site first; until the migration is applied the bot
 waits (and says so in its health check and logs) instead of running.
 
-## Unreleased
+## 0.5.1 — 2026-10-14
 - The join command (`!join` / `!participar`) is hidden for now: never
   answered, and the giveaway list no longer says how to enter by chat.
 
