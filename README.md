@@ -145,7 +145,8 @@ private preview. Preview access: streamorg@outlook.com.
   Twitch chat of streamers who add it from *Stream tools → Chat bot* (or whom an
   admin adds) and answers commands: `!heartbeat` (is it listening?), the
   giveaways (`!giveaway`, `!prizes <name>` with a link to
-  the giveaway's public prize page), the schedule (`!today`, `!week`) and
+  the giveaway's public prize page), the schedule (`!today`, `!week`, with each
+  content's games) and
   `!watchtime`, in the streamer's language.
 - **Never floods the chat**: replies go through a queue per channel, paced
   under Twitch's limits; a command typed many times at once answers once,

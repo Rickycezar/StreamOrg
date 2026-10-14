@@ -5,6 +5,14 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.9.4 — 2026-10-14
+
+### Changed
+- The chat bot's `!today` and `!week` list each content's games (or its
+  Twitch category when it has none) instead of its title (bot 0.5.3).
+- In card view, the cards have a slightly different background from the
+  page around them, so they stand out.
+
 ## 0.9.3 — 2026-10-14
 
 ### Changed
