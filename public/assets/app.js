@@ -5110,12 +5110,71 @@
         }, 300);
     });
 
-    /** The vault's Give button: the give form opens with that key chosen. */
+    /**
+     * The give form's key choice: the game is searched for, then the key
+     * list shows only that game's keys (chosen at once when there is one).
+     */
+    function giveKeyOptions(form) {
+        if (!form.giveKeyOptions) {
+            form.giveKeyOptions = Array.from(form.querySelectorAll('[data-give-key-select] option[data-game]'));
+        }
+        return form.giveKeyOptions;
+    }
+
+    function showGiveKeys(form, gameId, keyId) {
+        const select = form.querySelector('[data-give-key-select]');
+        const options = giveKeyOptions(form).filter(function (o) { return o.dataset.game === String(gameId); });
+
+        select.replaceChildren(new Option('', ''), ...options);
+        select.disabled = options.length === 0;
+        select.value = keyId ? String(keyId) : (options.length === 1 ? options[0].value : '');
+    }
+
+    function initGiveGame(form) {
+        const game = form.querySelector('[data-give-game]');
+        if (!game || game.tomselect || !window.TomSelect) return;
+
+        const L = window.STREAMORG_L || {};
+
+        new window.TomSelect(game, {
+            maxOptions: 200,
+            allowEmptyOption: false,
+            placeholder: game.dataset.placeholder || '',
+            setFirstOptionActive: true,
+            lockOptgroupOrder: true,
+            render: { no_results: function () { return '<div class="no-results">' + (L.picker_none || '') + '</div>'; } }
+        });
+    }
+
+    document.addEventListener('change', function (event) {
+        const game = event.target.closest('[data-give-game]');
+        if (game) showGiveKeys(game.form, game.value);
+    });
+
+    /** Opening the give form: the vault's Give button brings its key (and game) already chosen. */
     document.addEventListener('click', function (event) {
-        const button = event.target.closest('[data-give-key]');
+        const button = event.target.closest('[data-modal-form="#give-key"]');
         if (!button) return;
-        const select = document.querySelector('[data-give-key-select]');
-        if (select) select.value = button.dataset.giveKey;
+
+        const form = document.querySelector('#give-key');
+        if (!form) return;
+
+        const game = form.querySelector('[data-give-game]');
+        const keyId = button.dataset.giveKey;
+        const option = keyId ? giveKeyOptions(form).find(function (o) { return o.value === keyId; }) : null;
+        const gameId = option ? option.dataset.game : '';
+
+        if (game.tomselect) {
+            game.tomselect.setValue(gameId, true);
+        } else {
+            game.value = gameId;
+        }
+        showGiveKeys(form, gameId, keyId);
+
+        setTimeout(function () {
+            initGiveGame(form);
+            if (!gameId && game.tomselect) game.tomselect.focus();
+        });
     }, true);
 
     document.addEventListener('click', function (event) {

@@ -3,7 +3,8 @@
  * "Give a key": one key from the vault straight to one person on Twitch,
  * without a giveaway. They get a claim link, as a giveaway winner would
  * (see Giveaways::giveDirect). The vault's Give button picks the key;
- * otherwise it is chosen here, keys marked for giveaway first.
+ * otherwise the game is searched for (games with keys marked for
+ * giveaway first) and then one of its keys chosen.
  *
  * @var list<array> $giftable keys that can be given
  */
@@ -11,19 +12,39 @@
 <form id="give-key" method="post" action="<?= e(url('/keys/give')) ?>" class="subform hidden" autocomplete="off">
     <?= Csrf::field() ?>
     <p class="muted small"><?= e(__('ui.message.give_key_explain')) ?></p>
+    <?php $games = [];
+    foreach ($giftable as $key) {
+        $games[(int) $key['game_id']] ??= ['title' => $key['title'], 'count' => 0, 'marked' => false];
+        $games[(int) $key['game_id']]['count']++;
+        $games[(int) $key['game_id']]['marked'] = $games[(int) $key['game_id']]['marked'] || $key['status'] === 'for_giveaway';
+    } ?>
+    <label>
+        <span><?= e(__('ui.field.game')) ?></span>
+        <select required data-give-game data-placeholder="<?= e(__('ui.label.picker_search')) ?>">
+            <option value=""></option>
+            <?php foreach ([true, false] as $marked):
+                $list = array_filter($games, static fn (array $g): bool => $g['marked'] === $marked);
+                if ($list === []) continue; ?>
+                <optgroup label="<?= e(__($marked ? 'ui.label.prize_group_marked' : 'ui.label.prize_group_available')) ?>">
+                    <?php foreach ($list as $gameId => $game): ?>
+                        <option value="<?= (int) $gameId ?>"><?= e($game['title']) ?><?= $game['count'] > 1 ? ' (' . (int) $game['count'] . ')' : '' ?></option>
+                    <?php endforeach; ?>
+                </optgroup>
+            <?php endforeach; ?>
+        </select>
+    </label>
     <label>
         <span><?= e(__('ui.field.key')) ?></span>
-        <select name="key_id" required data-give-key-select>
-            <?php $group = null;
-            foreach ($giftable as $key):
-                if ($group !== $key['status']):
-                    if ($group !== null): ?></optgroup><?php endif;
-                    $group = $key['status']; ?>
-                    <optgroup label="<?= e(__($group === 'for_giveaway' ? 'ui.label.prize_group_marked' : 'ui.label.prize_group_available')) ?>">
-                <?php endif; ?>
-                <option value="<?= (int) $key['id'] ?>"><?= e($key['title'] . ' · ' . code_label('game_platform', $key['platform_code'])) ?></option>
+        <select name="key_id" required disabled data-give-key-select>
+            <option value=""></option>
+            <?php foreach ($giftable as $key): ?>
+                <option value="<?= (int) $key['id'] ?>" data-game="<?= (int) $key['game_id'] ?>"><?= e(implode(' · ', array_filter([
+                    code_label('game_platform', $key['platform_code']),
+                    code_label('key_type', $key['key_type']),
+                    $key['expires_at'] ? __('ui.label.redeem_by') . ' ' . fmt_date($key['expires_at']) : null,
+                    $key['status'] === 'for_giveaway' ? code_label('key_status', 'for_giveaway') : null,
+                ]))) ?></option>
             <?php endforeach; ?>
-            <?php if ($group !== null): ?></optgroup><?php endif; ?>
         </select>
     </label>
     <div class="twitch-pick" data-twitch-pick data-search-url="<?= e(url('/giveaways/winners/search')) ?>" data-empty="<?= e(__('ui.label.picker_none')) ?>">

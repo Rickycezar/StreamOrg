@@ -433,7 +433,7 @@ final class Giveaways
     public static function giftableKeys(int $userId): array
     {
         $stmt = Database::connection()->prepare(
-            "SELECT k.id, k.status, g.title, gp.code AS platform_code, k.expires_at
+            "SELECT k.id, k.status, k.key_type, k.game_id, g.title, gp.code AS platform_code, k.expires_at
                FROM game_keys k
                JOIN games g ON g.id = k.game_id
           LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id

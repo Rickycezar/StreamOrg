@@ -11,6 +11,8 @@ Administration, and each release is tagged in git as `v<version>`.
 - Give a key straight to someone, without a giveaway: from the vault (Give)
   or from Given keys. They get a claim link like a giveaway winner; the
   gift never shows among the giveaways.
+  The key is picked by searching for the game, then choosing one of its
+  keys.
 - Sponsorships → Given keys: everyone a key was given or promised to, by
   giveaway or as a gift — the key, how they won, when the link was sent
   and when they took it — with links to copy or withdraw, and shortcuts
