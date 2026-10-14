@@ -1,10 +1,23 @@
 /**
  * The commands the bot answers. Each command is a built-in behaviour
- * (BUILTINS, keyed by code) with a trigger and a reply template; every
- * channel uses the default version of each command unless its streamer
- * made their own, which then replaces it in their channel only. Streamers
- * also write custom commands (code "custom"): a trigger and a reply.
+ * (CODES; the simple ones fill their reply from BUILTINS, the others are
+ * in builtins.js) with a trigger, a reply template and further messages
+ * for other outcomes. The defaults exist per language: every channel uses
+ * the defaults in its streamer's language (or English) unless its
+ * streamer made their own version, which then replaces it in their
+ * channel only. Streamers also write custom commands (code "custom"): a
+ * trigger and a reply; a custom command keeps its trigger when a new
+ * built-in comes with the same one.
  */
+
+/** Every built-in behaviour the bot knows. */
+export const CODES = ['heartbeat', 'giveaway', 'join', 'prizes', 'today', 'week', 'watchtime'];
+
+/** The language whose defaults a channel falls back to. */
+export const FALLBACK_LOCALE = 'en';
+
+/** Twitch refuses chat messages longer than this. */
+export const MESSAGE_MAX = 500;
 
 /** What each built-in fills its reply's {placeholders} with. */
 export const BUILTINS = {
@@ -45,7 +58,57 @@ export function allowed(permission, badges) {
 
 /** Fills {name} placeholders it knows; unknown ones stay as typed. */
 export function render(template, values) {
-    return String(template).replace(/\{([a-z_]+)\}/g, (whole, name) => (name in values ? String(values[name]) : whole));
+    return String(template)
+        .replace(/\{([a-z_]+)\}/g, (whole, name) => (name in values ? String(values[name]) : whole))
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
+/**
+ * A reply whose {list} may be too long for one chat message: the first
+ * message is the template with as many items as fit, the next ones carry
+ * the rest ("… a · b"), up to maxParts messages; what still does not fit
+ * is left out with "…".
+ *
+ * @param {string} template with {list}
+ * @param {object} values the other placeholders
+ * @param {string[]} items
+ * @returns {string[]}
+ */
+export function splitList(template, values, items, { max = MESSAGE_MAX - 10, maxParts = 4, glue = ' · ' } = {}) {
+    const marker = '\u0000LIST\u0000';
+    const head = render(template, { ...values, list: marker });
+    const [before, after = ''] = head.split(marker);
+    const parts = [];
+    let current = [];
+    let room = max - before.length - after.length;
+
+    const close = () => {
+        const text = current.join(glue);
+        parts.push(parts.length === 0 ? before + text + after : '… ' + text);
+        current = [];
+        room = max - 2;
+    };
+
+    for (const raw of items) {
+        const item = raw.length > max - 20 ? raw.slice(0, max - 21) + '…' : raw;
+        const need = (current.length ? glue.length : 0) + item.length;
+
+        if (need > room && current.length) {
+            if (parts.length + 1 >= maxParts) {
+                current.push('…');
+                break;
+            }
+            close();
+        }
+
+        current.push(item);
+        room -= (current.length > 1 ? glue.length : 0) + item.length;
+    }
+
+    if (current.length || parts.length === 0) close();
+
+    return parts;
 }
 
 /** 3_725_000 -> "1h 2m" */
@@ -76,10 +139,12 @@ export class CommandBook {
         const personal = new Map();
 
         for (const row of rows) {
-            if (!(row.code in BUILTINS) || row.code === 'custom') continue;
+            if (!CODES.includes(row.code)) continue;
 
             if (row.userId === null) {
-                this.defaults.set(row.code, row);
+                const locale = row.locale || FALLBACK_LOCALE;
+                if (!this.defaults.has(locale)) this.defaults.set(locale, new Map());
+                this.defaults.get(locale).set(row.code, row);
             } else {
                 if (!personal.has(row.userId)) personal.set(row.userId, new Map());
                 personal.get(row.userId).set(row.code, row);
@@ -97,34 +162,51 @@ export class CommandBook {
         this.byUser = new Map();
     }
 
+    /** The default of each built-in in a language, English filling the gaps. */
+    defaultsFor(locale) {
+        const merged = new Map(this.defaults.get(FALLBACK_LOCALE) || []);
+        for (const [code, command] of this.defaults.get(locale) || []) merged.set(code, command);
+        return merged;
+    }
+
+    /** Each built-in as one streamer's channel uses it (on or off), by code. */
+    builtinsFor(userId, locale = FALLBACK_LOCALE) {
+        const own = this.personal?.get(userId) || new Map();
+        const builtins = new Map();
+
+        for (const [code, command] of this.defaultsFor(locale)) builtins.set(code, own.get(code) || command);
+
+        return builtins;
+    }
+
     /** The commands in force in one streamer's channel, by trigger. */
-    forUser(userId) {
-        if (!this.byUser.has(userId)) {
-            const own = this.personal?.get(userId) || new Map();
+    forUser(userId, locale = FALLBACK_LOCALE) {
+        const cacheKey = `${userId}:${locale}`;
+
+        if (!this.byUser.has(cacheKey)) {
             const triggers = new Map();
+
+            for (const command of this.builtinsFor(userId, locale).values()) {
+                if (command.enabled) triggers.set(command.trigger, command);
+            }
 
             for (const command of this.custom?.get(userId) || []) {
                 if (command.enabled) triggers.set(command.trigger, command);
             }
 
-            for (const [code, command] of this.defaults) {
-                const effective = own.get(code) || command;
-                if (effective.enabled) triggers.set(effective.trigger, effective);
-            }
-
-            this.byUser.set(userId, triggers);
+            this.byUser.set(cacheKey, triggers);
         }
 
-        return this.byUser.get(userId);
+        return this.byUser.get(cacheKey);
     }
 
     /** The command a chat message calls, or null: "!heartbeat now" -> heartbeat. */
-    match(userId, prefix, text) {
+    match(userId, prefix, text, locale = FALLBACK_LOCALE) {
         if (!text.startsWith(prefix)) return null;
 
         const trigger = text.slice(prefix.length).trim().split(/\s+/)[0].toLowerCase();
 
-        return trigger === '' ? null : (this.forUser(userId).get(trigger) || null);
+        return trigger === '' ? null : (this.forUser(userId, locale).get(trigger) || null);
     }
 }
 

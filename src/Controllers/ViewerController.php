@@ -139,6 +139,25 @@ final class ViewerController
         redirect('/');
     }
 
+    /** GET /giveaway?g=… — a giveaway's public prize page, the link the chat bot gives. */
+    public static function giveaway(): void
+    {
+        $view = Giveaways::publicView((string) ($_GET['g'] ?? ''));
+
+        if ($view === null) {
+            error_page(404);
+        }
+
+        $g    = $view['giveaway'];
+        $open = $g['status'] === 'open' && $g['entry_method'] === 'chat' && !empty($g['keyword'])
+            && ($g['starts_at'] === null || strtotime((string) $g['starts_at']) <= time())
+            && ($g['ends_at'] === null || strtotime((string) $g['ends_at']) > time());
+
+        View::publicPage('viewer/giveaway', $view + [
+            'join' => $open ? ChatBot::joinCommand((int) $g['user_id'], (string) $g['keyword']) : null,
+        ], $g['title']);
+    }
+
     /** GET /privacy */
     public static function privacy(): void
     {

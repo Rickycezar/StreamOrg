@@ -4,7 +4,8 @@
  * the default commands, the channels that added it, and recent activity.
  *
  * @var array $account @var array<string, array> $defaults @var list<array> $channels
- * @var array $stats @var list<array> $log @var bool $twitchConfigured
+ * @var array $stats @var list<array> $log @var bool $twitchConfigured @var string $locale defaults shown for
+ * @var bool $unfollowsOn unfollow tracking allowed at all @var array<int,bool> $tracking channels with unfollow tracking on
  */
 $state = !empty($account['online']) ? (string) ($account['state'] ?? 'connected') : 'offline';
 $tone  = match ($state) {
@@ -44,6 +45,10 @@ $tone  = match ($state) {
         </dd>
     </dl>
 
+    <?php if (!empty($account['twitch_login']) && !in_array(TwitchUser::FOLLOWERS_SCOPE, explode(' ', (string) ($account['scopes'] ?? '')), true)): ?>
+        <p class="flash flash-warning"><?= e(__('ui.message.bot_reconnect_for_follows')) ?></p>
+    <?php endif; ?>
+
     <div class="card-actions">
         <?php if (!$twitchConfigured): ?>
             <p class="muted small"><?= e(__('ui.message.twitch_not_configured')) ?></p>
@@ -77,8 +82,16 @@ $tone  = match ($state) {
     <?php endif; ?>
 </section>
 
-<section>
-    <h2><?= e(__('ui.label.bot_default_commands')) ?></h2>
+<section id="defaults">
+    <div class="section-head-row">
+        <h2><?= e(__('ui.label.bot_default_commands')) ?></h2>
+        <nav class="segmented small" aria-label="<?= e(__('ui.field.language')) ?>">
+            <?php foreach (Lang::available() as $loc): ?>
+                <a href="<?= e(url('/admin/bot?lang=' . rawurlencode($loc) . '#defaults')) ?>" role="radio"
+                   aria-checked="<?= $locale === $loc ? 'true' : 'false' ?>"><?= e($loc) ?></a>
+            <?php endforeach; ?>
+        </nav>
+    </div>
     <p class="muted small"><?= e(__('ui.message.bot_defaults_hint')) ?></p>
     <?php foreach ($defaults as $code => $command): ?>
         <?= View::partial('bot/command_form', [
@@ -88,11 +101,12 @@ $tone  = match ($state) {
             'prefix'   => (string) $account['command_prefix'],
             'personal' => false,
             'streamer' => false,
+            'locale'   => $locale,
         ]) ?>
     <?php endforeach; ?>
 </section>
 
-<section class="card">
+<section class="card" id="channels">
     <div class="card-head">
         <h2><?= e(__('ui.label.bot_channels')) ?> (<?= count(array_filter($channels, static fn (array $c): bool => (bool) $c['is_enabled'])) ?>)</h2>
     </div>
@@ -109,6 +123,7 @@ $tone  = match ($state) {
                     <th><?= e(__('ui.field.status')) ?></th>
                     <th><?= e(__('ui.label.bot_access')) ?></th>
                     <th><?= e(__('ui.label.bot_joined')) ?></th>
+                    <?php if ($unfollowsOn): ?><th><?= e(__('ui.nav.unfollows')) ?></th><?php endif; ?>
                     <th></th>
                 </tr>
                 </thead>
@@ -135,6 +150,16 @@ $tone  = match ($state) {
                             <?php else: ?>—<?php endif; ?>
                         </td>
                         <td data-label="<?= e(__('ui.label.bot_joined')) ?>"><?= $channel['joined_at'] ? e(fmt_datetime($channel['joined_at'])) : '—' ?></td>
+                        <?php if ($unfollowsOn): $tracked = !empty($tracking[(int) $channel['user_id']]); ?>
+                            <td data-label="<?= e(__('ui.nav.unfollows')) ?>">
+                                <form method="post" action="<?= e(url('/admin/bot/unfollows/user')) ?>">
+                                    <?= Csrf::field() ?>
+                                    <input type="hidden" name="user_id" value="<?= (int) $channel['user_id'] ?>">
+                                    <input type="hidden" name="enabled" value="<?= $tracked ? '0' : '1' ?>">
+                                    <button type="submit" class="btn small<?= $tracked ? ' primary' : '' ?>" aria-pressed="<?= $tracked ? 'true' : 'false' ?>"><?= e(__($tracked ? 'ui.label.on' : 'ui.label.off')) ?></button>
+                                </form>
+                            </td>
+                        <?php endif; ?>
                         <td class="rowactions">
                             <?php if ($channel['is_enabled'] || $channel['twitch_login'] !== null): ?>
                                 <form method="post" action="<?= e(url('/admin/bot/add')) ?>">
@@ -159,6 +184,19 @@ $tone  = match ($state) {
             </table>
         </div>
     <?php endif; ?>
+</section>
+
+<section class="card" id="unfollows">
+    <div class="card-head">
+        <h2><?= e(__('ui.nav.unfollows')) ?></h2>
+        <span class="badge <?= $unfollowsOn ? 'ok' : 'off' ?>"><?= e(__($unfollowsOn ? 'ui.label.on' : 'ui.label.off')) ?></span>
+    </div>
+    <p class="muted small"><?= e(__('ui.message.unfollows_admin_hint')) ?></p>
+    <form method="post" action="<?= e(url('/admin/bot/unfollows')) ?>">
+        <?= Csrf::field() ?>
+        <input type="hidden" name="enabled" value="<?= $unfollowsOn ? '0' : '1' ?>">
+        <button type="submit" class="btn<?= $unfollowsOn ? '' : ' primary' ?>"><?= e(__($unfollowsOn ? 'ui.action.unfollows_turn_off' : 'ui.action.unfollows_turn_on')) ?></button>
+    </form>
 </section>
 
 <section class="card">

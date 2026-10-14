@@ -17,13 +17,13 @@ final class HelpController
         'keys'      => ['vault', 'add', 'hidden', 'status', 'dates', 'content', 'giveaways'],
         'content'   => ['what', 'calendar', 'resize', 'statuses', 'title', 'warnings', 'twitch'],
         'defaults'  => ['schedule', 'length', 'prefixes', 'counters', 'numbers', 'limit'],
-        'giveaways' => ['setup', 'prizes', 'winners', 'claim', 'private', 'finish'],
+        'giveaways' => ['setup', 'prizes', 'chat', 'page', 'winners', 'claim', 'private', 'finish'],
         'embargoes' => ['what', 'kinds', 'several', 'release', 'warnings', 'uncovered'],
         'collabs'   => ['streamers', 'idea', 'cast', 'plan', 'together', 'title'],
         'together'  => ['invite', 'join', 'own', 'time', 'agree', 'leave'],
         'overlays'  => ['add', 'obs', 'settings', 'viewers', 'bot', 'advanced', 'link'],
         'media'     => ['upload', 'sprites', 'pick', 'shared'],
-        'bot'       => ['add', 'access', 'commands', 'custom', 'timers', 'logs'],
+        'bot'       => ['add', 'access', 'commands', 'giveaways', 'schedule', 'custom', 'timers', 'events', 'logs'],
     ];
 
     public static function dashboard(): void

@@ -496,6 +496,87 @@ final class Giveaways
         return public_base_url($locale) . url('/claim') . '?t=' . rawurlencode($token);
     }
 
+    /**
+     * The public prize page of a giveaway (by its public_code), on the
+     * domain of the streamer's language; with an empty code, the address
+     * the code is appended to.
+     */
+    public static function publicUrl(string $code, ?string $locale = null): string
+    {
+        return public_base_url($locale) . url('/giveaway') . ($code === '' ? '' : '?g=' . rawurlencode($code));
+    }
+
+    /**
+     * What the public prize page shows: the giveaway (never a direct gift,
+     * a cancelled one, or a surprise before it opens), its streamer, and
+     * each prize — the game, and who won it — never a code.
+     *
+     * @return array{giveaway:array, prizes:list<array>}|null
+     */
+    public static function publicView(string $code): ?array
+    {
+        if (!preg_match('/^[a-f0-9]{6,32}$/', $code)) {
+            return null;
+        }
+
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            "SELECT g.id, g.user_id, g.title, g.status, g.starts_at, g.ends_at, g.rules_note, g.keyword, g.entry_method,
+                    g.is_surprise, u.display_name AS streamer_name, u.username AS streamer_username,
+                    u.avatar_path, u.avatar_updated_at, u.locale AS streamer_locale, t.twitch_login
+               FROM giveaways g
+               JOIN users u ON u.id = g.user_id AND u.is_active
+          LEFT JOIN twitch_connections t ON t.user_id = g.user_id
+              WHERE g.public_code = ? AND NOT g.is_direct AND g.status <> 'cancelled'
+                AND NOT (g.is_surprise AND g.status = 'planned')"
+        );
+        $stmt->execute([$code]);
+        $giveaway = $stmt->fetch();
+
+        if ($giveaway === false) {
+            return null;
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT p.id, k.game_id, g.title AS game_title, gp.code AS platform_code, p.claimed_at,
+                    CASE WHEN w.id IS NULL OR w.removed_at IS NOT NULL THEN NULL
+                         ELSE coalesce(nullif(w.display_name, ''), w.twitch_login) END AS winner_name
+               FROM giveaway_prizes p
+               JOIN game_keys k            ON k.id = p.game_key_id
+               JOIN games g                ON g.id = k.game_id
+          LEFT JOIN game_platforms gp      ON gp.id = k.game_platform_id
+          LEFT JOIN giveaway_winners w     ON w.id = p.winner_id AND w.cancelled_at IS NULL
+              WHERE p.giveaway_id = ?
+           ORDER BY (w.id IS NOT NULL), lower(g.title), p.id"
+        );
+        $stmt->execute([$giveaway['id']]);
+
+        return ['giveaway' => $giveaway, 'prizes' => $stmt->fetchAll()];
+    }
+
+    /**
+     * The chat announcement of a giveaway, in the streamer's words (their
+     * giveaway command's "announce" message): its name, how to enter when
+     * it takes entries by chat now, and the prize page.
+     */
+    public static function announcement(array $giveaway): string
+    {
+        $userId = (int) $giveaway['user_id'];
+        $locale = ChatBot::localeOf($userId);
+        $entry  = '';
+
+        if ($giveaway['status'] === 'open' && $giveaway['entry_method'] === 'chat' && !empty($giveaway['keyword'])) {
+            $join  = ChatBot::joinCommand($userId, (string) $giveaway['keyword']);
+            $entry = $join === null ? '' : ChatBot::render(ChatBot::message($userId, 'giveaway', 'entry'), ['command' => $join]);
+        }
+
+        return ChatBot::render(ChatBot::message($userId, 'giveaway', 'announce'), [
+            'giveaway' => $giveaway['title'],
+            'entry'    => $entry,
+            'link'     => self::publicUrl((string) $giveaway['public_code'], $locale),
+        ]);
+    }
+
     /** Decrypts the stored copy of a winner's claim token. */
     public static function tokenOf(array $winner): ?string
     {

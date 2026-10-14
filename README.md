@@ -116,6 +116,7 @@ private preview. Preview access: streamorg@outlook.com.
 ### Giveaways
 - **Named giveaways** with a short keyword for the chat, rules, an entry
   window, and an optional surprise mode that hides them until opened.
+  Viewers enter by chat through the chat bot (`!join` and the keyword).
   Several can run at once — a month-long one and a quick surprise.
 - **Prizes from the vault, copied only when needed**: a prize just points at
   a key in the vault (marked "for giveaway", listed first, or available). With a recoverable vault the key is opened
@@ -124,12 +125,16 @@ private preview. Preview access: streamorg@outlook.com.
   marked given away when its prize is claimed.
 - **Finishing** a giveaway ends the links not used yet, returns unclaimed
   keys to the vault and deletes their copies.
-- **Winners by Twitch account**: drawn from chat entries, found with a Twitch
+- **Winners by Twitch account**: drawn from the chat entries, found with a Twitch
   search after an external game such as Marbles, or picked by hand; the
   account picked is stored by its Twitch id. Either the winner picks a
   key from the giveaway, or a key is assigned to them.
 - **Claim links only the winner can open**: the link works for that Twitch
   account only, signed in, until it expires (30 days by default).
+- **Public prize page**: each giveaway has a page anyone can open (the
+  link the chat bot gives), with how to enter by chat, its rules, the
+  prizes still to win and the ones already won, never a code. *Post in
+  chat* makes the bot announce the giveaway with that link.
 - **Direct gifts**: a key given straight to one person, from the vault or
   from *Given keys*, without a giveaway; they claim it the same way.
 - **Given keys**: everyone a key was given or promised to, with the key,
@@ -139,8 +144,17 @@ private preview. Preview access: streamorg@outlook.com.
 ### Chat bot
 - **One bot for every channel** (`bot/`, a small Node service): it joins the
   Twitch chat of streamers who add it from *Stream tools → Chat bot* (or whom an
-  admin adds) and answers commands. For now there is one, `!heartbeat`, to
-  check it is listening.
+  admin adds) and answers commands: `!heartbeat` (is it listening?), the
+  giveaways (`!giveaway`, `!join <keyword>`, `!prizes <name>` with a link to
+  the giveaway's public prize page), the schedule (`!today`, `!week`) and
+  `!watchtime`, in the streamer's language.
+- **Never floods the chat**: replies go through a queue per channel, paced
+  under Twitch's limits; a command typed many times at once answers once,
+  and long lists go in several messages.
+- **Events**: subscriptions, gifts, bits, raids, watch streaks, charity and
+  follows in the channel, kept 90 days (*Stream tools → Events*). An
+  administrator can also switch on a daily follower-list check per channel
+  to list unfollows (*Stream tools → Unfollows*).
 - **A real Twitch chat bot**: it uses Twitch's chat API (EventSub through a
   conduit, replies with the app token), so it carries the Chat Bot badge and
   is listed under *Chat Bots*. The streamer either gives it permission (one
@@ -149,8 +163,9 @@ private preview. Preview access: streamorg@outlook.com.
   per broadcast, viewer, live content and stream category, the messages sent and the time spent in chat (from the
   chatter list, once a minute). Counted in memory and written in one batch
   per channel per minute; kept for 12 months.
-- **Commands made your own**: each streamer can rename a command, rewrite its
-  reply (with placeholders such as `{user}`), choose who may use it
+- **Commands made your own**: the administrators set the defaults per
+  language; each streamer can rename a command, rewrite its
+  reply and other messages (with placeholders such as `{user}`), choose who may use it
   (everyone, subscribers, VIPs, moderators or only the streamer), set a
   cooldown, switch it off, or go back to the default.
 - **Custom commands and timed messages**: streamers write their own commands
@@ -160,8 +175,9 @@ private preview. Preview access: streamorg@outlook.com.
   empty chat. Stream tools → Chat bot is organised in tabs: overview, commands,
   timed messages and the bot's log for that channel.
 - **Managed from the administration**: the Twitch account the bot speaks as,
-  on/off, the command prefix, the default commands, blocking a channel, and
-  the bot's live status and recent activity. Changes reach the bot within
+  on/off, the command prefix, the default commands in each language,
+  blocking a channel, unfollow tracking (off by default, then per
+  channel), and the bot's live status and recent activity. Changes reach the bot within
   seconds. No chat messages are stored.
 
 ### Overlays
@@ -271,6 +287,10 @@ private preview. Preview access: streamorg@outlook.com.
   (bold, italic, links, lists, headings, highlights) from a toolbar or
   shortcuts, and a preview — choose its kind and an optional link, send it to everyone or to chosen users, see how many read
   it, and take it back at any time.
+- **Chat bot**: its Twitch account, on/off and prefix, the default
+  commands and messages in each language, the channels it is in (adding,
+  removing, blocking), unfollow tracking — switched on for everyone first,
+  then per channel — and its status, statistics and recent activity.
 - **Winners**: search giveaway winners across every streamer and take a key
   back with a reason — an unclaimed key returns to the giveaway, a claimed
   one is marked revoked or returned to the vault — with a history of
@@ -575,13 +595,58 @@ matter) with a claim link. The token's SHA-256 is used to find the winner,
 and an encrypted copy lets the streamer copy the link again. Claiming locks
 the winner and prize rows, checks the account, the expiry and any embargo
 on the game, then marks the prize claimed and the vault key `given_away`.
-Chat entries (`giveaway_entries`) are kept through closing, so winners can
-still be drawn, and deleted when the giveaway is finished.
+Chat entries (`giveaway_entries`, written by the chat bot's join command)
+are kept through closing, so winners can still be drawn, and deleted when
+the giveaway is finished. Each giveaway has a random `public_code` naming
+its public prize page (`/giveaway?g=…`, `Giveaways::publicView`): prizes and
+winners' display names, never codes, nothing for direct gifts, cancelled
+giveaways or surprises not yet open.
 
 `Viewers` signs people in with Twitch through the same redirect address as
 channel connections, told apart by the OAuth state, under its own session
 key. A user whose connected Twitch account matches a viewer profile absorbs
 it (`viewers.user_id`).
+</details>
+
+<details>
+<summary>The chat bot</summary>
+
+The bot (`bot/`) reads everything from the database and writes back its
+status, log, statistics and events; the app never calls it. `ChatBot::notify()`
+sends `NOTIFY streamorg_bot` after a change (the bot reloads once a burst
+settles); `NOTIFY streamorg_bot, 'outbox'` makes it post what the site queued
+in `bot_outbox` at once (the giveaway page's *Post in chat*); messages older
+than 5 minutes are dropped.
+
+**Commands** are rows in `bot_commands`: a default per built-in and language
+(`locale`), and a streamer's own version (no locale). A channel uses its
+streamer's language, English filling gaps; custom commands win a trigger
+clash. Besides its reply, a command has named messages for other outcomes
+(`messages`, see `ChatBot::MESSAGES`); an empty one means silence. The
+lookups (giveaways, entries, prize links, schedule, watch time) live in
+`bot/src/builtins.js`. The prize page address per language is published by
+the site in `app_settings` (`bot.prize_page_urls`), so links open on the
+streamer's language domain.
+
+**Sending** goes through `ChatQueue` (`bot/src/queue.js`), one queue per
+channel: one message a second, at most 20 per 30 seconds, a keyed message
+(a command, a timer, an alert) dropped while another with the same key
+waits, at most 6 waiting, and replies older than a minute dropped. Long
+lists are split into several messages (`splitList`).
+
+**Events** (`channel_events`, 90 days) come from `channel.chat.notification`
+(subscribed in every readable channel), cheers in `channel.chat.message`,
+and `channel.follow` v2, subscribed with the streamer as moderator when their
+connection has `moderator:read:followers`, else the bot when it moderates
+the channel and its account has that scope. Message texts are never kept.
+
+**Unfollows**: Twitch has no unfollow event. For channels in
+`follower_tracking` (an admin's switch, while `unfollows.enabled` is on), the
+bot reads the whole follower list once a day (`bot/src/followers.js`, up to
+30,000) and compares it with `channel_followers`: who is gone becomes an
+`unfollow` event, who is new a `follow` unless one was recorded as it
+happened. The first look only keeps the list; switching a channel on again
+starts over.
 </details>
 
 <details>
@@ -648,9 +713,10 @@ schedule and Twitch categories, catalogue with artwork, Twitch connection and
 live tracking, giveaways with claim links, viewer profiles, collabs and
 streamers, embargoes, sessions and account security, themes and profile
 pictures, administration (users, languages, testimonials), landing page and
-privacy policy, and the chat bot's foundation (channels, personalised
-commands, a heartbeat command). Planned: chat bot giveaway entries, more
-commands and statistics, and negotiations with publishers (the page is a
+privacy policy, overlays and the media library, and the chat bot (commands
+in each streamer's language, giveaway entries and prize pages, schedule and
+watch time, timed messages, viewer statistics, channel events and unfollow
+tracking). Planned: negotiations with publishers (the page is a
 placeholder).
 
 ## License

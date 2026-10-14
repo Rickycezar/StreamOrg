@@ -37,6 +37,9 @@ $I = [
     'plus'     => 'M12 5v14M5 12h14',
     'cursor'   => 'M5 3l14 8-6 2-2 6z',
     'gift'     => 'M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7c-2-4-6-4-6-1.5S9 7 12 7zM12 7c2-4 6-4 6-1.5S15 7 12 7z',
+    'chat'     => 'M4 4h16v12H8l-4 4zM8 9h8M8 12h5',
+    'screen'   => 'M3 5h18v12H3zM8 21h8M12 17v4M7 9l3 2-3 2',
+    'pulse'    => 'M3 12h4l3-8 4 16 3-8h4',
 ];
 
 $features = [
@@ -46,6 +49,9 @@ $features = [
     ['twitch',  'twitch',   'twitch'],
     ['embargo', 'alert',    'orange'],
     ['collabs', 'gift',     'pink'],
+    ['bot',     'chat',     'twitch'],
+    ['overlays', 'screen',  'violet'],
+    ['events',  'pulse',    'green'],
 ];
 
 $today   = new DateTimeImmutable('today');
@@ -234,6 +240,21 @@ $initials = static function (string $name): string {
                         <span class="lp-mini-alert">
                             <?= $icon($I['alert'], '', 2) ?>
                             <span><b><?= e(__('ui.landing.mini_embargo')) ?></b><i></i><i class="short"></i></span>
+                        </span>
+                    <?php elseif ($key === 'bot'): ?>
+                        <span class="lp-mini-chat">
+                            <span class="viewer"><b><?= e(__('ui.landing.mini_bot_viewer')) ?></b> <?= e(__('ui.landing.mini_bot_command')) ?></span>
+                            <span class="bot"><b>StreamOrg</b> <?= e(__('ui.landing.mini_bot_reply')) ?></span>
+                        </span>
+                    <?php elseif ($key === 'overlays'): ?>
+                        <span class="lp-mini-screen">
+                            <span class="lp-mini-toast"><?= $icon($I['users'], '', 2) ?><span><b><?= e(__('ui.landing.mini_overlay_title')) ?></b><?= e(__('ui.landing.mini_overlay_text')) ?></span></span>
+                        </span>
+                    <?php elseif ($key === 'events'): ?>
+                        <span class="lp-mini-events">
+                            <?php foreach (['follow' => 'blue', 'resub' => 'green', 'cheer' => 'amber'] as $type => $tone): ?>
+                                <span><b class="<?= $tone ?>"><?= e(__('ui.channel_event.' . $type)) ?></b><i></i></span>
+                            <?php endforeach; ?>
                         </span>
                     <?php else: ?>
                         <span class="lp-mini-tile"><?= $icon($I['gift']) ?></span>

@@ -4332,6 +4332,36 @@
         postJson('/profile/theme-mode', { mode: mode });
     });
 
+    /**
+     * Lists marked data-auto-refresh="<seconds>" (Stream tools → Events)
+     * reload their own content in place while the tab is visible, without
+     * moving the page.
+     */
+    let autoRefresh = null;
+
+    onPage(function () {
+        clearInterval(autoRefresh);
+        const list = document.querySelector('[data-auto-refresh]');
+        if (!list) return;
+
+        const seconds = Math.max(10, parseInt(list.dataset.autoRefresh, 10) || 30);
+
+        autoRefresh = setInterval(async function () {
+            const current = document.querySelector('[data-auto-refresh]');
+            if (!current) {
+                clearInterval(autoRefresh);
+                return;
+            }
+            if (document.hidden || document.body.classList.contains('modal-open')) return;
+
+            const response = await fetch(location.href, { headers: { 'Accept': 'text/html' } }).catch(function () { return null; });
+            if (!response || !response.ok) return;
+
+            const fresh = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('[data-auto-refresh]');
+            if (fresh && fresh.innerHTML !== current.innerHTML) current.innerHTML = fresh.innerHTML;
+        }, seconds * 1000);
+    });
+
     /** Table or cards from the user menu: the lists change at once, saved in the background. */
     document.addEventListener('click', function (event) {
         const button = event.target.closest('[data-set-view]');

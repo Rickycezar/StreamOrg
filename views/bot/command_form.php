@@ -6,12 +6,14 @@
  * @var string $action @var string $code @var array $command @var string $prefix
  * @var bool $personal whether a streamer's own version exists (offers "back to default")
  * @var bool $streamer whether this is the streamer's form (not the admin's defaults)
+ * @var ?string $locale the language of the default being edited (admin only)
  */
 $placeholders = implode(' ', array_map(static fn (string $p): string => '{' . $p . '}', ChatBot::CODES[$code]));
 ?>
 <form method="post" action="<?= e(url($action)) ?>" class="card bot-command">
     <?= Csrf::field() ?>
     <input type="hidden" name="code" value="<?= e($code) ?>">
+    <?php if (!empty($locale)): ?><input type="hidden" name="locale" value="<?= e($locale) ?>"><?php endif; ?>
 
     <div class="card-head">
         <h3><code><?= e($prefix . $command['trigger']) ?></code></h3>
@@ -50,6 +52,18 @@ $placeholders = implode(' ', array_map(static fn (string $p): string => '{' . $p
         <textarea name="response" rows="2" required maxlength="<?= ChatBot::RESPONSE_MAX ?>"><?= e($command['response']) ?></textarea>
         <small class="muted"><?= e(sprintf(__('ui.label.bot_placeholders'), $placeholders)) ?></small>
     </label>
+    <?php if (!empty(ChatBot::MESSAGES[$code])): ?>
+        <details class="bot-messages">
+            <summary><?= e(__('ui.label.bot_more_messages')) ?></summary>
+            <?php foreach (ChatBot::MESSAGES[$code] as $key => $names): ?>
+                <label>
+                    <span><?= e(__('ui.bot_message.' . $code . '_' . $key)) ?></span>
+                    <textarea name="messages[<?= e($key) ?>]" rows="2" maxlength="<?= ChatBot::RESPONSE_MAX ?>"><?= e((string) ($command['messages'][$key] ?? '')) ?></textarea>
+                    <small class="muted"><?= e(sprintf(__('ui.label.bot_placeholders'), implode(' ', array_map(static fn (string $p): string => '{' . $p . '}', $names)))) ?> · <?= e(__('ui.label.bot_empty_silent')) ?></small>
+                </label>
+            <?php endforeach; ?>
+        </details>
+    <?php endif; ?>
     <label class="inline">
         <input type="checkbox" name="is_enabled" value="1" <?= $command['is_enabled'] ? 'checked' : '' ?>>
         <span><?= e(__('ui.field.enabled')) ?></span>

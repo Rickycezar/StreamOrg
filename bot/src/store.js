@@ -1,7 +1,9 @@
 /**
  * Everything the bot reads from and writes to the StreamOrg database
  * (tables from 032_chat_bot.sql and 033_bot_chat_api_and_viewer_stats.sql,
- * and the overlays' chat replies from 045_overlays.sql).
+ * the overlays' chat replies from 045_overlays.sql, and the giveaways,
+ * schedule, outbox, channel events and follower lists of
+ * 047_bot_giveaways_events.sql).
  * Tokens are decrypted on the way in and encrypted on the way out, exactly
  * as the PHP app stores them.
  */
@@ -9,6 +11,12 @@ import { refreshToken } from './twitch.js';
 
 /** Recorded broadcasts (and their viewer statistics) are kept this long. */
 export const STATS_RETENTION = '12 months';
+
+/** Channel events are kept this long. */
+export const EVENTS_RETENTION = '90 days';
+
+/** A message the site asked the bot to post is dropped when nobody posted it within this. */
+export const OUTBOX_TTL = '5 minutes';
 
 export class Store {
     /** @param {import('pg').Pool} pool @param {ReturnType<import('./crypto.js').makeCrypto>} crypto */
@@ -41,7 +49,7 @@ export class Store {
     /** The bot account with its tokens readable, or null when none is connected. */
     async account() {
         const { rows } = await this.pool.query(
-            `SELECT is_enabled, command_prefix, twitch_user_id, twitch_login, access_token, refresh_token, conduit_id,
+            `SELECT is_enabled, command_prefix, twitch_user_id, twitch_login, access_token, refresh_token, conduit_id, scopes,
                     extract(epoch FROM expires_at) * 1000 AS expires_ms
                FROM bot_account WHERE id = 1`
         );
@@ -57,6 +65,7 @@ export class Store {
             refreshToken: this.crypto.decrypt(row.refresh_token),
             expiresAt: row.expires_ms === null ? 0 : Number(row.expires_ms),
             conduitId: row.conduit_id,
+            scopes: String(row.scopes || '').split(' ').filter(Boolean),
         };
     }
 
@@ -106,11 +115,12 @@ export class Store {
      * The channels to be in, with what the streamer's Twitch connection
      * allows and what the bot last found about its access.
      *
-     * @returns {Promise<Array<{userId: number, login: string, twitchId: string, scopes: string[], access: string, checkedAt: number}>>}
+     * @returns {Promise<Array<{userId: number, login: string, twitchId: string, scopes: string[], access: string, checkedAt: number,
+     *          locale: string, timezone: string}>>}
      */
     async channels() {
         const { rows } = await this.pool.query(
-            `SELECT b.user_id, lower(t.twitch_login) AS login, t.twitch_user_id, t.scopes, b.access,
+            `SELECT b.user_id, lower(t.twitch_login) AS login, t.twitch_user_id, t.scopes, b.access, u.locale, u.timezone,
                     coalesce(extract(epoch FROM b.access_checked_at) * 1000, 0) AS checked_ms
                FROM bot_channels b
                JOIN users u              ON u.id = b.user_id AND u.is_active
@@ -125,6 +135,8 @@ export class Store {
             scopes: String(row.scopes || '').split(' ').filter(Boolean),
             access: row.access,
             checkedAt: Number(row.checked_ms),
+            locale: row.locale || 'en',
+            timezone: row.timezone || 'UTC',
         }));
     }
 
@@ -328,11 +340,13 @@ export class Store {
     /** Every command row: the defaults (userId null) and the streamers' own versions. */
     async commands() {
         const { rows } = await this.pool.query(
-            'SELECT user_id, code, trigger, response, is_enabled, permission, cooldown_seconds FROM bot_commands'
+            'SELECT user_id, locale, code, trigger, response, messages, is_enabled, permission, cooldown_seconds FROM bot_commands'
         );
 
         return rows.map((row) => ({
             userId: row.user_id === null ? null : Number(row.user_id),
+            locale: row.locale,
+            messages: row.messages || {},
             code: row.code,
             trigger: row.trigger,
             response: row.response,
@@ -396,9 +410,250 @@ export class Store {
         );
     }
 
-    /** Activity is kept for two weeks, viewer statistics for STATS_RETENTION. */
+    /**
+     * A streamer's giveaways the chat may hear about: open ones, and
+     * planned ones that are not a surprise. Never direct gifts.
+     *
+     * @returns {Promise<Array<{id: number, title: string, status: string, keyword: ?string, entryMethod: string,
+     *          startsAt: ?Date, endsAt: ?Date, publicCode: string}>>}
+     */
+    async giveaways(userId) {
+        const { rows } = await this.pool.query(
+            `SELECT id, title, status, keyword, entry_method, starts_at, ends_at, public_code
+               FROM giveaways
+              WHERE user_id = $1 AND NOT is_direct
+                AND (status = 'open' OR (status = 'planned' AND NOT is_surprise))
+           ORDER BY status = 'open' DESC, ends_at NULLS LAST, id`,
+            [userId]
+        );
+
+        return rows.map((row) => ({
+            id: Number(row.id),
+            title: row.title,
+            status: row.status,
+            keyword: row.keyword,
+            entryMethod: row.entry_method,
+            startsAt: row.starts_at,
+            endsAt: row.ends_at,
+            publicCode: row.public_code,
+        }));
+    }
+
+    /** @returns {Promise<boolean>} true when this viewer just entered, false when they already had */
+    async enterGiveaway(giveawayId, viewer) {
+        const { rowCount } = await this.pool.query(
+            `INSERT INTO giveaway_entries (giveaway_id, twitch_user_id, twitch_login, display_name)
+             VALUES ($1, $2, $3, $4) ON CONFLICT (giveaway_id, twitch_user_id) DO NOTHING`,
+            [giveawayId, viewer.id, viewer.login, viewer.name || null]
+        );
+
+        return rowCount > 0;
+    }
+
+    /**
+     * Planned (or live) content from the start of today, in the
+     * streamer's timezone, for this many days.
+     *
+     * @returns {Promise<Array<{title: string, start: Date, status: string}>>}
+     */
+    async schedule(userId, timezone, days) {
+        const { rows } = await this.pool.query(
+            `SELECT title, scheduled_start, status
+               FROM streams
+              WHERE user_id = $1 AND status IN ('planned', 'live') AND scheduled_start IS NOT NULL
+                AND (scheduled_start AT TIME ZONE $2)::date >= (now() AT TIME ZONE $2)::date
+                AND (scheduled_start AT TIME ZONE $2)::date < (now() AT TIME ZONE $2)::date + $3::int
+           ORDER BY scheduled_start, id
+              LIMIT 60`,
+            [userId, timezone, days]
+        );
+
+        return rows.map((row) => ({ title: row.title, start: row.scheduled_start, status: row.status }));
+    }
+
+    /** @returns {Promise<?{id: string, name: string}>} a viewer the bot has seen, by login */
+    async viewerByLogin(login) {
+        const { rows } = await this.pool.query(
+            'SELECT twitch_user_id, coalesce(display_name, login) AS name FROM chat_viewers WHERE login = $1 LIMIT 1',
+            [login]
+        );
+
+        return rows[0] ? { id: rows[0].twitch_user_id, name: rows[0].name } : null;
+    }
+
+    /** @returns {Promise<?{seconds: number, since: Date}>} a viewer's watch time in a channel */
+    async watchtime(userId, viewerId) {
+        const { rows } = await this.pool.query(
+            `SELECT coalesce(sum(watch_seconds), 0) AS seconds, min(first_seen_at) AS since
+               FROM chat_viewer_stats WHERE user_id = $1 AND viewer_id = $2`,
+            [userId, viewerId]
+        );
+
+        return rows[0] && rows[0].since ? { seconds: Number(rows[0].seconds), since: rows[0].since } : null;
+    }
+
+    /** @returns {Promise<Object<string, string>>} the public prize page address per language, kept by the site */
+    async prizePageUrls() {
+        const { rows } = await this.pool.query("SELECT value FROM app_settings WHERE key = 'bot.prize_page_urls'");
+
+        try {
+            return rows[0] ? JSON.parse(rows[0].value) : {};
+        } catch {
+            return {};
+        }
+    }
+
+    /** @returns {Promise<Array<{id: number, userId: number, message: string}>>} what the site asked to post, taken off the outbox */
+    async takeOutbox() {
+        const { rows } = await this.pool.query(
+            `DELETE FROM bot_outbox RETURNING id, user_id, message, created_at > now() - interval '${OUTBOX_TTL}' AS fresh`
+        );
+
+        return rows.filter((row) => row.fresh).sort((a, b) => Number(a.id) - Number(b.id))
+            .map((row) => ({ id: Number(row.id), userId: Number(row.user_id), message: row.message }));
+    }
+
+    /**
+     * Something that happened in a channel (see channel_events).
+     *
+     * @param {{type: string, actorId?: ?string, actorLogin?: ?string, actorName?: ?string, amount?: ?number,
+     *          tier?: ?string, message?: ?string, data?: object, at?: ?string}} event
+     */
+    async recordEvent(userId, event) {
+        await this.pool.query(
+            `INSERT INTO channel_events (user_id, at, type, actor_id, actor_login, actor_name, amount, tier, message, data)
+             VALUES ($1, coalesce($2::timestamptz, now()), $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [
+                userId, event.at || null, event.type, event.actorId || null, event.actorLogin || null, event.actorName || null,
+                Number.isFinite(event.amount) ? Math.round(event.amount) : null, event.tier || null,
+                event.message ? String(event.message).slice(0, 500) : null, JSON.stringify(event.data || {}),
+            ]
+        );
+    }
+
+    /** A new follow also joins the follower list, once that list is being kept. */
+    async rememberFollower(userId, follower) {
+        await this.pool.query(
+            `INSERT INTO channel_followers (user_id, follower_id, login, display_name, followed_at)
+             SELECT $1, $2, $3, $4, $5 WHERE EXISTS (SELECT 1 FROM follower_tracking WHERE user_id = $1 AND follower_count IS NOT NULL)
+             ON CONFLICT (user_id, follower_id) DO UPDATE SET login = EXCLUDED.login, display_name = EXCLUDED.display_name`,
+            [userId, follower.id, follower.login, follower.name || null, follower.followedAt || null]
+        );
+    }
+
+    /**
+     * Channels whose follower list is due its daily look: switched on by
+     * an administrator, while the unfollows setting is on.
+     *
+     * @returns {Promise<number[]>} user ids
+     */
+    async followersDue() {
+        const { rows } = await this.pool.query(
+            `SELECT f.user_id FROM follower_tracking f
+              WHERE f.is_enabled
+                AND EXISTS (SELECT 1 FROM app_settings s WHERE s.key = 'unfollows.enabled' AND s.value = '1')
+                AND (f.checked_at IS NULL OR f.checked_at < now() - interval '23 hours')
+           ORDER BY f.checked_at NULLS FIRST`
+        );
+
+        return rows.map((row) => Number(row.user_id));
+    }
+
+    /**
+     * Compares a channel's follower list with the one kept from last
+     * time: who is gone becomes an unfollow, who is new a follow (unless
+     * the follow was already recorded as it happened). The first look
+     * only keeps the list.
+     *
+     * @param {Array<{id: string, login: string, name: ?string, followedAt: ?string}>} followers
+     * @returns {Promise<{first: boolean, gone: number, added: number}>}
+     */
+    async applyFollowers(userId, followers, total) {
+        const client = await this.pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const tracked = await client.query('SELECT follower_count FROM follower_tracking WHERE user_id = $1 FOR UPDATE', [userId]);
+            const first = !tracked.rows[0] || tracked.rows[0].follower_count === null;
+            const ids = followers.map((f) => f.id);
+            let gone = 0;
+            let added = 0;
+
+            if (!first) {
+                const removed = await client.query(
+                    `DELETE FROM channel_followers WHERE user_id = $1 AND NOT (follower_id = ANY($2::text[]))
+                     RETURNING follower_id, login, display_name, followed_at`,
+                    [userId, ids]
+                );
+
+                for (const row of removed.rows) {
+                    await client.query(
+                        `INSERT INTO channel_events (user_id, type, actor_id, actor_login, actor_name, data)
+                         VALUES ($1, 'unfollow', $2, $3, $4, $5)`,
+                        [userId, row.follower_id, row.login, row.display_name, JSON.stringify({ followed_at: row.followed_at })]
+                    );
+                }
+
+                gone = removed.rowCount;
+            }
+
+            const inserted = await client.query(
+                `INSERT INTO channel_followers (user_id, follower_id, login, display_name, followed_at)
+                 SELECT $1, f.id, f.login, f.name, f.followed_at
+                   FROM unnest($2::text[], $3::text[], $4::text[], $5::timestamptz[]) AS f(id, login, name, followed_at)
+                 ON CONFLICT (user_id, follower_id) DO UPDATE SET login = EXCLUDED.login, display_name = EXCLUDED.display_name
+                 RETURNING follower_id, login, display_name, followed_at, (xmax = 0) AS fresh`,
+                [userId, ids, followers.map((f) => f.login), followers.map((f) => f.name || null), followers.map((f) => f.followedAt || null)]
+            );
+
+            if (!first) {
+                for (const row of inserted.rows.filter((r) => r.fresh)) {
+                    const known = await client.query(
+                        `SELECT 1 FROM channel_events WHERE user_id = $1 AND type = 'follow' AND actor_id = $2
+                            AND at > now() - interval '3 days' LIMIT 1`,
+                        [userId, row.follower_id]
+                    );
+
+                    if (known.rowCount === 0) {
+                        await client.query(
+                            `INSERT INTO channel_events (user_id, at, type, actor_id, actor_login, actor_name)
+                             VALUES ($1, coalesce($2, now()), 'follow', $3, $4, $5)`,
+                            [userId, row.followed_at, row.follower_id, row.login, row.display_name]
+                        );
+                        added++;
+                    }
+                }
+            }
+
+            await client.query(
+                `INSERT INTO follower_tracking (user_id, checked_at, follower_count, last_error) VALUES ($1, now(), $2, NULL)
+                 ON CONFLICT (user_id) DO UPDATE SET checked_at = now(), follower_count = $2, last_error = NULL`,
+                [userId, total]
+            );
+            await client.query('COMMIT');
+
+            return { first, gone, added };
+        } catch (e) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw e;
+        } finally {
+            client.release();
+        }
+    }
+
+    /** The follower list could not be read: said on the admin page, tried again in a few hours. */
+    async followersFailed(userId, reason) {
+        await this.pool.query(
+            "UPDATE follower_tracking SET last_error = $2, checked_at = now() - interval '18 hours' WHERE user_id = $1",
+            [userId, String(reason).slice(0, 300)]
+        );
+    }
+
+    /** Activity is kept for two weeks, viewer statistics for STATS_RETENTION, events for EVENTS_RETENTION. */
     async prune() {
         await this.pool.query("DELETE FROM bot_log WHERE at < now() - interval '14 days'");
+        await this.pool.query(`DELETE FROM channel_events WHERE at < now() - interval '${EVENTS_RETENTION}'`);
         await this.pool.query(`DELETE FROM twitch_broadcasts WHERE started_at < now() - interval '${STATS_RETENTION}'`);
         await this.pool.query(
             `DELETE FROM chat_viewers v

@@ -17,10 +17,17 @@ final class BotController
     {
         Auth::requireAdmin();
 
+        $locale = in_array($_GET['lang'] ?? '', Lang::available(), true) ? (string) $_GET['lang'] : Lang::locale();
+
+        ChatBot::publishUrls();
+
         View::render('admin/bot', [
+            'locale'           => $locale,
             'account'          => ChatBot::account(),
-            'defaults'         => ChatBot::defaults(),
+            'defaults'         => ChatBot::defaults($locale),
             'channels'         => ChatBot::channels(),
+            'unfollowsOn'      => ChannelEvents::unfollowsOn(),
+            'tracking'         => ChannelEvents::trackingByUser(),
             'stats'            => ChatBot::statsSummary(),
             'log'              => ChatBot::recentLog(),
             'twitchConfigured' => Twitch::isConfigured(),
@@ -90,16 +97,17 @@ final class BotController
         Auth::requireAdmin();
         Csrf::verify();
 
-        $code = (string) ($_POST['code'] ?? '');
+        $code   = (string) ($_POST['code'] ?? '');
+        $locale = (string) ($_POST['locale'] ?? '');
 
         try {
-            ChatBot::saveCommand(null, $code, ChatBot::commandFromInput($code, $_POST));
+            ChatBot::saveCommand(null, $code, ChatBot::commandFromInput($code, $_POST), $locale);
             flash('success', __('ui.message.saved'));
         } catch (UserError $e) {
             flash('error', $e->getMessage());
         }
 
-        redirect('/admin/bot');
+        redirect('/admin/bot?lang=' . rawurlencode($locale) . '#defaults');
     }
 
     /** POST /admin/bot/channel — block or unblock a channel. */

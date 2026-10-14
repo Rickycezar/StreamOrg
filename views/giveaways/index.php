@@ -1,5 +1,5 @@
 <?php
-/** @var array $giveaways @var array $content */
+/** @var array $giveaways @var array $content @var string $join what viewers type before a giveaway's keyword */
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.giveaways')) ?></h1>
@@ -22,7 +22,7 @@
                     <span class="badge giveaway-status-<?= e($g['status']) ?>"><?= e(code_label('giveaway_status', $g['status'])) ?></span>
                 </span>
                 <span class="muted small">
-                    <code>!<?= e(__('ui.label.join_command')) ?> <?= e((string) $g['keyword']) ?></code>
+                    <code><?= e($join) ?> <?= e((string) $g['keyword']) ?></code>
                     <?php if ($g['is_surprise']): ?> · <?= e(__('ui.label.surprise')) ?><?php endif; ?>
                     <?php if ($g['ends_at']): ?> · <?= e(sprintf(__('ui.label.until_date'), fmt_datetime($g['ends_at'], 'd/m H:i'))) ?><?php endif; ?>
                 </span>

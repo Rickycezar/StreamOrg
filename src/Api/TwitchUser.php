@@ -7,8 +7,8 @@ declare(strict_types=1);
  * Twitch.php works with an app token, which can read public data but never
  * modify a channel. Editing the title, category and tags needs a user
  * token with channel:manage:broadcast (and the channel schedule,
- * channel:manage:schedule; and for the chat bot, channel:bot and
- * moderator:read:chatters), obtained through the authorization
+ * channel:manage:schedule; and for the chat bot, channel:bot,
+ * moderator:read:chatters and moderator:read:followers), obtained through the authorization
  * code flow: the user is sent to Twitch, approves, and comes back to
  * /profile/twitch/callback with a code that is exchanged for tokens.
  *
@@ -18,7 +18,7 @@ declare(strict_types=1);
  */
 final class TwitchUser
 {
-    public const SCOPE = 'channel:manage:broadcast channel:manage:schedule channel:bot moderator:read:chatters';
+    public const SCOPE = 'channel:manage:broadcast channel:manage:schedule channel:bot moderator:read:chatters moderator:read:followers';
 
     public const SCHEDULE_SCOPE = 'channel:manage:schedule';
 
@@ -27,6 +27,9 @@ final class TwitchUser
 
     /** Lets the chat bot see who is in chat, for watch time. */
     public const CHATTERS_SCOPE = 'moderator:read:chatters';
+
+    /** Lets StreamOrg see new follows and read the follower list (events, unfollows). */
+    public const FOLLOWERS_SCOPE = 'moderator:read:followers';
 
     /** Twitch's limits for Modify Channel Information. */
     public const TITLE_MAX = 140;

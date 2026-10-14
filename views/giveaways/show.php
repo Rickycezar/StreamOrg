@@ -5,6 +5,8 @@
  * @var array $giveaway @var array $prizes @var array $available @var array $winners
  * @var array $entries @var array $content @var bool $vaultLocked @var bool $twitchReady @var bool $needsCopies
  * @var array{waiting:int, locked:int} $waitingWinners @var bool $nudge @var bool $takeBackWarn
+ * @var string $joinCommand what viewers type to enter @var bool $canPost whether the bot can post it in chat
+ * @var ?string $publicUrl the public prize page, when the giveaway is visible
  */
 $g       = $giveaway;
 $id      = (int) $g['id'];
@@ -35,6 +37,16 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                 </button>
             </form>
         <?php endforeach; ?>
+        <?php if ($canPost): ?>
+            <form method="post" action="<?= e(url('/giveaways/announce')) ?>">
+                <?= Csrf::field() ?>
+                <input type="hidden" name="id" value="<?= $id ?>">
+                <button type="submit" class="btn" title="<?= e(__('ui.label.giveaway_post_hint')) ?>"><?= e(__('ui.action.giveaway_post')) ?></button>
+            </form>
+        <?php endif; ?>
+        <?php if ($publicUrl !== null): ?>
+            <a class="btn" href="<?= e($publicUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e(__('ui.action.giveaway_public_page')) ?> ↗</a>
+        <?php endif; ?>
         <button type="button" class="btn" data-modal-form="#edit-giveaway" data-modal-title="<?= e($g['title']) ?>"><?= e(__('ui.action.edit')) ?></button>
     </div>
 </div>
@@ -91,7 +103,7 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
 
 <section class="card giveaway-summary">
     <dl>
-        <div><dt><?= e(__('ui.field.keyword')) ?></dt><dd><code>!<?= e(__('ui.label.join_command')) ?> <?= e((string) $g['keyword']) ?></code></dd></div>
+        <div><dt><?= e(__('ui.field.keyword')) ?></dt><dd><code><?= e($joinCommand) ?></code></dd></div>
         <div><dt><?= e(__('ui.field.entry_method')) ?></dt><dd><?= e(code_label('entry_method', $g['entry_method'])) ?></dd></div>
         <div><dt><?= e(__('ui.field.winner_mode')) ?></dt><dd><?= e(code_label('winner_mode', $g['winner_mode'])) ?></dd></div>
         <div><dt><?= e(__('ui.field.entries_open')) ?></dt><dd><?= e($g['starts_at'] ? fmt_datetime($g['starts_at']) : '—') ?></dd></div>
@@ -339,7 +351,7 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
     <div class="card-head">
         <h2><?= e(__('ui.label.entries')) ?> (<?= count($entries) ?>)</h2>
     </div>
-    <p class="muted small"><?= e(sprintf(__('ui.message.giveaway_entries_explain'), (string) $g['keyword'])) ?></p>
+    <p class="muted small"><?= e(sprintf(__('ui.message.giveaway_entries_explain'), $joinCommand)) ?></p>
     <?php if ($entries === []): ?>
         <p class="empty"><?= e(__('ui.message.giveaway_no_entries')) ?></p>
     <?php else: ?>

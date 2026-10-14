@@ -23,8 +23,39 @@ Administration, and each release is tagged in git as `v<version>`.
   account. Each row becomes a card with its fields labelled, its actions
   at the bottom, and the column headings as sort buttons; in the vault the
   cards show the game's cover.
+- Chat bot commands for giveaways: `!giveaway` lists the open ones and how
+  to enter, `!join <keyword>` enters one that takes entries by chat (the
+  entries the giveaway page already listed now actually come in), and
+  `!prizes <name>` answers with the link to the giveaway's new public prize
+  page — the keys still to win and the ones already won, never a code;
+  without a name it asks which giveaway, naming the ones not closed.
+- Chat bot commands for the schedule and watch time: `!today` and `!week`
+  (the next 7 days, in the streamer's timezone, in more than one message
+  when long) and `!watchtime` (yours, or someone's by name).
+- "Post in chat" on a giveaway's page: the bot announces it in the
+  streamer's chat, with how to enter and the prize page link.
+- Commands and their messages follow the streamer's language: the
+  administrators set the defaults per language (Administration → Chat bot),
+  and each streamer can still make every command and message their own.
+  An empty message means the bot says nothing in that case.
+- Stream tools → Events: follows, subscriptions, resubs and gifts, bits,
+  raids, watch streaks and charity in the channel, recorded by the bot,
+  filtered by kind, refreshing by itself; kept 90 days. Follows need
+  Twitch's permission (reconnect Twitch, or the bot as a moderator).
+- Stream tools → Unfollows, for the channels an administrator switches it
+  on for (Administration → Chat bot, off by default): the bot compares the
+  follower list once a day and lists who is gone.
 
 ### Changed
+- The landing page shows what StreamOrg does now: new cards for the chat
+  bot, overlays and channel events, and giveaways with chat entries, the
+  public prize page and direct gifts.
+- The calendar no longer marks content without a key in red; it still
+  says so when hovered. The red mark is kept for content scheduled before
+  its embargo lifts or after its key expires.
+- Connecting Twitch (and the bot account) also asks to read followers,
+  for the Events and Unfollows pages; connections made before keep
+  working without them.
 - Available keys can be added to giveaways too (they become "for
   giveaway"); keys already marked for giveaway are listed first and
   highlighted.

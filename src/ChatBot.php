@@ -10,9 +10,11 @@ declare(strict_types=1);
  * there; this class never talks to the bot directly. Every change ends
  * with NOTIFY streamorg_bot so the bot picks it up at once.
  *
- * Commands are built-in behaviours (CODES), each with a default row an
- * admin edits and, per streamer, an optional personal row that replaces
- * it in their channel: trigger, reply, who may use it, cooldown, on/off.
+ * Commands are built-in behaviours (CODES), each with a default row per
+ * language an admin edits and, per streamer, an optional personal row
+ * that replaces it in their channel: trigger, reply, further messages
+ * (MESSAGES), who may use it, cooldown, on/off. A channel uses the
+ * defaults in its streamer's language (users.locale), or English.
  */
 final class ChatBot
 {
@@ -21,12 +23,34 @@ final class ChatBot
      * Twitch's chat API (so it shows as a chat bot), and the chatter list
      * in channels where the streamer made it a moderator.
      */
-    public const SCOPES = 'user:read:chat user:write:chat user:bot moderator:read:chatters';
+    public const SCOPES = 'user:read:chat user:write:chat user:bot moderator:read:chatters moderator:read:followers';
 
     /** Built-in behaviours, and the {placeholders} their reply may use. */
     public const CODES = [
         'heartbeat' => ['user', 'channel', 'uptime'],
+        'giveaway'  => ['user', 'list', 'prizes'],
+        'join'      => ['user', 'giveaway'],
+        'prizes'    => ['user', 'giveaway', 'link'],
+        'today'     => ['user', 'list'],
+        'week'      => ['user', 'list'],
+        'watchtime' => ['user', 'target', 'time', 'since'],
     ];
+
+    /**
+     * The further messages of each built-in, by name, with their
+     * {placeholders}. An empty message means saying nothing in that case.
+     */
+    public const MESSAGES = [
+        'giveaway'  => ['none' => ['user'], 'entry' => ['command'], 'announce' => ['giveaway', 'entry', 'link']],
+        'join'      => ['already' => ['user', 'giveaway'], 'which' => ['user', 'list'], 'unknown' => ['user', 'keyword', 'list'], 'none' => ['user']],
+        'prizes'    => ['ask' => ['user', 'command', 'list'], 'unknown' => ['user', 'name', 'list'], 'none' => ['user']],
+        'today'     => ['none' => ['user']],
+        'week'      => ['none' => ['user']],
+        'watchtime' => ['none' => ['user', 'target']],
+    ];
+
+    /** The language whose defaults a channel falls back to. */
+    public const FALLBACK_LOCALE = 'en';
 
     public const PERMISSIONS = ['everyone', 'subscriber', 'vip', 'moderator', 'broadcaster'];
 
@@ -256,17 +280,58 @@ final class ChatBot
     }
 
     /**
-     * The default commands, one per built-in behaviour.
+     * The default commands in one language, one per built-in behaviour;
+     * a built-in without a default in that language takes the English one.
      *
-     * @return array<string, array<string,mixed>> by code
+     * @return array<string, array<string,mixed>> by code, in CODES order
      */
-    public static function defaults(): array
+    public static function defaults(string $locale = self::FALLBACK_LOCALE): array
     {
-        $rows = Database::connection()->query(
-            'SELECT code, trigger, response, is_enabled, permission, cooldown_seconds FROM bot_commands WHERE user_id IS NULL'
-        )->fetchAll();
+        $stmt = Database::connection()->prepare(
+            'SELECT code, locale, trigger, response, messages, is_enabled, permission, cooldown_seconds
+               FROM bot_commands WHERE user_id IS NULL AND locale IN (?, ?)'
+        );
+        $stmt->execute([$locale, self::FALLBACK_LOCALE]);
 
-        return array_intersect_key(array_column($rows, null, 'code'), self::CODES);
+        $byCode = [];
+
+        foreach ($stmt->fetchAll() as $row) {
+            if (!isset($byCode[$row['code']]) || $row['locale'] === $locale) {
+                $byCode[$row['code']] = self::withMessages($row);
+            }
+        }
+
+        $ordered = [];
+
+        foreach (array_keys(self::CODES) as $code) {
+            if (isset($byCode[$code])) {
+                $ordered[$code] = $byCode[$code];
+            }
+        }
+
+        return $ordered;
+    }
+
+    /** A command row with its messages decoded, every message of its built-in present. */
+    private static function withMessages(array $row): array
+    {
+        $stored = is_array($row['messages'] ?? null) ? $row['messages'] : (json_decode((string) ($row['messages'] ?? '{}'), true) ?: []);
+        $row['messages'] = [];
+
+        foreach (array_keys(self::MESSAGES[$row['code']] ?? []) as $key) {
+            $row['messages'][$key] = (string) ($stored[$key] ?? '');
+        }
+
+        return $row;
+    }
+
+    /** The language a streamer's channel speaks: their account's. */
+    public static function localeOf(int $userId): string
+    {
+        $stmt = Database::connection()->prepare('SELECT locale FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+
+        return (string) ($stmt->fetchColumn() ?: self::FALLBACK_LOCALE);
     }
 
     /**
@@ -278,14 +343,14 @@ final class ChatBot
     public static function commandsFor(int $userId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT code, trigger, response, is_enabled, permission, cooldown_seconds FROM bot_commands WHERE user_id = ?'
+            'SELECT code, trigger, response, messages, is_enabled, permission, cooldown_seconds FROM bot_commands WHERE user_id = ?'
         );
         $stmt->execute([$userId]);
-        $personal = array_column($stmt->fetchAll(), null, 'code');
+        $personal = array_map(self::withMessages(...), array_column($stmt->fetchAll(), null, 'code'));
 
         $commands = [];
 
-        foreach (self::defaults() as $code => $default) {
+        foreach (self::defaults(self::localeOf($userId)) as $code => $default) {
             $commands[$code] = ($personal[$code] ?? $default) + ['personal' => isset($personal[$code]), 'default' => $default];
         }
 
@@ -293,9 +358,9 @@ final class ChatBot
     }
 
     /**
-     * Reads a command form.
+     * Reads a command form, with the built-in's further messages.
      *
-     * @return array{trigger:string, response:string, is_enabled:bool, permission:string, cooldown_seconds:int}
+     * @return array{trigger:string, response:string, is_enabled:bool, permission:string, cooldown_seconds:int, messages:array<string,string>}
      * @throws UserError naming what is wrong
      */
     public static function commandFromInput(string $code, array $input): array
@@ -304,7 +369,20 @@ final class ChatBot
             throw new UserError(__('ui.message.not_found'));
         }
 
-        return self::parseCommand($input);
+        $messages = [];
+        $given    = is_array($input['messages'] ?? null) ? $input['messages'] : [];
+
+        foreach (array_keys(self::MESSAGES[$code] ?? []) as $key) {
+            $text = trim((string) preg_replace('/\s+/u', ' ', (string) ($given[$key] ?? '')));
+
+            if (mb_strlen($text) > self::RESPONSE_MAX) {
+                throw new UserError(sprintf(__('ui.message.bot_response_invalid'), self::RESPONSE_MAX));
+            }
+
+            $messages[$key] = $text;
+        }
+
+        return self::parseCommand($input) + ['messages' => $messages];
     }
 
     /**
@@ -340,14 +418,18 @@ final class ChatBot
     }
 
     /**
-     * Saves a command: the default (no user) or a streamer's own version.
+     * Saves a command: a default (no user, in one language) or a streamer's own version.
      *
-     * @param array{trigger:string, response:string, is_enabled:bool, permission:string, cooldown_seconds:int} $command
+     * @param array{trigger:string, response:string, is_enabled:bool, permission:string, cooldown_seconds:int, messages?:array<string,string>} $command
      * @throws UserError when another command in the channel already answers to that trigger
      */
-    public static function saveCommand(?int $userId, string $code, array $command): void
+    public static function saveCommand(?int $userId, string $code, array $command, string $locale = self::FALLBACK_LOCALE): void
     {
-        $others = $userId === null ? self::defaults() : self::commandsFor($userId);
+        if ($userId === null && !in_array($locale, Lang::available(), true)) {
+            throw new UserError(__('ui.message.invalid_input'));
+        }
+
+        $others = $userId === null ? self::defaults($locale) : self::commandsFor($userId);
 
         foreach ($others as $otherCode => $other) {
             if ($otherCode !== $code && $other['trigger'] === $command['trigger']) {
@@ -363,25 +445,29 @@ final class ChatBot
 
         $pdo->prepare(
             $userId === null
-                ? 'UPDATE bot_commands
-                      SET trigger = :trigger, response = :response, is_enabled = :enabled, permission = :permission,
-                          cooldown_seconds = :cooldown, updated_at = now()
-                    WHERE user_id IS NULL AND code = :code'
-                : 'INSERT INTO bot_commands (user_id, code, trigger, response, is_enabled, permission, cooldown_seconds)
-                   VALUES (:user, :code, :trigger, :response, :enabled, :permission, :cooldown)
+                ? 'INSERT INTO bot_commands (locale, code, trigger, response, messages, is_enabled, permission, cooldown_seconds)
+                   VALUES (:locale, :code, :trigger, :response, CAST(:messages AS jsonb), :enabled, :permission, :cooldown)
+                   ON CONFLICT (code, locale) WHERE user_id IS NULL DO UPDATE
+                      SET trigger = EXCLUDED.trigger, response = EXCLUDED.response, messages = EXCLUDED.messages,
+                          is_enabled = EXCLUDED.is_enabled, permission = EXCLUDED.permission,
+                          cooldown_seconds = EXCLUDED.cooldown_seconds, updated_at = now()'
+                : 'INSERT INTO bot_commands (user_id, code, trigger, response, messages, is_enabled, permission, cooldown_seconds)
+                   VALUES (:user, :code, :trigger, :response, CAST(:messages AS jsonb), :enabled, :permission, :cooldown)
                    ON CONFLICT (user_id, code) WHERE user_id IS NOT NULL DO UPDATE
-                      SET trigger = EXCLUDED.trigger, response = EXCLUDED.response, is_enabled = EXCLUDED.is_enabled,
-                          permission = EXCLUDED.permission, cooldown_seconds = EXCLUDED.cooldown_seconds, updated_at = now()'
-        )->execute(($userId === null ? [] : ['user' => $userId]) + [
+                      SET trigger = EXCLUDED.trigger, response = EXCLUDED.response, messages = EXCLUDED.messages,
+                          is_enabled = EXCLUDED.is_enabled, permission = EXCLUDED.permission,
+                          cooldown_seconds = EXCLUDED.cooldown_seconds, updated_at = now()'
+        )->execute(($userId === null ? ['locale' => $locale] : ['user' => $userId]) + [
             'code'       => $code,
             'trigger'    => $command['trigger'],
             'response'   => $command['response'],
+            'messages'   => json_encode((object) ($command['messages'] ?? []), JSON_UNESCAPED_UNICODE),
             'enabled'    => $command['is_enabled'] ? 'true' : 'false',
             'permission' => $command['permission'],
             'cooldown'   => $command['cooldown_seconds'],
         ]);
 
-        self::log($userId, 'info', ($userId === null ? 'Default command saved: ' : 'Command personalised: ') . $code);
+        self::log($userId, 'info', ($userId === null ? 'Default command saved (' . $locale . '): ' : 'Command personalised: ') . $code);
         self::notify();
     }
 
@@ -576,7 +662,7 @@ final class ChatBot
     /** Drops a streamer's own version of a command: their channel uses the default again. */
     public static function resetCommand(int $userId, string $code): void
     {
-        $default = self::defaults()[$code]['trigger'] ?? null;
+        $default = self::defaults(self::localeOf($userId))[$code]['trigger'] ?? null;
         $stmt    = Database::connection()->prepare('SELECT 1 FROM bot_custom_commands WHERE user_id = ? AND trigger = ?');
         $stmt->execute([$userId, $default]);
 
@@ -647,9 +733,95 @@ final class ChatBot
             ->execute([$userId, $level, mb_substr($message, 0, 500)]);
     }
 
-    /** Tells a running bot to reload what changed. */
+    /** Tells a running bot to reload what changed, with the site's public addresses for its links. */
     public static function notify(): void
     {
+        self::publishUrls();
         Database::connection()->exec('NOTIFY streamorg_bot');
+    }
+
+    /**
+     * Keeps the address of the public prize page for each language where
+     * the bot reads it (app_settings bot.prize_page_urls), so the links it
+     * gives in chat open on the streamer's language domain.
+     */
+    public static function publishUrls(): void
+    {
+        $urls = [];
+
+        foreach (Lang::available() as $locale) {
+            $urls[$locale] = Giveaways::publicUrl('', $locale);
+        }
+
+        $json = json_encode($urls, JSON_UNESCAPED_SLASHES);
+
+        if (Settings::get('bot.prize_page_urls') !== $json) {
+            Settings::set('bot.prize_page_urls', (string) $json, null);
+        }
+    }
+
+    /**
+     * Asks the bot to post a message in a streamer's channel now (the
+     * giveaway page's "post in chat"). The bot takes it within a second
+     * or two, or drops it after a few minutes when it is not running.
+     *
+     * @throws UserError when the bot is not reading the channel
+     */
+    public static function post(int $userId, string $message): void
+    {
+        $channel = self::channel($userId);
+
+        if (!self::isAvailable() || $channel === null || !$channel['is_enabled'] || $channel['is_blocked'] || $channel['access'] === 'none') {
+            throw new UserError(__('ui.message.bot_cannot_post'));
+        }
+
+        $message = mb_substr(trim((string) preg_replace('/\s+/u', ' ', $message)), 0, 500);
+
+        if ($message === '') {
+            throw new UserError(__('ui.message.invalid_input'));
+        }
+
+        Database::connection()->prepare('INSERT INTO bot_outbox (user_id, message) VALUES (?, ?)')->execute([$userId, $message]);
+        Database::connection()->exec("NOTIFY streamorg_bot, 'outbox'");
+    }
+
+    /** Whether the bot is in this streamer's channel and able to read and write its chat. */
+    public static function canPost(int $userId): bool
+    {
+        $channel = self::channel($userId);
+
+        return self::isAvailable() && $channel !== null && $channel['is_enabled'] && !$channel['is_blocked'] && $channel['access'] !== 'none';
+    }
+
+    /**
+     * What a viewer types to enter a giveaway by chat ("!participar
+     * natal"), or null when the bot is not in the channel or its join
+     * command is off.
+     */
+    public static function joinCommand(int $userId, string $keyword): ?string
+    {
+        $join = self::commandsFor($userId)['join'] ?? null;
+
+        if ($join === null || !$join['is_enabled'] || !self::canPost($userId)) {
+            return null;
+        }
+
+        return self::account()['command_prefix'] . $join['trigger'] . ' ' . $keyword;
+    }
+
+    /** One message of a channel's built-in command, as it uses it (its own version or the default). */
+    public static function message(int $userId, string $code, string $key): string
+    {
+        return (string) (self::commandsFor($userId)[$code]['messages'][$key] ?? '');
+    }
+
+    /** Fills {placeholders} the way the bot does; unknown ones stay as typed. */
+    public static function render(string $template, array $values): string
+    {
+        return trim((string) preg_replace('/\s{2,}/u', ' ', (string) preg_replace_callback(
+            '/\{([a-z_]+)\}/',
+            static fn (array $m): string => array_key_exists($m[1], $values) ? (string) $values[$m[1]] : $m[0],
+            $template
+        )));
     }
 }

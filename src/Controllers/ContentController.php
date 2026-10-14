@@ -918,7 +918,9 @@ final class ContentController
     /**
      * One planner item, shaped as a FullCalendar event (and reused for the
      * backlog). Only planned content can be moved or resized; its length is
-     * its own, or the user's usual content length.
+     * its own, or the user's usual content length. Content without a key
+     * says so when hovered; only a broken embargo or a key expiring first
+     * marks it in red.
      *
      * @return array<string,mixed>
      */
@@ -939,7 +941,11 @@ final class ContentController
             'end'        => $start === null ? null
                 : (new DateTimeImmutable($start))->modify('+' . (int) $row['minutes'] . ' minutes')->format('Y-m-d\TH:i:s'),
             'editable'   => $row['status'] === 'planned',
-            'classNames' => array_merge(['status-' . $row['status']], $warnings !== [] ? ['has-warning'] : [], $row['collab_session_id'] ? ['is-together'] : []),
+            'classNames' => array_merge(
+                ['status-' . $row['status']],
+                $row['breaks_embargo'] || $row['expires_before_use'] ? ['has-warning'] : [],
+                $row['collab_session_id'] ? ['is-together'] : []
+            ),
             'extendedProps' => [
                 'status'      => $row['status'],
                 'together'    => $row['collab_session_id'] ? (int) $row['collab_session_id'] : null,

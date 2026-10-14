@@ -27,6 +27,7 @@ final class GiveawayController
         $stmt->execute([Auth::id()]);
 
         View::render('giveaways/index', [
+            'join'      => ChatBot::account()['command_prefix'] . (ChatBot::commandsFor((int) Auth::id())['join']['trigger'] ?? __('ui.label.join_command')),
             'giveaways' => $stmt->fetchAll(),
             'content'   => self::contentOptions(),
         ], __('ui.nav.giveaways'));
@@ -90,7 +91,13 @@ final class GiveawayController
         $stmt->execute([$giveaway['id']]);
         $entries = $stmt->fetchAll();
 
+        $commands = ChatBot::commandsFor($userId);
+        $public   = !($giveaway['is_surprise'] && $giveaway['status'] === 'planned') && $giveaway['status'] !== 'cancelled';
+
         View::render('giveaways/show', [
+            'joinCommand' => ChatBot::account()['command_prefix'] . ($commands['join']['trigger'] ?? __('ui.label.join_command')) . ' ' . $giveaway['keyword'],
+            'canPost'     => $public && !in_array($giveaway['status'], Giveaways::ENDED, true) && ChatBot::canPost($userId),
+            'publicUrl'   => $public ? Giveaways::publicUrl((string) $giveaway['public_code'], $locale) : null,
             'giveaway'    => $giveaway,
             'prizes'      => $prizes,
             'available'   => $available,
@@ -345,6 +352,33 @@ final class GiveawayController
 
         flash('success', __('ui.message.winner_added'));
         redirect($back);
+    }
+
+    /**
+     * POST /giveaways/announce — the bot posts the giveaway's announcement
+     * in the streamer's chat: how to enter (by chat) and the prize page.
+     */
+    public static function announce(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $userId   = (int) Auth::id();
+        $giveaway = Giveaways::find($userId, (int) ($_POST['id'] ?? 0));
+
+        if ($giveaway === null || $giveaway['is_direct']) {
+            flash('error', __('ui.message.not_found'));
+            redirect('/giveaways');
+        }
+
+        try {
+            ChatBot::post($userId, Giveaways::announcement($giveaway));
+            flash('success', __('ui.message.giveaway_posted'));
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+        }
+
+        redirect('/giveaways/show?id=' . (int) $giveaway['id']);
     }
 
     /**

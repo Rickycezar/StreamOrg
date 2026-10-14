@@ -45,22 +45,32 @@ function fakeStore(replies = { enabled: true, typesOff: [], rows: [] }) {
     const logs = [];
     const access = {};
     const sentTimers = [];
+    const events = [];
+    const outbox = [];
     let conduit = null;
     return {
         logs,
         access,
+        events,
+        outbox,
+        recordEvent: async (userId, event) => { events.push({ userId, ...event }); },
+        rememberFollower: async () => {},
+        takeOutbox: async () => outbox.splice(0),
+        prizePageUrls: async () => ({ en: 'https://streamorg.com/giveaway', 'pt-BR': 'https://streamorg.com.br/giveaway' }),
         ready: async () => true,
         account: async () => ({ enabled: true, prefix: '!', login: 'streamorg', userId: '999', accessToken: 't', refreshToken: 'r', expiresAt: Date.now() + 3_600_000, conduitId: conduit }),
         saveConduit: async (id) => { conduit = id; },
         twitchApp: async () => ({ clientId: 'id', clientSecret: 'secret' }),
         commands: async () => [
             { userId: null, code: 'heartbeat', trigger: 'heartbeat', response: '💓 @{user} in {channel}', enabled: true, permission: 'everyone', cooldown: 30 },
+            { userId: null, locale: 'pt-BR', code: 'heartbeat', trigger: 'batida', response: '💓 Oi @{user}', enabled: true, permission: 'everyone', cooldown: 30 },
             { userId: 9, code: 'heartbeat', trigger: 'ping', response: 'pong {user}', enabled: true, permission: 'moderator', cooldown: 0 },
         ],
         channels: async () => [
             { userId: 5, login: 'museu_do_cass', twitchId: '100', scopes: ['channel:bot'], access: 'unknown', checkedAt: 0 },
             { userId: 9, login: 'hoku_xx', twitchId: '200', scopes: [], access: 'unknown', checkedAt: 0 },
             { userId: 7, login: 'nobody', twitchId: '300', scopes: [], access: 'unknown', checkedAt: 0 },
+            { userId: 11, login: 'canal_br', twitchId: '400', scopes: ['channel:bot', 'moderator:read:followers'], access: 'unknown', checkedAt: 0, locale: 'pt-BR', timezone: 'Nowhere/Invalid' },
         ],
         customCommands: async () => [
             { userId: 5, code: 'custom', trigger: 'so', response: 'Go follow @{target}!', enabled: true, permission: 'moderator', cooldown: 0 },
@@ -82,7 +92,7 @@ const offline = async () => ({ ok: true, status: 200, json: async () => ({ login
 async function started(overrides, replies) {
     const store = fakeStore(replies);
     const helix = fakeHelix(overrides);
-    const bot = new Bot({ store, config: { pollSeconds: 60, version: 'test' }, SocketImpl: FakeSocket, helix, fetchImpl: offline });
+    const bot = new Bot({ store, config: { pollSeconds: 60, version: 'test' }, SocketImpl: FakeSocket, helix, fetchImpl: offline, sendGapMs: 0 });
     await bot.load();
     await bot.attach('session-1');
     return { bot, store, helix };
@@ -103,9 +113,9 @@ test('subscribes per channel and tells permission, moderator and none apart', as
 
     const shard = helix.calls.find((c) => c.path === 'eventsub/conduits/shards');
     assert.equal(shard.body.shards[0].transport.session_id, 'session-1');
-    assert.deepEqual(store.access, { 5: 'permission', 9: 'moderator', 7: 'none' });
+    assert.deepEqual(store.access, { 5: 'permission', 9: 'moderator', 7: 'none', 11: 'permission' });
     assert.equal(bot.state, 'connected');
-    assert.match(bot.detail, /reading 2 of 3/);
+    assert.match(bot.detail, /reading 3 of 4/);
     assert.ok(store.logs.some((l) => l.userId === 7 && l.level === 'warn'));
 });
 
@@ -187,7 +197,7 @@ test('custom commands answer with {target}, within their own permission and cool
 test('statistics only follow channels whose chat the bot can read', async () => {
     const { bot } = await started();
 
-    assert.deepEqual([...bot.tracker.channels.keys()].sort(), ['100', '200']);
+    assert.deepEqual([...bot.tracker.channels.keys()].sort(), ['100', '200', '400']);
 });
 
 test('timed messages wait for their interval and enough chat, and only while live', async () => {
@@ -275,7 +285,7 @@ test('watch streaks: notices only where a reply is set, and only the big ones he
     const { bot, helix } = await started(twitchUsers, overlays);
     const notices = helix.calls.filter((c) => c.method === 'POST' && c.body?.type === 'channel.chat.notification');
 
-    assert.deepEqual(notices.map((c) => c.body.condition.broadcaster_user_id), ['100']);
+    assert.deepEqual(notices.map((c) => c.body.condition.broadcaster_user_id).sort(), ['100', '200', '400'], 'Notices in every readable channel, for its events.');
 
     const streak = (count) => ({ broadcaster_user_id: '100', chatter_user_name: 'Fan', notice_type: 'watch_streak', watch_streak: { streak_count: count } });
     await bot.onNotice(streak(3));
@@ -285,7 +295,7 @@ test('watch streaks: notices only where a reply is set, and only the big ones he
     assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['Fan reached 20 streams!']);
 });
 
-test('overlays switched off by the administrators send nothing, and their notices go', async () => {
+test('overlays switched off by the administrators send nothing, while the events still come', async () => {
     const replies = { ...overlays };
     const { bot, helix } = await started(twitchUsers, replies);
 
@@ -293,8 +303,9 @@ test('overlays switched off by the administrators send nothing, and their notice
     await bot.load();
 
     await bot.onChat(chat('200', '!sh @gaules', [{ set_id: 'broadcaster', id: '1' }], 'Hoku'));
+    await bot.onNotice({ broadcaster_user_id: '100', chatter_user_name: 'Fan', notice_type: 'watch_streak', watch_streak: { streak_count: 20 } });
     assert.equal(helix.calls.filter((c) => c.path === 'chat/messages').length, 0);
-    assert.ok(helix.calls.some((c) => c.method === 'DELETE' && c.query.id === 'sub-100' && bot.notices.size === 0));
+    assert.equal(bot.notices.size, 3);
 });
 
 test('a custom alert fired from chat gets its reply, by its roles, not twice in a row', async () => {
@@ -325,4 +336,39 @@ test('a lead moderator counts as a moderator, and an ignored shoutout says why',
 
 test('badges: lead_moderator also reads as moderator', () => {
     assert.deepEqual(badgesOf({ badges: [{ set_id: 'lead_moderator', id: '1' }] }), { lead_moderator: '1', moderator: '1' });
+});
+
+test('a channel speaks its streamer\'s language: the defaults in that language, English for the rest', async () => {
+    const { bot, helix } = await started();
+
+    await bot.onChat(chat('400', '!batida', [], 'Fã'));
+    await bot.onChat(chat('400', '!heartbeat', [], 'Fã', 'u9'));
+    await bot.onChat(chat('100', '!batida'));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['💓 Oi @Fã']);
+    assert.equal(bot.channels.get('400').timezone, 'UTC', 'An unknown timezone falls back to UTC.');
+});
+
+test('follows: subscribed where the streamer allowed it, recorded with cheers and notices', async () => {
+    const { bot, store, helix } = await started();
+    const follows = helix.calls.filter((c) => c.method === 'POST' && c.body?.type === 'channel.follow');
+
+    assert.deepEqual(follows.map((c) => c.body.condition), [{ broadcaster_user_id: '400', moderator_user_id: '400' }]);
+
+    await bot.onFollow({ broadcaster_user_id: '400', user_id: '77', user_login: 'novo', user_name: 'Novo', followed_at: '2026-10-14T12:00:00Z' });
+    await bot.onChat({ ...chat('400', 'Cheer50 boa'), cheer: { bits: 50 } });
+    await bot.onNotice({ broadcaster_user_id: '400', chatter_user_name: 'Sub', notice_type: 'sub', sub: { sub_tier: '1000' } });
+
+    assert.deepEqual(store.events.map((e) => [e.userId, e.type, e.amount ?? null]), [[11, 'follow', null], [11, 'cheer', 50], [11, 'sub', null]]);
+});
+
+test('posts what the site asked, only in channels it reads', async () => {
+    const { bot, store, helix } = await started();
+
+    store.outbox.push({ id: 1, userId: 5, message: '🎁 Natal no ar!' }, { id: 2, userId: 7, message: 'nope' });
+    await bot.drainOutbox();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(helix.calls.filter((c) => c.path === 'chat/messages').map((c) => c.body.message), ['🎁 Natal no ar!']);
+    assert.ok(store.logs.some((l) => l.userId === 7 && /not reading/.test(l.message)));
 });

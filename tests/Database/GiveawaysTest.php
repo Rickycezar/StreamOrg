@@ -396,4 +396,39 @@ final class GiveawaysTest extends DatabaseTestCase
         self::assertSame([], Giveaways::prizesOf($viewer));
         self::assertSame('deleted', $this->pdo->query("SELECT twitch_login FROM giveaway_winners WHERE giveaway_id = {$g}")->fetchColumn());
     }
+
+    public function testThePublicPrizePageShowsWhatIsLeftAndWhoWonButNeverACode(): void
+    {
+        $giveawayId = $this->giveaway('assigned');
+        Giveaways::addPrizes($this->user, $giveawayId, [$this->key('PUB-1'), $this->key('PUB-2')]);
+        $this->winner($giveawayId, 'tw-pub', $this->prizeIds($giveawayId)[0]);
+
+        $code = (string) $this->pdo->query("SELECT public_code FROM giveaways WHERE id = {$giveawayId}")->fetchColumn();
+        $view = Giveaways::publicView($code);
+
+        self::assertSame('Test', $view['giveaway']['title']);
+        self::assertSame([null, 'usertw-pub'], array_column($view['prizes'], 'winner_name'), 'Prizes still to win first.');
+        self::assertStringNotContainsString('PUB-', json_encode($view));
+        self::assertStringEndsWith('/giveaway?g=' . $code, Giveaways::publicUrl($code, 'en'));
+
+        $this->pdo->exec("UPDATE giveaways SET is_surprise = true, status = 'planned' WHERE id = {$giveawayId}");
+        self::assertNull(Giveaways::publicView($code), 'A surprise stays hidden until it opens.');
+        self::assertNull(Giveaways::publicView('not-a-code'));
+    }
+
+    public function testTheAnnouncementSaysHowToEnterOnlyWhileChatEntriesAreOpen(): void
+    {
+        $giveawayId = $this->giveaway();
+        $this->pdo->exec("UPDATE users SET locale = 'en' WHERE id = {$this->user}");
+        $this->pdo->exec("UPDATE giveaways SET entry_method = 'chat', keyword = 'xmas', title = 'Xmas keys' WHERE id = {$giveawayId}");
+        $this->pdo->exec("UPDATE bot_account SET is_enabled = true, twitch_login = 'phpunit_bot', twitch_user_id = '1', command_prefix = '!' WHERE id = 1");
+        ChatBot::setChannel($this->user, true);
+
+        $text = Giveaways::announcement(Giveaways::find($this->user, $giveawayId));
+        self::assertStringStartsWith('🎁 Xmas keys is on! Type !join xmas to enter! Prizes: ', $text);
+
+        $this->pdo->exec("UPDATE giveaways SET status = 'closed' WHERE id = {$giveawayId}");
+        self::assertStringStartsWith('🎁 Xmas keys is on! Prizes: ', Giveaways::announcement(Giveaways::find($this->user, $giveawayId)));
+    }
+
 }

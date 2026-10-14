@@ -6,20 +6,68 @@ final class ChatBotTest extends DatabaseTestCase
 {
     private const INPUT = ['trigger' => '!Ping', 'response' => '  pong   {user} ', 'permission' => 'moderator', 'cooldown_seconds' => '5', 'is_enabled' => '1'];
 
-    public function testHeartbeatIsTheOnlyDefault(): void
+    public function testEveryBuiltInHasADefaultInEachLanguage(): void
     {
-        $defaults = ChatBot::defaults();
+        $en = ChatBot::defaults('en');
+        $pt = ChatBot::defaults('pt-BR');
 
-        self::assertSame(['heartbeat'], array_keys($defaults));
-        self::assertSame('heartbeat', $defaults['heartbeat']['trigger']);
+        self::assertSame(array_keys(ChatBot::CODES), array_keys($en));
+        self::assertSame(array_keys(ChatBot::CODES), array_keys($pt));
+        self::assertSame('giveaway', $en['giveaway']['trigger']);
+        self::assertSame('sorteio', $pt['giveaway']['trigger']);
+        self::assertSame(array_keys(ChatBot::MESSAGES['prizes']), array_keys($pt['prizes']['messages']));
+        self::assertSame('', $pt['join']['messages']['already'], 'Saying nothing is a valid message.');
+        self::assertSame('giveaway', ChatBot::defaults('xx')['giveaway']['trigger'], 'Another language falls back to English.');
+    }
+
+    public function testAChannelUsesTheDefaultsInItsStreamersLanguage(): void
+    {
+        $pt = $this->createUser('phpunit_bot_pt');
+        $this->pdo->exec("UPDATE users SET locale = 'pt-BR' WHERE id = {$pt}");
+        $en = $this->createUser('phpunit_bot_en');
+        $this->pdo->exec("UPDATE users SET locale = 'en' WHERE id = {$en}");
+
+        self::assertSame('premios', ChatBot::commandsFor($pt)['prizes']['trigger']);
+        self::assertSame('prizes', ChatBot::commandsFor($en)['prizes']['trigger']);
+
+        ChatBot::saveCommand(null, 'prizes', ['trigger' => 'premiacao'] + ChatBot::commandFromInput('prizes', ['trigger' => 'x', 'response' => 'Prêmios: {link}', 'permission' => 'everyone', 'cooldown_seconds' => '5', 'is_enabled' => '1', 'messages' => ['ask' => '  Qual?  ', 'unknown' => '', 'none' => 'Nada']]), 'pt-BR');
+
+        self::assertSame('premiacao', ChatBot::commandsFor($pt)['prizes']['trigger']);
+        self::assertSame('Qual?', ChatBot::commandsFor($pt)['prizes']['messages']['ask']);
+        self::assertSame('prizes', ChatBot::commandsFor($en)['prizes']['trigger'], 'The English default is untouched.');
+
+        $this->expectException(UserError::class);
+        ChatBot::saveCommand(null, 'prizes', ChatBot::commandFromInput('prizes', self::INPUT), 'xx');
     }
 
     public function testCommandInputIsCleanedUp(): void
     {
         self::assertSame(
-            ['trigger' => 'ping', 'response' => 'pong {user}', 'is_enabled' => true, 'permission' => 'moderator', 'cooldown_seconds' => 5],
+            ['trigger' => 'ping', 'response' => 'pong {user}', 'is_enabled' => true, 'permission' => 'moderator', 'cooldown_seconds' => 5, 'messages' => []],
             ChatBot::commandFromInput('heartbeat', self::INPUT)
         );
+        self::assertSame(
+            ['none' => 'Nothing open', 'entry' => '', 'announce' => 'Go {link}'],
+            ChatBot::commandFromInput('giveaway', self::INPUT + ['messages' => ['none' => ' Nothing   open ', 'announce' => 'Go {link}', 'other' => 'x']])['messages']
+        );
+    }
+
+    public function testPostingNeedsTheBotReadingTheChannel(): void
+    {
+        $user = $this->createUser('phpunit_bot_post');
+        $this->pdo->exec("UPDATE bot_account SET is_enabled = true, twitch_login = 'phpunit_bot', twitch_user_id = '1' WHERE id = 1");
+
+        try {
+            ChatBot::post($user, 'hello');
+            self::fail('Posted without the bot in the channel');
+        } catch (UserError) {
+            self::assertFalse(ChatBot::canPost($user));
+        }
+
+        ChatBot::setChannel($user, true);
+        ChatBot::post($user, "  hello\n  chat ");
+
+        self::assertSame('hello chat', $this->pdo->query("SELECT message FROM bot_outbox WHERE user_id = {$user}")->fetchColumn());
     }
 
     public function testBadCommandInputIsRefused(): void

@@ -16,18 +16,22 @@ const store = new Store(pool, makeCrypto(config.appKey));
 
 pool.on('error', (e) => console.error('database:', e.message));
 
-/** Keeps a connection LISTENing on streamorg_bot, reconnecting when it drops. */
+/**
+ * Keeps a connection LISTENing on streamorg_bot, reconnecting when it
+ * drops. A change is passed on once a burst of them settles; a message to
+ * post ('outbox') right away.
+ */
 async function listen(onChange) {
     let timer = null;
     const debounced = () => {
         clearTimeout(timer);
-        timer = setTimeout(onChange, 300);
+        timer = setTimeout(() => onChange(''), 300);
     };
 
     const connect = async () => {
         const client = new pg.Client(config.database);
 
-        client.on('notification', debounced);
+        client.on('notification', (message) => (message.payload === 'outbox' ? onChange('outbox') : debounced()));
         client.on('error', () => {});
         client.on('end', () => setTimeout(() => connect().catch(() => {}), 5000));
 

@@ -172,7 +172,7 @@ final class Viewers
     /**
      * Deletes a viewer profile. Streamers keep the record that a prize was
      * given, without the person: the winner rows lose name and account, and
-     * links not yet used are cancelled.
+     * links not yet used are cancelled. The channel events naming them go.
      */
     public static function delete(array $viewer): void
     {
@@ -184,6 +184,7 @@ final class Viewers
               WHERE twitch_user_id = ?"
         )->execute([$viewer['twitch_user_id']]);
         $pdo->prepare('DELETE FROM giveaway_entries WHERE twitch_user_id = ?')->execute([$viewer['twitch_user_id']]);
+        $pdo->prepare('DELETE FROM channel_events WHERE actor_id = ?')->execute([$viewer['twitch_user_id']]);
         $pdo->prepare('DELETE FROM viewers WHERE id = ?')->execute([$viewer['id']]);
         });
 

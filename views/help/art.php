@@ -254,6 +254,22 @@ $arts = [
         . $path('M108 75h24', 'ha-stroke-accent') . $path('M126 69l7 6-7 6', 'ha-stroke-accent')
         . $r(150, 56, 76, 60, 'ha-accent', 6) . $r(142, 44, 92, 18, 'ha-accent-dark', 5) . $r(182, 44, 12, 72, 'ha-white-fill', 0),
 
+    'giveaways.chat' =>
+        $r(14, 20, 132, 110, 'ha-panel', 8)
+        . $dot(30, 40, 7, 'ha-twitchbg') . $r(42, 34, 74, 12, 'ha-soft', 5) . $bar(48, 37.5, 52, 'ha-accent')
+        . $dot(30, 64, 7, 'ha-twitchbg') . $r(42, 58, 74, 12, 'ha-soft', 5) . $bar(48, 61.5, 44, 'ha-accent')
+        . $dot(30, 88, 7, 'ha-twitchbg') . $r(42, 82, 74, 12, 'ha-soft', 5) . $bar(48, 85.5, 58, 'ha-accent')
+        . $dot(30, 112, 7, 'ha-okbg') . $bar(42, 109.5, 84, 'ha-text')
+        . $path('M152 75h16', 'ha-stroke-accent') . $path('M162 69l7 6-7 6', 'ha-stroke-accent')
+        . $r(176, 34, 50, 82, 'ha-bg', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<circle cx="190" cy="%d" r="5" class="ha-twitchbg"/><rect x="200" y="%d" width="18" height="5" rx="2.5" class="ha-text"/>', 50 + $i * 16, 47.5 + $i * 16), range(0, 3))),
+
+    'giveaways.page' =>
+        $r(40, 14, 160, 124, 'ha-panel', 10)
+        . $dot(120, 34, 11, 'ha-accent') . $bar(92, 52, 56, 'ha-text') . $r(96, 62, 48, 12, 'ha-soft', 5) . $bar(102, 65.5, 36, 'ha-accent')
+        . $r(54, 84, 30, 42, 'ha-bg', 5) . $r(90, 84, 30, 42, 'ha-bg', 5) . $r(126, 84, 30, 42, 'ha-bg', 5) . $r(162, 84, 26, 42, 'ha-okbg', 5)
+        . $path('M168 100l5 5 9-10', 'ha-stroke-ok'),
+
     'giveaways.winners' =>
         $r(22, 26, 196, 98, 'ha-panel', 10)
         . $dot(44, 50, 10, 'ha-twitchbg') . $bar(62, 44, 80, 'ha-text') . $bar(62, 54, 50) . $r(170, 42, 36, 16, 'ha-okbg', 8) . $path('M182 50l4 4 7-7', 'ha-stroke-ok')
@@ -496,6 +512,32 @@ $arts = [
         . implode('', array_map(static fn (int $i): string => sprintf(
             '<rect x="26" y="%d" width="40" height="14" rx="4" class="ha-soft"/><rect x="32" y="%d" width="28" height="5" rx="2.5" class="ha-accent"/><rect x="76" y="%d" width="%d" height="5" rx="2.5" class="ha-text"/><rect x="180" y="%d" width="34" height="12" rx="6" class="%s"/>',
             30 + $i * 26, 34.5 + $i * 26, 34.5 + $i * 26, [90, 70, 84, 60][$i], 31 + $i * 26, $i === 2 ? 'ha-bg' : 'ha-okbg'
+        ), range(0, 3))),
+
+    'bot.giveaways' =>
+        $r(14, 24, 120, 104, 'ha-panel', 8)
+        . $r(24, 36, 70, 14, 'ha-soft', 5) . $bar(30, 40.5, 50, 'ha-accent')
+        . $r(40, 58, 84, 14, 'ha-bg', 5) . $bar(46, 62.5, 60, 'ha-text')
+        . $r(24, 80, 76, 14, 'ha-soft', 5) . $bar(30, 84.5, 56, 'ha-accent')
+        . $r(40, 102, 84, 14, 'ha-bg', 5) . $bar(46, 106.5, 48, 'ha-text')
+        . $path('M140 76h14', 'ha-stroke-accent') . $path('M148 70l7 6-7 6', 'ha-stroke-accent')
+        . $r(162, 24, 64, 104, 'ha-panel', 8) . $dot(194, 46, 10, 'ha-accent')
+        . $r(172, 64, 20, 28, 'ha-soft', 4) . $r(196, 64, 20, 28, 'ha-soft', 4) . $r(172, 96, 20, 24, 'ha-bg', 4) . $r(196, 96, 20, 24, 'ha-okbg', 4),
+
+    'bot.schedule' =>
+        $r(14, 22, 130, 108, 'ha-panel', 8) . $r(14, 22, 130, 20, 'ha-accent', 8) . $r(14, 34, 130, 8, 'ha-accent', 0)
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="26" y="%d" width="22" height="5" rx="2.5" class="ha-accent"/><rect x="54" y="%d" width="%d" height="5" rx="2.5" class="ha-text"/>',
+            54 + $i * 18, 54 + $i * 18, [70, 56, 76, 48][$i]
+        ), range(0, 3)))
+        . $dot(190, 70, 34, 'ha-panel') . $dot(190, 70, 27, 'ha-bg') . $path('M190 70V52M190 70l12 8', 'ha-stroke-accent') . $dot(190, 70, 3, 'ha-accent')
+        . $r(160, 114, 60, 14, 'ha-okbg', 7),
+
+    'bot.events' =>
+        $r(14, 18, 212, 116, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf(
+            '<rect x="26" y="%d" width="22" height="5" rx="2.5" class="ha-line"/><rect x="58" y="%d" width="44" height="12" rx="4" class="%s"/><rect x="112" y="%d" width="%d" height="5" rx="2.5" class="ha-text"/>',
+            34 + $i * 24, 30.5 + $i * 24, ['ha-soft', 'ha-okbg', 'ha-warn', 'ha-okbg'][$i], 34 + $i * 24, [60, 80, 44, 70][$i]
         ), range(0, 3))),
 
     'bot.custom' =>

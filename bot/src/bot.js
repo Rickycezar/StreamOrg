@@ -9,7 +9,17 @@
  * - it posts the streamers' timed messages while they are live (Timers);
  * - it answers custom alerts, shoutouts and watch streaks with the replies
  *   set on the streamer's overlays (OverlayReplies); watch streaks arrive as chat
- *   notifications, subscribed to only in channels that have such a reply;
+ *   notifications;
+ * - it answers the giveaway, schedule and watch-time commands (builtins.js)
+ *   in the streamer's language;
+ * - everything it says goes through a queue per channel (ChatQueue), paced
+ *   under Twitch's limits, dropping repeats of a command still waiting;
+ * - it posts what the site asks it to (bot_outbox, announced with
+ *   NOTIFY streamorg_bot, 'outbox');
+ * - it records the channel's events (subscriptions, gifts, bits, raids,
+ *   watch streaks, and follows where it may see them) in channel_events,
+ *   and once a day compares the follower list of the channels an
+ *   administrator chose, to notice unfollows (FollowerCheck);
  * - it records simple viewer statistics while channels are live (Tracker),
  *   only in channels whose chat it can read.
  *
@@ -18,8 +28,12 @@
  * status for the admin page. Switched off, or without an account, it
  * stays out of every chat.
  */
-import { CommandBook, Cooldowns, BUILTINS, allowed, render } from './commands.js';
+import { CommandBook, Cooldowns, BUILTINS, MESSAGE_MAX, allowed, render } from './commands.js';
+import { LOOKUPS, runLookup } from './builtins.js';
+import { fromChat, fromFollow, fromNotice } from './events.js';
 import { EventSubSocket } from './eventsub.js';
+import { FollowerCheck, FOLLOWERS_SCOPE } from './followers.js';
+import { ChatQueue } from './queue.js';
 import { OverlayReplies } from './overlays.js';
 import { Helix } from './helix.js';
 import { Timers } from './timers.js';
@@ -32,12 +46,27 @@ const REFRESH_BEFORE = 5 * 60_000;
 const RETRY_ACCESS_AFTER = 5 * 60_000;
 const SEND_LIMIT = 20;
 const SEND_WINDOW = 30_000;
-const MESSAGE_MAX = 500;
 const TIMERS_EVERY = 30_000;
+const FOLLOWERS_EVERY = 60 * 60_000;
+const FOLLOWERS_FIRST = 2 * 60_000;
+const OUTBOX_TTL = 5 * 60_000;
+const DROP_LOG_EVERY = 60_000;
+const RETRY_FOLLOWS_AFTER = 30 * 60_000;
 const SHOUTOUT_AGAIN_AFTER = 60_000;
 const ALERT_AGAIN_AFTER = 5_000;
 const CHAT = 'channel.chat.message';
 const NOTICES = 'channel.chat.notification';
+const FOLLOWS = 'channel.follow';
+
+/** A timezone Intl understands, or UTC. */
+function validTimezone(zone) {
+    try {
+        new Intl.DateTimeFormat('en', { timeZone: zone });
+        return zone;
+    } catch {
+        return 'UTC';
+    }
+}
 
 /**
  * EventSub chat badges -> {broadcaster: '1', moderator: '1', …}. A Lead
@@ -54,9 +83,9 @@ export function badgesOf(event) {
 export class Bot {
     /**
      * @param {{store: import('./store.js').Store, config: object, listen?: (onChange: () => void) => Promise<void>,
-     *          SocketImpl?: typeof EventSubSocket, helix?: Helix, fetchImpl?: typeof fetch, trackEveryMs?: number}} deps
+     *          SocketImpl?: typeof EventSubSocket, helix?: Helix, fetchImpl?: typeof fetch, trackEveryMs?: number, sendGapMs?: number}} deps
      */
-    constructor({ store, config, listen = null, SocketImpl = EventSubSocket, helix = null, fetchImpl = fetch, trackEveryMs = 60_000 }) {
+    constructor({ store, config, listen = null, SocketImpl = EventSubSocket, helix = null, fetchImpl = fetch, trackEveryMs = 60_000, sendGapMs = 1100 }) {
         this.store = store;
         this.config = config;
         this.listen = listen;
@@ -68,13 +97,23 @@ export class Bot {
         this.channels = new Map();
         this.subscriptions = new Map();
         this.notices = new Map();
+        this.follows = new Map();
+        this.followsFailed = new Map();
+        this.prizeUrls = {};
+        this.droppedAt = new Map();
         this.replies = new OverlayReplies();
         this.shoutedAt = new Map();
         this.access = new Map();
         this.commands = new CommandBook();
         this.cooldowns = new Cooldowns();
         this.timers = new Timers();
-        this.sent = new Map();
+        this.queue = new ChatQueue({
+            send: (channel, text, replyTo) => this.post(channel, text, replyTo),
+            onDrop: (channel, reason) => this.dropped(channel, reason),
+            gapMs: sendGapMs,
+            limit: SEND_LIMIT,
+            windowMs: SEND_WINDOW,
+        });
         this.validatedAt = 0;
         this.intervals = [];
         this.reloading = null;
@@ -89,12 +128,23 @@ export class Bot {
             intervalMs: trackEveryMs,
             fetchImpl,
         });
+        this.followerCheck = new FollowerCheck({
+            store,
+            helix: this.helix,
+            botToken: () => this.botToken(),
+            botId: () => this.account?.userId ?? null,
+            botScopes: () => this.account?.scopes || [],
+            fetchImpl,
+        });
         this.trackEveryMs = trackEveryMs;
         this.wire();
     }
 
     async start() {
-        if (this.listen) await this.listen(() => this.reload()).catch((e) => console.error('listen:', e.message));
+        if (this.listen) {
+            await this.listen((payload) => (payload === 'outbox' ? this.drainOutbox() : this.reload()))
+                .catch((e) => console.error('listen:', e.message));
+        }
 
         await this.reload();
         await this.report();
@@ -104,10 +154,12 @@ export class Bot {
         this.intervals.push(setInterval(() => this.track(), this.trackEveryMs));
         this.intervals.push(setInterval(() => this.postTimers(), TIMERS_EVERY));
         this.intervals.push(setInterval(() => this.store.prune().catch(() => {}), 60 * 60_000));
+        this.intervals.push(setInterval(() => this.checkFollowers(), FOLLOWERS_EVERY));
+        this.intervals.push(setTimeout(() => this.checkFollowers(), FOLLOWERS_FIRST));
     }
 
     async stop() {
-        this.intervals.forEach(clearInterval);
+        this.intervals.forEach((t) => { clearInterval(t); clearTimeout(t); });
         this.socket.stop();
         this.state = 'stopped';
         this.detail = '';
@@ -164,14 +216,16 @@ export class Bot {
         this.commands.load(await this.store.commands(), await this.store.customCommands());
         this.timers.load(await this.store.timers());
         this.replies.load(await this.store.overlayReplies());
+        this.prizeUrls = await this.store.prizePageUrls?.() || {};
 
         const channels = await this.store.channels();
-        this.channels = new Map(channels.map((c) => [c.twitchId, c]));
+        this.channels = new Map(channels.map((c) => [c.twitchId, { ...c, locale: c.locale || 'en', timezone: validTimezone(c.timezone || 'UTC') }]));
         this.followReadable();
 
         if (previous && previous.userId !== this.account.userId) {
             this.subscriptions.clear();
             this.notices.clear();
+            this.follows.clear();
         }
 
         if (Date.now() - this.validatedAt > VALIDATE_EVERY) await this.validate();
@@ -182,7 +236,10 @@ export class Bot {
             return;
         }
 
-        if (this.socket.connected) await this.syncSubscriptions();
+        if (this.socket.connected) {
+            await this.syncSubscriptions();
+            await this.drainOutbox();
+        }
     }
 
     idle(detail) {
@@ -264,19 +321,21 @@ export class Bot {
         }
 
         await this.syncNotices(conduitId, fresh);
+        await this.syncFollows(conduitId, fresh);
         this.followReadable();
         this.setState('connected', this.summary());
     }
 
     /**
-     * Chat notifications (watch streaks) only in readable channels whose
-     * streamer set a watch-streak reply; removed when they no longer have one.
+     * Chat notifications (subscriptions, gifts, raids, watch streaks…) in
+     * every channel whose chat the bot reads: for the channel's events and
+     * the watch-streak replies.
      */
     async syncNotices(conduitId, fresh) {
         if (fresh) this.notices = await this.existingSubscriptions(conduitId, NOTICES);
 
         const wanted = new Set([...this.channels.values()]
-            .filter((c) => this.subscriptions.has(c.twitchId) && this.replies.wantsNotices(c.userId))
+            .filter((c) => this.subscriptions.has(c.twitchId))
             .map((c) => c.twitchId));
 
         for (const [broadcasterId, sub] of [...this.notices]) {
@@ -303,6 +362,59 @@ export class Bot {
         }
     }
 
+    /**
+     * Who may see a channel's follows: the streamer, when their connection
+     * allows it, else the bot when it is a moderator there with that
+     * permission; null when nobody may.
+     */
+    followModerator(channel) {
+        if (channel.scopes.includes(FOLLOWERS_SCOPE)) return channel.twitchId;
+        if (channel.access === 'moderator' && (this.account?.scopes || []).includes(FOLLOWERS_SCOPE)) return this.account.userId;
+        return null;
+    }
+
+    /** A channel.follow subscription in every readable channel whose follows the bot may see. */
+    async syncFollows(conduitId, fresh) {
+        if (fresh) this.follows = await this.existingSubscriptions(conduitId, FOLLOWS);
+
+        const wanted = new Map();
+
+        for (const channel of this.channels.values()) {
+            const moderator = this.subscriptions.has(channel.twitchId) ? this.followModerator(channel) : null;
+            if (moderator) wanted.set(channel.twitchId, moderator);
+        }
+
+        for (const [broadcasterId, sub] of [...this.follows]) {
+            if (wanted.get(broadcasterId) !== sub.botId) {
+                await this.helix.app('DELETE', 'eventsub/subscriptions', { query: { id: sub.id } });
+                this.follows.delete(broadcasterId);
+            }
+        }
+
+        for (const [broadcasterId, moderator] of wanted) {
+            if (this.follows.has(broadcasterId)) continue;
+            if (Date.now() - (this.followsFailed.get(broadcasterId) || 0) < RETRY_FOLLOWS_AFTER) continue;
+
+            const result = await this.helix.app('POST', 'eventsub/subscriptions', {
+                body: {
+                    type: FOLLOWS,
+                    version: '2',
+                    condition: { broadcaster_user_id: broadcasterId, moderator_user_id: moderator },
+                    transport: { method: 'conduit', conduit_id: conduitId },
+                },
+            });
+
+            if (result.status === 202) {
+                this.follows.set(broadcasterId, { id: result.data.data[0].id, botId: moderator });
+                this.followsFailed.delete(broadcasterId);
+            } else if (result.status === 409) {
+                this.follows = await this.existingSubscriptions(conduitId, FOLLOWS);
+            } else {
+                this.followsFailed.set(broadcasterId, Date.now());
+            }
+        }
+    }
+
     /** Statistics and timers only concern channels whose chat the bot can read. */
     followReadable() {
         this.tracker.setChannels([...this.channels.values()].filter((c) => this.subscriptions.has(c.twitchId)));
@@ -319,7 +431,10 @@ export class Bot {
 
             for (const sub of page.data.data || []) {
                 if (sub.transport?.conduit_id === conduitId && sub.status === 'enabled') {
-                    found.set(String(sub.condition.broadcaster_user_id), { id: sub.id, botId: String(sub.condition.user_id) });
+                    found.set(String(sub.condition.broadcaster_user_id), {
+                        id: sub.id,
+                        botId: String(sub.condition.user_id ?? sub.condition.moderator_user_id),
+                    });
                 }
             }
 
@@ -436,6 +551,7 @@ export class Bot {
         this.socket.on('notification', ({ type, event }) => {
             if (type === CHAT) this.onChat(event).catch((e) => console.error('chat:', e.message));
             if (type === NOTICES) this.onNotice(event).catch((e) => console.error('notice:', e.message));
+            if (type === FOLLOWS) this.onFollow(event).catch((e) => console.error('follow:', e.message));
         });
 
         this.socket.on('revocation', (subscription) => {
@@ -443,6 +559,12 @@ export class Bot {
 
             if (subscription.type === NOTICES) {
                 this.notices.delete(broadcasterId);
+                return;
+            }
+
+            if (subscription.type === FOLLOWS) {
+                this.follows.delete(broadcasterId);
+                this.followsFailed.set(broadcasterId, Date.now());
                 return;
             }
 
@@ -480,6 +602,9 @@ export class Bot {
         this.tracker.countMessage(channel.twitchId, { id: user.id, login: user.login, name: user.displayName });
         if (this.tracker.isLive(channel.twitchId)) this.timers.countMessage(channel.userId);
 
+        const cheer = fromChat(event);
+        if (cheer) await this.record(channel, cheer);
+
         const text = event.message?.text || '';
         if (await this.answer({ channel, id: event.message_id, text, user })) return;
         await this.alerted(channel, event.message_id, text, user);
@@ -495,21 +620,35 @@ export class Bot {
     async answer({ channel, id, text, user }) {
         if (!this.account) return false;
 
-        const command = this.commands.match(channel.userId, this.account.prefix, text);
+        const locale = channel.locale || 'en';
+        const command = this.commands.match(channel.userId, this.account.prefix, text, locale);
         if (!command) return false;
         if (!allowed(command.permission, user.badges)) return true;
 
         const privileged = 'broadcaster' in user.badges || 'moderator' in user.badges;
         if (!privileged && !this.cooldowns.take(`${channel.userId}:${command.code}:${command.trigger}`, command.cooldown)) return true;
 
-        const values = BUILTINS[command.code]({
-            channel: channel.login,
-            user,
-            text,
-            uptimeMs: Date.now() - this.startedAt.getTime(),
-        });
+        const texts = LOOKUPS.includes(command.code)
+            ? await runLookup(command.code, {
+                store: this.store,
+                channel,
+                user,
+                text,
+                command,
+                prefix: this.account.prefix,
+                builtins: this.commands.builtinsFor(channel.userId, locale),
+                prizeUrl: this.prizeUrls[locale] || this.prizeUrls.en || Object.values(this.prizeUrls)[0] || null,
+            })
+            : [render(command.response, (BUILTINS[command.code] || BUILTINS.custom)({
+                channel: channel.login,
+                user,
+                text,
+                uptimeMs: Date.now() - this.startedAt.getTime(),
+            }))];
 
-        if (await this.say(channel, render(command.response, values), id)) {
+        if (texts.length === 0) return true;
+
+        if (await this.say(channel, texts, id, { key: `command:${command.code}:${command.trigger}` })) {
             await this.store.log(channel.userId, 'info', `Answered ${this.account.prefix}${command.trigger}`);
         }
 
@@ -524,7 +663,7 @@ export class Bot {
             if (now - (this.shoutedAt.get(key) || 0) < ALERT_AGAIN_AFTER) continue;
             this.shoutedAt.set(key, now);
 
-            if (await this.say(channel, render(alert.reply, { user: user.displayName, channel: channel.login }), id)) {
+            if (await this.say(channel, render(alert.reply, { user: user.displayName, channel: channel.login }), id, { key: `alert:${alert.command}` })) {
                 await this.store.log(channel.userId, 'info', `Answered the alert !${alert.command}`);
             }
         }
@@ -570,15 +709,20 @@ export class Bot {
             title: live.title || '',
         };
 
-        if (await this.say(channel, render(asked.reply, values))) {
+        if (await this.say(channel, render(asked.reply, values), null, { key: `shoutout:${target.login}` })) {
             await this.store.log(channel.userId, 'info', `Answered a shoutout to ${target.login}`);
         }
     }
 
-    /** A chat notification: a watch streak shared in chat gets the overlay's reply. */
+    /** A chat notification: recorded as an event; a watch streak shared in chat gets the overlay's reply. */
     async onNotice(event) {
         const channel = this.channels.get(String(event.broadcaster_user_id));
-        if (!channel || event.notice_type !== 'watch_streak' || !event.watch_streak) return;
+        if (!channel) return;
+
+        const recorded = fromNotice(event);
+        if (recorded) await this.record(channel, recorded);
+
+        if (event.notice_type !== 'watch_streak' || !event.watch_streak) return;
 
         const count = Number(event.watch_streak.streak_count) || 0;
         const reply = this.replies.streak(channel.userId, count);
@@ -604,22 +748,79 @@ export class Bot {
         for (const timer of this.timers.due(live, now)) {
             const channel = byUser.get(timer.userId);
 
-            if (await this.say(channel, render(timer.message, { channel: channel.login }))) {
+            if (await this.say(channel, render(timer.message, { channel: channel.login }), null, { key: `timer:${timer.id}` })) {
                 await this.store.timerSent(timer.id).catch(() => {});
                 await this.store.log(channel.userId, 'info', 'Posted a timed message').catch(() => {});
             }
         }
     }
 
-    /** Sends a chat message as the bot, at most SEND_LIMIT per SEND_WINDOW per channel. */
-    async say(channel, text, replyTo = null) {
+    /** A follow in a channel whose follows the bot may see. */
+    async onFollow(event) {
+        const channel = this.channels.get(String(event.broadcaster_user_id));
+        if (!channel) return;
+
+        const follow = fromFollow(event);
+        await this.record(channel, follow);
+        await this.store.rememberFollower?.(channel.userId, { id: follow.actorId, login: follow.actorLogin, name: follow.actorName, followedAt: follow.at });
+    }
+
+    async record(channel, event) {
+        await this.store.recordEvent?.(channel.userId, event).catch((e) => console.error('event:', e.message));
+    }
+
+    /** Posts what the site asked the bot to post (the giveaway page's "post in chat"), in channels it reads. */
+    async drainOutbox() {
+        if (!this.account?.enabled || !this.socket.connected || !this.store.takeOutbox) return;
+
+        const byUser = new Map([...this.channels.values()].map((c) => [c.userId, c]));
+
+        for (const row of await this.store.takeOutbox().catch(() => [])) {
+            const channel = byUser.get(row.userId);
+
+            if (!channel || !this.subscriptions.has(channel.twitchId)) {
+                await this.store.log(row.userId, 'warn', 'Could not post the message from StreamOrg: the bot is not reading this chat');
+                continue;
+            }
+
+            this.say(channel, row.message, null, { key: `outbox:${row.id}`, ttlMs: OUTBOX_TTL }).then((sent) => {
+                if (sent) this.store.log(channel.userId, 'info', 'Posted a message from StreamOrg').catch(() => {});
+            });
+        }
+    }
+
+    /** The daily follower-list check, for the channels an administrator chose. */
+    async checkFollowers() {
+        if (!this.account?.enabled || this.channels.size === 0) return;
+        await this.followerCheck.tick([...this.channels.values()]).catch((e) => console.error('followers:', e.message));
+    }
+
+    /**
+     * Says something in a channel: through the queue, paced under Twitch's
+     * limits. Several texts go out as consecutive messages.
+     *
+     * @param {string|string[]} text
+     * @param {{key?: ?string, ttlMs?: number}} options key: a repeat waiting with the same key is dropped
+     * @returns {Promise<boolean>} whether it was posted
+     */
+    say(channel, text, replyTo = null, { key = null, ttlMs = 60_000 } = {}) {
+        return this.queue.push(channel, { texts: Array.isArray(text) ? text : [text], replyTo, key, ttlMs });
+    }
+
+    /** A reply the queue dropped: noted in the channel's activity, at most once a minute. */
+    dropped(channel, reason) {
+        if (reason === 'duplicate') return;
+
         const now = Date.now();
-        const recent = (this.sent.get(channel.twitchId) || []).filter((at) => now - at < SEND_WINDOW);
-        if (recent.length >= SEND_LIMIT) return false;
+        if (now - (this.droppedAt.get(channel.twitchId) || 0) < DROP_LOG_EVERY) return;
+        this.droppedAt.set(channel.twitchId, now);
 
-        recent.push(now);
-        this.sent.set(channel.twitchId, recent);
+        const why = reason === 'full' ? 'too many replies waiting' : 'it waited too long to be posted';
+        this.store.log(channel.userId, 'warn', `Skipped a reply to keep under Twitch's chat limits (${why})`).catch(() => {});
+    }
 
+    /** Sends one chat message as the bot (the queue decides when). */
+    async post(channel, text, replyTo = null) {
         const result = await this.helix.app('POST', 'chat/messages', {
             body: {
                 broadcaster_id: channel.twitchId,
