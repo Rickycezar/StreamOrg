@@ -60,18 +60,87 @@ final class GiveawaysTest extends DatabaseTestCase
         return array_map('intval', $this->pdo->query("SELECT id FROM giveaway_prizes WHERE giveaway_id = {$giveawayId} ORDER BY id")->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    public function testOnlyRealKeysMarkedForGiveawayBecomePrizes(): void
+    public function testRealKeysForGiveawayOrAvailableBecomePrizes(): void
     {
         $g = $this->giveaway();
         $ok = $this->key('AAAA-1111');
         $available = $this->key('BBBB-2222', 'available');
         $placeholder = $this->key('CCCC-3333', 'for_giveaway', true);
+        $used = $this->key('DDDD-4444', 'used');
 
-        $result = Giveaways::addPrizes($this->user, $g, [$ok, $available, $placeholder]);
+        $result = Giveaways::addPrizes($this->user, $g, [$ok, $available, $placeholder, $used]);
 
-        self::assertSame(1, $result['added']);
+        self::assertSame(2, $result['added']);
         self::assertCount(2, $result['skipped']);
+        self::assertSame('for_giveaway', $this->pdo->query("SELECT status FROM game_keys WHERE id = {$available}")->fetchColumn(), 'An available key added as a prize is marked for giveaway.');
         self::assertNull($this->pdo->query("SELECT sealed_code FROM giveaway_prizes WHERE game_key_id = {$ok}")->fetchColumn(), 'Adding a prize must copy nothing.');
+    }
+
+    public function testGiftableKeysListThoseMarkedForGiveawayFirst(): void
+    {
+        $available = $this->key('AAAA-1111', 'available');
+        $marked = $this->key('BBBB-2222');
+        $this->key('CCCC-3333', 'for_giveaway', true);
+        $this->key('DDDD-4444', 'used');
+        $prize = $this->key('EEEE-5555');
+        Giveaways::addPrizes($this->user, $this->giveaway(), [$prize]);
+
+        self::assertSame([$marked, $available], array_map('intval', array_column(Giveaways::giftableKeys($this->user), 'id')));
+    }
+
+    /** A direct gift as giveDirect makes it, without asking Twitch: a hidden giveaway, one key, one assigned winner. */
+    private function gift(int $keyId, string $twitchId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO giveaways (user_id, title, status, winner_mode, entry_method, claim_days, is_direct)
+             VALUES (?, 'PHPUnit Quest', 'open', 'assigned', 'manual', 30, true) RETURNING id"
+        );
+        $stmt->execute([$this->user]);
+        $g = (int) $stmt->fetchColumn();
+        $this->pdo->exec("INSERT INTO giveaway_prizes (giveaway_id, game_key_id) VALUES ({$g}, {$keyId})");
+
+        return ['giveaway' => $g, 'token' => $this->winner($g, $twitchId)];
+    }
+
+    public function testADirectGiftIsClaimedLikeAPrizeAndThenFinished(): void
+    {
+        $key  = $this->key('GIFT-1111');
+        $gift = $this->gift($key, '501');
+
+        self::assertSame('GIFT-1111', Giveaways::claim($gift['token'], $this->viewer('501'), null));
+        self::assertSame('finished', $this->pdo->query("SELECT status FROM giveaways WHERE id = {$gift['giveaway']}")->fetchColumn());
+        self::assertSame('given_away', $this->pdo->query("SELECT status FROM game_keys WHERE id = {$key}")->fetchColumn());
+
+        $given = Giveaways::given($this->user);
+        self::assertCount(1, $given);
+        self::assertTrue((bool) $given[0]['is_direct']);
+        self::assertSame([$key, 'claimed'], [(int) $given[0]['key_id'], PrizeRemovals::stateOf($given[0])]);
+    }
+
+    public function testWithdrawingADirectGiftFreesItsKey(): void
+    {
+        $key  = $this->key('GIFT-2222', 'available');
+        $gift = $this->gift($key, '502');
+        $winner = (int) $this->pdo->query("SELECT id FROM giveaway_winners WHERE giveaway_id = {$gift['giveaway']}")->fetchColumn();
+
+        self::assertTrue(Giveaways::cancelWinner($this->user, $winner));
+        self::assertSame('cancelled', $this->pdo->query("SELECT status FROM giveaways WHERE id = {$gift['giveaway']}")->fetchColumn());
+        self::assertContains($key, array_map('intval', array_column(Giveaways::giftableKeys($this->user), 'id')), 'The key can be given again.');
+        self::assertNull(Giveaways::claimByToken($gift['token'])['prizes'][0] ?? null);
+    }
+
+    public function testOnlyKeysThatCanBeGivenAreGiven(): void
+    {
+        foreach ([$this->key('PLACE-1', 'for_giveaway', true), $this->key('USED-1', 'used')] as $key) {
+            try {
+                Giveaways::giveDirect($this->user, $key, 'someone', null);
+                self::fail("Key {$key} was given.");
+            } catch (UserError) {
+            }
+        }
+
+        $this->expectException(UserError::class);
+        Giveaways::giveDirect($this->createUser('phpunit_other'), $this->key('MINE-1'), 'someone', null);
     }
 
     public function testWinnerPicksAKeyAndBothRecordsAreMarked(): void

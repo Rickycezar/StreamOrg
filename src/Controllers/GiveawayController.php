@@ -20,7 +20,7 @@ final class GiveawayController
                     (SELECT count(*) FROM giveaway_entries e WHERE e.giveaway_id = g.id) AS entry_count
                FROM giveaways g
           LEFT JOIN streams s ON s.id = g.stream_id
-              WHERE g.user_id = ?
+              WHERE g.user_id = ? AND NOT g.is_direct
            ORDER BY CASE g.status WHEN 'open' THEN 0 WHEN 'closed' THEN 1 WHEN 'planned' THEN 2 ELSE 3 END,
                     coalesce(g.ends_at, g.starts_at, g.created_at) DESC"
         );
@@ -44,6 +44,10 @@ final class GiveawayController
             redirect('/giveaways');
         }
 
+        if ($giveaway['is_direct']) {
+            redirect('/keys/given');
+        }
+
         $pdo = Database::connection();
 
         $stmt = $pdo->prepare(
@@ -60,17 +64,7 @@ final class GiveawayController
         $stmt->execute([$giveaway['id']]);
         $prizes = $stmt->fetchAll();
 
-        $stmt = $pdo->prepare(
-            "SELECT k.id, g.title, gp.code AS platform_code, k.expires_at, k.is_placeholder
-               FROM game_keys k
-               JOIN games g ON g.id = k.game_id
-          LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
-              WHERE k.user_id = ? AND k.status = 'for_giveaway'
-                AND NOT EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id)
-           ORDER BY g.title, k.id"
-        );
-        $stmt->execute([$userId]);
-        $available = $stmt->fetchAll();
+        $available = Giveaways::giftableKeys($userId);
 
         $stmt = $pdo->prepare(
             'SELECT w.*, p.id AS prize_id, g.title AS prize_title
@@ -343,7 +337,7 @@ final class GiveawayController
 
         try {
             Giveaways::addWinner((int) Auth::id(), (int) $giveaway['id'], (string) ($_POST['login'] ?? ''),
-                (string) ($_POST['method'] ?? 'manual'), $prizeId);
+                (string) ($_POST['method'] ?? 'manual'), $prizeId, trim((string) ($_POST['twitch_id'] ?? '')) ?: null);
         } catch (UserError $e) {
             flash('error', $e->getMessage());
             redirect($back);
@@ -351,6 +345,46 @@ final class GiveawayController
 
         flash('success', __('ui.message.winner_added'));
         redirect($back);
+    }
+
+    /**
+     * GET /giveaways/winners/search?q= — Twitch accounts for the winner
+     * picker (JSON): the account with exactly that login first (viewers who
+     * never stream are not in Twitch's channel search), then the channels
+     * the search finds.
+     */
+    public static function searchWinner(): void
+    {
+        Auth::requireLogin();
+
+        if (!Twitch::isConfigured()) {
+            json_response(['ok' => false, 'error' => __('ui.message.twitch_unconfigured')], 400);
+        }
+
+        $term = trim(ltrim(trim((string) ($_GET['q'] ?? '')), '@'));
+
+        if (mb_strlen($term) < 2) {
+            json_response(['ok' => true, 'results' => []]);
+        }
+
+        $results = [];
+
+        try {
+            if (preg_match('/^[A-Za-z0-9_]{3,25}$/', $term) && ($exact = Twitch::user(strtolower($term), true)) !== null) {
+                $results[] = ['ref' => $exact['ref'], 'login' => $exact['login'], 'name' => $exact['name'], 'avatar' => $exact['avatar']];
+            }
+
+            foreach (Twitch::search($term) as $found) {
+                if (!in_array($found['ref'], array_column($results, 'ref'), true)) {
+                    $results[] = ['ref' => $found['ref'], 'login' => $found['login'], 'name' => $found['name'], 'avatar' => $found['avatar']];
+                }
+            }
+        } catch (Throwable $e) {
+            ErrorLog::note('twitch winner search: ' . $e->getMessage());
+            json_response(['ok' => false, 'error' => __('ui.message.provider_error')], 502);
+        }
+
+        json_response(['ok' => true, 'results' => array_slice($results, 0, 10)]);
     }
 
     /** Draws a winner among the chat entries. */

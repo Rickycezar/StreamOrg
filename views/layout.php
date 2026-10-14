@@ -67,6 +67,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 'label'    => __('ui.nav.sponsorships'),
                 'children' => [
                     '/keys'         => __('ui.nav.vault'),
+                    '/keys/given'   => __('ui.nav.given_keys'),
                     '/giveaways'    => __('ui.nav.giveaways'),
                     '/negotiations' => __('ui.nav.negotiations'),
                 ],
@@ -167,8 +168,9 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 <button type="button" class="navtop" aria-expanded="false"
                         aria-controls="navmenu-<?= $i ?>"><?= e($item['label']) ?></button>
                 <div class="navmenu" id="navmenu-<?= $i ?>">
-                    <?php foreach ($item['children'] as $childPath => $childLabel):
-                        $childOn = $isHere($childPath) && ($childPath !== '/admin' || $here === '/admin'); ?>
+                    <?php $best = array_reduce(array_keys($item['children']), static fn (?string $best, string $p): ?string => $isHere($p) && strlen($p) > strlen((string) $best) ? $p : $best);
+                    foreach ($item['children'] as $childPath => $childLabel):
+                        $childOn = $childPath === $best && ($childPath !== '/admin' || $here === '/admin'); ?>
                         <a href="<?= e(url($childPath)) ?>" class="<?= $childOn ? 'active' : '' ?>"
                            <?= $childOn ? 'aria-current="page"' : '' ?>><?= e($childLabel) ?></a>
                     <?php endforeach; ?>

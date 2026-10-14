@@ -291,16 +291,25 @@ final class LiveTracker
         return self::match($games, $categoryId, $categoryName);
     }
 
-    /** @return list<array{id:int, title:string, category_id:?string}> */
+    /**
+     * A content's games with the Twitch category each is known by: the
+     * user's own pick, else the shared one. The Just Chatting stand-in of
+     * games Twitch does not list (source "default") is not a category to
+     * match: such a game is matched by its title only, or a switch to Just
+     * Chatting would start it.
+     *
+     * @return list<array{id:int, title:string, category_id:?string}>
+     */
     private static function games(int $userId, int $streamId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT g.id, g.title, coalesce(utc.category_id, g.twitch_category_id) AS category_id
+            "SELECT g.id, g.title,
+                    coalesce(utc.category_id, CASE WHEN g.twitch_category_source = 'default' THEN NULL ELSE g.twitch_category_id END) AS category_id
                FROM stream_games sg
                JOIN games g ON g.id = sg.game_id
           LEFT JOIN user_twitch_categories utc ON utc.game_id = g.id AND utc.user_id = ?
               WHERE sg.stream_id = ?
-           ORDER BY sg.play_order'
+           ORDER BY sg.play_order"
         );
         $stmt->execute([$userId, $streamId]);
 

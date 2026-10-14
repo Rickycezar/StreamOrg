@@ -22,7 +22,11 @@ declare(strict_types=1);
  *
  * The prize keeps pointing at its key in the vault: claiming marks the
  * prize claimed and the key given away in one transaction.
- * See 027_giveaways_and_viewers.sql.
+ *
+ * A direct gift (giveDirect) is a hidden giveaway (is_direct) with one key
+ * assigned to one person: same link, same claim, never on the giveaways
+ * page; claimed, it is finished, and cancelled, its key is free again.
+ * See 027_giveaways_and_viewers.sql and 046_direct_gifts.sql.
  */
 final class Giveaways
 {
@@ -44,10 +48,13 @@ final class Giveaways
         return $stmt->fetch() ?: null;
     }
 
+    /** Key statuses that can become a prize or a gift; an available key is then marked "for giveaway". */
+    public const GIFTABLE = ['for_giveaway', 'available'];
+
     /**
      * Links vault keys to the giveaway as prizes: each must be this user's,
-     * marked "for giveaway", hold a real code and not already be a prize.
-     * Nothing is copied; the keys stay in the vault.
+     * available or marked "for giveaway", hold a real code and not already
+     * be a prize. Nothing is copied; the keys stay in the vault.
      *
      * @param list<int> $keyIds
      * @return array{added:int, skipped:list<string>} skipped: titles of keys left out
@@ -80,12 +87,13 @@ final class Giveaways
                 continue;
             }
 
-            if ($key['status'] !== 'for_giveaway' || $key['taken'] || $key['is_placeholder']) {
+            if (!in_array($key['status'], self::GIFTABLE, true) || $key['taken'] || $key['is_placeholder']) {
                 $skipped[] = (string) $key['title'];
                 continue;
             }
 
             $insert->execute([$giveawayId, $keyId]);
+            $pdo->prepare("UPDATE game_keys SET status = 'for_giveaway', updated_at = now() WHERE id = ? AND status = 'available'")->execute([$keyId]);
             $added++;
         }
 
@@ -250,12 +258,13 @@ final class Giveaways
     }
 
     /**
-     * Records a winner by Twitch login, resolved to the account id, and
-     * returns the claim token (to build the link).
+     * Records a winner and returns the claim token (to build the link). The
+     * account is the one picked in the search (its Twitch id, looked up again
+     * so the name is current), or else the one with this login.
      *
      * @throws UserError when the account does not exist, or the prize is not available
      */
-    public static function addWinner(int $userId, int $giveawayId, string $login, string $method, ?int $prizeId = null): string
+    public static function addWinner(int $userId, int $giveawayId, string $login, string $method, ?int $prizeId = null, ?string $twitchId = null): string
     {
         $giveaway = self::find($userId, $giveawayId);
 
@@ -263,17 +272,7 @@ final class Giveaways
             throw new UserError(__('ui.message.giveaway_not_editable'));
         }
 
-        $login = strtolower(ltrim(trim($login), '@'));
-
-        if (!preg_match('/^[a-z0-9_]{3,25}$/', $login)) {
-            throw new UserError(__('ui.message.winner_bad_login'));
-        }
-
-        $account = Twitch::user($login, true);
-
-        if ($account === null) {
-            throw new UserError(sprintf(__('ui.message.winner_not_found'), $login));
-        }
+        $account = self::account($login, $twitchId);
 
         return self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], $method, $prizeId);
     }
@@ -332,8 +331,145 @@ final class Giveaways
 
             $pdo->prepare('UPDATE giveaway_prizes SET winner_id = NULL WHERE winner_id = ? AND claimed_at IS NULL')->execute([$winnerId]);
 
+            $direct = $pdo->prepare('SELECT g.id FROM giveaway_winners w JOIN giveaways g ON g.id = w.giveaway_id WHERE w.id = ? AND g.is_direct');
+            $direct->execute([$winnerId]);
+
+            if (($giftId = $direct->fetchColumn()) !== false) {
+                self::finish($userId, (int) $giftId, 'cancelled');
+            }
+
             return true;
         });
+    }
+
+    /**
+     * Gives one vault key straight to one Twitch account, without a
+     * giveaway: a hidden giveaway with that key assigned to them. With a
+     * private vault the vault must be open, so the key is copied for them
+     * at once (nobody would come back to make it claimable).
+     *
+     * @return array{giveaway_id:int, winner_id:int, token:string, login:string}
+     * @throws UserError when the key cannot be given or the account does not exist
+     * @throws VaultLocked when the private vault is locked
+     */
+    public static function giveDirect(int $userId, int $keyId, string $login, ?string $twitchId, int $claimDays = 30): array
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare(
+            "SELECT k.id, k.status, k.is_placeholder, k.game_platform_id, g.title,
+                    EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id) AS taken
+               FROM game_keys k JOIN games g ON g.id = k.game_id WHERE k.id = ? AND k.user_id = ?"
+        );
+        $stmt->execute([$keyId, $userId]);
+        $key = $stmt->fetch();
+
+        if ($key === false || !in_array($key['status'], self::GIFTABLE, true) || $key['taken'] || $key['is_placeholder']) {
+            throw new UserError(__('ui.message.gift_key_unavailable'));
+        }
+
+        if (self::needsCopies($userId) && !Vault::isUnlocked($userId)) {
+            throw new VaultLocked();
+        }
+
+        $account = self::account($login, $twitchId);
+        $claimDays = max(1, min(365, $claimDays));
+
+        $gift = Database::transaction(static function (PDO $pdo) use ($userId, $keyId, $key, $claimDays, $account): array {
+            $stmt = $pdo->prepare(
+                "INSERT INTO giveaways (user_id, title, status, winner_mode, entry_method, claim_days, is_direct)
+                 VALUES (?, ?, 'open', 'assigned', 'manual', ?, true) RETURNING *"
+            );
+            $stmt->execute([$userId, mb_substr((string) $key['title'], 0, 200), $claimDays]);
+            $giveaway = $stmt->fetch();
+
+            $pdo->prepare('INSERT INTO giveaway_prizes (giveaway_id, game_key_id) VALUES (?, ?)')->execute([$giveaway['id'], $keyId]);
+            $pdo->prepare("UPDATE game_keys SET status = 'for_giveaway', updated_at = now() WHERE id = ? AND status = 'available'")->execute([$keyId]);
+
+            $token  = self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], 'manual', null);
+            $winner = $pdo->prepare('SELECT id FROM giveaway_winners WHERE giveaway_id = ? ORDER BY id DESC LIMIT 1');
+            $winner->execute([$giveaway['id']]);
+
+            return ['giveaway_id' => (int) $giveaway['id'], 'winner_id' => (int) $winner->fetchColumn(), 'token' => $token];
+        });
+
+        return $gift + ['login' => $account['login']];
+    }
+
+    /**
+     * Every key given or promised by this streamer, newest first: one row
+     * per winner (of a giveaway or a direct gift), with their key when it
+     * is decided, when the link was made and when the key was taken.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function given(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT w.id AS winner_id, w.twitch_user_id, w.twitch_login, w.display_name, w.method, w.created_at AS sent_at,
+                    w.claimed_at, w.expires_at, w.cancelled_at, w.removed_at, w.claim_token, w.claim_token_hash,
+                    gw.id AS giveaway_id, gw.title AS giveaway_title, gw.is_direct, gw.winner_mode,
+                    k.id AS key_id, g.title AS game_title, gp.code AS platform_code, kp.code AS key_site
+               FROM giveaway_winners w
+               JOIN giveaways gw ON gw.id = w.giveaway_id
+          LEFT JOIN giveaway_prizes p ON p.winner_id = w.id
+          LEFT JOIN game_keys k ON k.id = p.game_key_id
+          LEFT JOIN games g ON g.id = k.game_id
+          LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
+          LEFT JOIN key_platforms kp ON kp.id = k.key_platform_id
+              WHERE gw.user_id = ?
+           ORDER BY w.created_at DESC, w.id DESC'
+        );
+        $stmt->execute([$userId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Keys that can be given or added to a giveaway: "for giveaway" first,
+     * then available, each by game.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function giftableKeys(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT k.id, k.status, g.title, gp.code AS platform_code, k.expires_at
+               FROM game_keys k
+               JOIN games g ON g.id = k.game_id
+          LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
+              WHERE k.user_id = ? AND k.status IN ('for_giveaway', 'available') AND NOT k.is_placeholder
+                AND NOT EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id)
+           ORDER BY k.status = 'for_giveaway' DESC, g.title, k.id"
+        );
+        $stmt->execute([$userId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * The Twitch account a winner is: the one picked in a search (by id,
+     * looked up again so the name is current), or the one with this login.
+     *
+     * @return array{ref:string, login:string, name:string}
+     * @throws UserError when there is no such account
+     */
+    private static function account(string $login, ?string $twitchId): array
+    {
+        $login = strtolower(ltrim(trim($login), '@'));
+
+        if ($twitchId !== null && ctype_digit($twitchId)) {
+            $account = Twitch::user($twitchId);
+        } elseif (preg_match('/^[a-z0-9_]{3,25}$/', $login)) {
+            $account = Twitch::user($login, true);
+        } else {
+            throw new UserError(__('ui.message.winner_bad_login'));
+        }
+
+        if ($account === null) {
+            throw new UserError(sprintf(__('ui.message.winner_not_found'), $login !== '' ? $login : '#' . $twitchId));
+        }
+
+        return $account;
     }
 
     /** Gives an unclaimed winner a fresh claim window. */
@@ -507,6 +643,10 @@ final class Giveaways
             $pdo->prepare("UPDATE game_keys SET status = 'given_away', updated_at = now() WHERE id = ?")
                 ->execute([$prize['game_key_id']]);
 
+            if (!empty($giveaway['is_direct'])) {
+                $pdo->prepare("UPDATE giveaways SET status = 'finished', updated_at = now() WHERE id = ?")->execute([$giveaway['id']]);
+            }
+
             return $code;
         });
     }
@@ -632,7 +772,7 @@ final class Giveaways
     public static function pendingFor(array $viewer): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT w.id, w.claim_token, w.expires_at, g.title, coalesce(u.display_name, u.username) AS streamer
+            'SELECT w.id, w.claim_token, w.expires_at, g.title, g.is_direct, coalesce(u.display_name, u.username) AS streamer
                FROM giveaway_winners w
                JOIN giveaways g ON g.id = w.giveaway_id
                JOIN users u ON u.id = g.user_id

@@ -40,7 +40,7 @@ final class AdminOverview
                     (SELECT count(*) FROM twitch_broadcasts WHERE ended_at IS NULL) AS live_now,
                     (SELECT count(*) FROM game_keys) AS keys,
                     (SELECT count(*) FROM game_keys WHERE status = 'available') AS keys_available,
-                    (SELECT count(*) FROM giveaways WHERE status = 'open') AS giveaways_open,
+                    (SELECT count(*) FROM giveaways WHERE status = 'open' AND NOT is_direct) AS giveaways_open,
                     (SELECT count(*) FROM collabs WHERE status NOT IN ('done', 'cancelled')) AS collabs_open,
                     (SELECT count(*) FROM overlays) AS overlays,
                     (SELECT count(*) FROM overlays WHERE last_seen_at > now() - interval '10 minutes') AS overlays_open,

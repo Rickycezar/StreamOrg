@@ -23,8 +23,8 @@ final class LiveTrackerTest extends DatabaseTestCase
 
     private function game(string $title, ?string $categoryId = null): int
     {
-        $stmt = $this->pdo->prepare('INSERT INTO games (title, slug, twitch_category_id) VALUES (?, ?, ?) RETURNING id');
-        $stmt->execute([$title, 'phpunit-' . bin2hex(random_bytes(4)), $categoryId ?? LiveTracker::JUST_CHATTING]);
+        $stmt = $this->pdo->prepare('INSERT INTO games (title, slug, twitch_category_id, twitch_category_source) VALUES (?, ?, ?, ?) RETURNING id');
+        $stmt->execute([$title, 'phpunit-' . bin2hex(random_bytes(4)), $categoryId ?? LiveTracker::JUST_CHATTING, $categoryId === null ? TwitchCategories::DEFAULT_SOURCE : 'twitch']);
 
         return (int) $stmt->fetchColumn();
     }
@@ -178,5 +178,21 @@ final class LiveTrackerTest extends DatabaseTestCase
         LiveTracker::offline($this->user, $this->at('+25 hours'));
 
         self::assertFalse($this->stateOf($missed)['dated']);
+    }
+
+    public function testAGameTwitchDoesNotListDoesNotStartOnJustChatting(): void
+    {
+        $unlisted = $this->game('Anomaly Inspector Simulator');
+        $planned  = $this->content('Procurando anomalias', 'planned', '+19 hours', [$unlisted]);
+        $chatting = $this->content('Papo', 'planned', '+22 hours');
+
+        LiveTracker::online($this->user, $this->at('+16 hours 52 minutes'), '1044459512', 'Veillombre');
+        LiveTracker::categoryChanged($this->user, LiveTracker::JUST_CHATTING, 'Just Chatting', $this->at('+18 hours 58 minutes'));
+
+        self::assertSame('planned', $this->stateOf($planned)['status'], 'The Just Chatting stand-in is not the game\'s category.');
+        self::assertSame('live', $this->stateOf($chatting)['status'], 'Content without games still starts on Just Chatting.');
+
+        LiveTracker::categoryChanged($this->user, '777', 'Anomaly Inspector Simulator', $this->at('+19 hours 05 minutes'));
+        self::assertSame('live', $this->stateOf($planned)['status'], 'It starts on its own title.');
     }
 }

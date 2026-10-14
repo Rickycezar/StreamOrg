@@ -5,6 +5,33 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## Unreleased
+
+### Added
+- Give a key straight to someone, without a giveaway: from the vault (Give)
+  or from Given keys. They get a claim link like a giveaway winner; the
+  gift never shows among the giveaways.
+- Sponsorships → Given keys: everyone a key was given or promised to, by
+  giveaway or as a gift — the key, how they won, when the link was sent
+  and when they took it — with links to copy or withdraw, and shortcuts
+  to give a key or create a giveaway.
+- The vault shows each key's winner (or the giveaway it is a prize in).
+
+### Changed
+- Available keys can be added to giveaways too (they become "for
+  giveaway"); keys already marked for giveaway are listed first and
+  highlighted.
+- Adding a giveaway winner is a Twitch search (picture, name and login):
+  the account picked is stored by its Twitch id, so it is exactly that
+  person. Typing an exact login still finds viewers who never stream.
+
+### Fixed
+- Live tracking no longer starts content on its own when the stream
+  switches to Just Chatting just because one of its games is not listed on
+  Twitch (those games use Just Chatting as a stand-in); they are matched
+  by their title instead. Started content is locked in the calendar, which
+  is why it could not be dragged anymore.
+
 ## 0.8.2 — 2026-10-12
 
 ### Fixed

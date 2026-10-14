@@ -29,7 +29,7 @@ $art = static fn (int $gameId): ?string => GameImages::urls(Database::connection
             <h2><?= e(__('ui.viewer.waiting_title')) ?></h2>
             <?php foreach ($pending as $w): ?>
                 <div class="pub-pending-row">
-                    <span><strong><?= e($w['title']) ?></strong><small><?= e($w['streamer']) ?> · <?= e(sprintf(__('ui.label.until_date'), fmt_datetime($w['expires_at'], 'd/m H:i'))) ?></small></span>
+                    <span><strong><?= e(!empty($w['is_direct']) ? __('ui.viewer.gift_title') : $w['title']) ?></strong><small><?= e($w['streamer']) ?> · <?= e(sprintf(__('ui.label.until_date'), fmt_datetime($w['expires_at'], 'd/m H:i'))) ?></small></span>
                     <?php if ($w['token']): ?><a class="lp-btn primary small" href="<?= e(url('/claim?t=' . rawurlencode($w['token']))) ?>"><?= e(__('ui.viewer.claim_now')) ?></a><?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -52,7 +52,7 @@ $art = static fn (int $gameId): ?string => GameImages::urls(Database::connection
                     <span class="pub-prize-art"><?php if ($src): ?><img src="<?= e($src) ?>" alt="" loading="lazy"><?php endif; ?></span>
                     <div class="pub-prize-body">
                         <strong><?= e($p['game_title']) ?></strong>
-                        <small><?= e(code_label('game_platform', $p['platform_code'])) ?> · <?= e($p['title']) ?></small>
+                        <small><?= e(code_label('game_platform', $p['platform_code'])) ?> · <?= e(!empty($p['is_direct']) ? __('ui.label.direct_gift') : $p['title']) ?></small>
                         <small><?= e(sprintf(__('ui.viewer.claimed_on'), fmt_date($p['claimed_at']))) ?><?= $p['redeem_by'] ? ' · ' . e(sprintf(__('ui.label.redeem_by_date'), fmt_date($p['redeem_by']))) : '' ?></small>
                         <details class="pub-key">
                             <summary><?= e(__('ui.viewer.show_key')) ?></summary>

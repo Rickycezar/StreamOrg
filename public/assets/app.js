@@ -5030,6 +5030,107 @@
         });
     });
 
+    /**
+     * Twitch account picker ([data-twitch-pick], the giveaway winner): a
+     * search showing picture, name and login; picking one puts its Twitch
+     * id in the form, so the winner is that exact account. Typing again
+     * drops the pick; a login typed without picking is looked up on save.
+     */
+    document.addEventListener('input', function (event) {
+        const search = event.target.closest('[data-twitch-pick-search]');
+        if (!search) return;
+
+        const box = search.closest('[data-twitch-pick]');
+        const results = box.querySelector('[data-twitch-pick-results]');
+        box.querySelector('[data-twitch-pick-id]').value = '';
+        box.querySelector('[data-twitch-pick-chosen]').hidden = true;
+        clearTimeout(search._timer);
+
+        search._timer = setTimeout(async function () {
+            const term = search.value.trim();
+            if (term.replace(/^@/, '').length < 2) { results.replaceChildren(); return; }
+
+            const mine = (search._seq = (search._seq || 0) + 1);
+            results.innerHTML = skeletonRows(2);
+
+            let data;
+            try {
+                const response = await fetch(box.dataset.searchUrl + '?q=' + encodeURIComponent(term), { headers: { 'Accept': 'application/json' } });
+                data = await response.json();
+            } catch (e) {
+                data = { ok: false };
+            }
+            if (mine !== search._seq) return;
+
+            results.replaceChildren();
+
+            if (!data.ok || !data.results.length) {
+                const empty = document.createElement('p');
+                empty.className = 'muted small';
+                empty.textContent = data.ok ? box.dataset.empty : (data.error || 'Error');
+                results.append(empty);
+                return;
+            }
+
+            data.results.forEach(function (item) {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'cast-add-result twitch-pick-option';
+
+                const img = document.createElement('img');
+                img.alt = '';
+                img.loading = 'lazy';
+                if (item.avatar) img.src = item.avatar;
+
+                const name = document.createElement('span');
+                name.className = 'cast-add-name';
+                const strong = document.createElement('strong');
+                strong.textContent = item.name;
+                const login = document.createElement('small');
+                login.className = 'muted';
+                login.textContent = '@' + item.login;
+                name.append(strong, ' ', login);
+
+                row.append(img, name);
+                row.addEventListener('click', function () {
+                    box.querySelector('[data-twitch-pick-id]').value = item.ref;
+                    search.value = item.login;
+                    const chosen = box.querySelector('[data-twitch-pick-chosen]');
+                    const avatar = chosen.querySelector('[data-twitch-pick-avatar]');
+                    avatar.hidden = !item.avatar;
+                    if (item.avatar) avatar.src = item.avatar;
+                    chosen.querySelector('[data-twitch-pick-name]').textContent = item.name;
+                    chosen.querySelector('[data-twitch-pick-login]').textContent = '@' + item.login;
+                    chosen.hidden = false;
+                    search.closest('label').hidden = true;
+                    results.replaceChildren();
+                });
+                results.append(row);
+            });
+        }, 300);
+    });
+
+    /** The vault's Give button: the give form opens with that key chosen. */
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-give-key]');
+        if (!button) return;
+        const select = document.querySelector('[data-give-key-select]');
+        if (select) select.value = button.dataset.giveKey;
+    }, true);
+
+    document.addEventListener('click', function (event) {
+        const change = event.target.closest('[data-twitch-pick-change]');
+        if (!change) return;
+
+        const box = change.closest('[data-twitch-pick]');
+        const search = box.querySelector('[data-twitch-pick-search]');
+        box.querySelector('[data-twitch-pick-id]').value = '';
+        box.querySelector('[data-twitch-pick-chosen]').hidden = true;
+        search.closest('label').hidden = false;
+        search.focus();
+        search.select();
+    });
+
     function runPageInits() {
         loadGlobals();
         applyDocumentMeta();

@@ -486,6 +486,8 @@ return [
         ],
 
         'viewer' => [
+            'gift_by' => 'Um presente de %s',
+            'gift_title' => 'Uma chave para você',
             'removed_title' => 'Este prêmio foi removido',
             'removed' => 'A equipe do StreamOrg retirou este prêmio. Se achar que foi um engano, fale com o streamer.',
             'reserved_flash' => 'Pronto — essa chave está guardada para você!',
@@ -1613,6 +1615,7 @@ return [
             'never_seen' => 'nunca entrou',
         ],
         'nav' => [
+            'given_keys' => 'Chaves entregues',
             'admin_people' => 'Pessoas',
             'admin_community' => 'Comunidade',
             'admin_system' => 'Sistema',
@@ -1656,6 +1659,10 @@ return [
         ],
 
         'action' => [
+            'give_key' => 'Dar uma chave',
+            'give' => 'Dar',
+            'copy_link' => 'Copiar link',
+            'change' => 'Trocar',
             'add_streamer' => 'Adicionar streamer',
             'move_down' => 'Descer',
             'columns_reset' => 'Mostrar todas, ordem original',
@@ -1912,6 +1919,20 @@ return [
         ],
 
         'label' => [
+            'beneficiary' => 'Para',
+            'given_from' => 'Origem',
+            'given_how' => 'Como',
+            'given_sent' => 'Link enviado',
+            'given_taken' => 'Chave resgatada',
+            'given_picks' => 'Escolhe ao resgatar',
+            'direct_gift' => 'Presente direto',
+            'given_until' => 'até %s',
+            'winner_claimed_on' => 'resgatou em %s',
+            'winner_waiting' => 'link ainda não usado',
+            'in_giveaway' => 'Prêmio em %s',
+            'prize_group_marked' => 'Marcadas para sorteio',
+            'prize_group_available' => 'Disponíveis no cofre',
+            'winner_search_hint' => 'Digite o nome para buscar na Twitch',
             'app_version' => 'Versão em uso',
             'on_streamorg' => 'No StreamOrg',
             'on_streamorg_hint' => 'Usa o StreamOrg: vocês podem planejar as collabs juntos',
@@ -2069,7 +2090,7 @@ return [
             'claimed_by' => 'Resgatado por %s',
             'set_aside_for' => 'Reservado para %s',
             'waiting_for_winner' => 'Aguardando um vencedor',
-            'twitch_user_hint' => 'O nome dele na Twitch. O StreamOrg encontra a conta, então mudar de nome depois não importa.',
+            'twitch_user_hint' => 'Escolha a pessoa na busca: o StreamOrg guarda a conta da Twitch dela, então mudar de nome depois não importa.',
             'claim_link' => 'Link de resgate',
             'winner_state_waiting' => 'Aguardando resgate',
             'winner_state_claimed' => 'Resgatado',
@@ -2255,6 +2276,14 @@ return [
         ],
 
         'message' => [
+            'gift_cancelled' => 'Presente retirado: o link não funciona mais e a chave está livre no seu cofre.',
+            'give_key_explain' => 'A chave vai direto para esta pessoa, sem sorteio: ela recebe um link para resgatar com a conta da Twitch dela, como um ganhador de sorteio.',
+            'given_keys_intro' => 'Todo mundo para quem você deu ou prometeu uma chave, por sorteio ou como presente direto: o link enviado e quando a chave foi resgatada.',
+            'given_keys_none' => 'Nenhuma chave entregue ainda.',
+            'gift_key_unavailable' => 'Essa chave não pode ser dada: ela precisa estar disponível ou para sorteio, ter código e não ser prêmio de outro sorteio.',
+            'gift_vault_locked' => 'Seu cofre é privado e está trancado: destranque-o para dar uma chave, assim ela é separada para a pessoa.',
+            'gift_created' => 'Chave dada para %s. Copie o link abaixo e mande para a pessoa.',
+            'gift_cancel_confirm' => 'Retirar este presente? O link para de funcionar e a chave volta a ficar livre no seu cofre.',
             'collab_saved_lives' => 'Salvo. %d live(s) planejada(s) agora têm este elenco no título.',
             'overlay_saved_warnings' => 'Overlay salvo. %d linha(s) das configurações foram ignoradas; veja a lista embaixo do texto.',
             'overlay_type_off' => 'Este tipo de overlay está desligado no momento.',
@@ -2451,8 +2480,8 @@ return [
             'giveaway_finish_hint' => 'Todos os vencedores já têm a sua chave. Conclua o sorteio para devolver %d chave(s) não resgatada(s) ao seu cofre.',
             'giveaways_intro' => 'Sorteios com nome e prêmios do seu cofre de chaves. Cada vencedor recebe um link que só a conta da Twitch dele consegue usar.',
             'giveaways_empty' => 'Nenhum sorteio ainda.',
-            'giveaway_prizes_explain' => 'Escolha chaves marcadas como "para sorteio". Elas continuam no seu cofre, vinculadas a este sorteio, e só são marcadas como sorteadas quando um vencedor as resgata.',
-            'giveaway_no_keys_for_giveaway' => 'Nenhum prêmio ainda. Marque chaves como "para sorteio" no seu cofre para adicioná-las aqui.',
+            'giveaway_prizes_explain' => 'Chaves marcadas para sorteio aparecem primeiro; chaves disponíveis também podem entrar (passam a "para sorteio"). Nada sai do cofre até um ganhador resgatar.',
+            'giveaway_no_keys_for_giveaway' => 'Nenhum prêmio ainda, e nenhuma chave disponível no seu cofre para adicionar.',
             'giveaway_no_prizes' => 'Nenhum prêmio ainda.',
             'giveaway_no_winners' => 'Nenhum vencedor ainda.',
             'claim_link_explain' => 'Envie a cada vencedor o link dele, ou poste no chat: ele só funciona para a conta da Twitch do vencedor.',

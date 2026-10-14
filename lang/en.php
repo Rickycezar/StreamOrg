@@ -487,6 +487,8 @@ return [
         ],
 
         'viewer' => [
+            'gift_by' => 'A gift from %s',
+            'gift_title' => 'A key for you',
             'removed_title' => 'This prize was removed',
             'removed' => 'The StreamOrg team took this prize back. If you think this is a mistake, talk to the streamer.',
             'reserved_flash' => 'Done — that key is saved for you!',
@@ -1614,6 +1616,7 @@ return [
             'never_seen' => 'never signed in',
         ],
         'nav' => [
+            'given_keys' => 'Given keys',
             'admin_people' => 'People',
             'admin_community' => 'Community',
             'admin_system' => 'System',
@@ -1657,6 +1660,10 @@ return [
         ],
 
         'action' => [
+            'give_key' => 'Give a key',
+            'give' => 'Give',
+            'copy_link' => 'Copy link',
+            'change' => 'Change',
             'add_streamer' => 'Add a streamer',
             'move_down' => 'Move down',
             'columns_reset' => 'Show all, original order',
@@ -1913,6 +1920,20 @@ return [
         ],
 
         'label' => [
+            'beneficiary' => 'Given to',
+            'given_from' => 'From',
+            'given_how' => 'How',
+            'given_sent' => 'Link sent',
+            'given_taken' => 'Key taken',
+            'given_picks' => 'Picks one when claiming',
+            'direct_gift' => 'Direct gift',
+            'given_until' => 'until %s',
+            'winner_claimed_on' => 'took it on %s',
+            'winner_waiting' => 'link not used yet',
+            'in_giveaway' => 'Prize in %s',
+            'prize_group_marked' => 'Marked for giveaway',
+            'prize_group_available' => 'Available in the vault',
+            'winner_search_hint' => 'Type their name to search Twitch',
             'app_version' => 'Version running',
             'on_streamorg' => 'On StreamOrg',
             'on_streamorg_hint' => 'Uses StreamOrg: you can plan your collabs together',
@@ -2070,7 +2091,7 @@ return [
             'claimed_by' => 'Claimed by %s',
             'set_aside_for' => 'Set aside for %s',
             'waiting_for_winner' => 'Waiting for a winner',
-            'twitch_user_hint' => 'Their Twitch name. StreamOrg looks up the account, so a later rename does not matter.',
+            'twitch_user_hint' => 'Pick them from the search: StreamOrg keeps their Twitch account, so a later rename does not matter.',
             'claim_link' => 'Claim link',
             'winner_state_waiting' => 'Waiting to claim',
             'winner_state_claimed' => 'Claimed',
@@ -2256,6 +2277,14 @@ return [
         ],
 
         'message' => [
+            'gift_cancelled' => 'Gift withdrawn: the link no longer works and the key is free in your vault.',
+            'give_key_explain' => 'The key goes straight to this person, without a giveaway: they get a link to claim it with their Twitch account, like a giveaway winner.',
+            'given_keys_intro' => 'Everyone you gave or promised a key to, by giveaway or as a direct gift: the link you sent and when they took the key.',
+            'given_keys_none' => 'No keys given yet.',
+            'gift_key_unavailable' => 'That key cannot be given: it must be available or for giveaway, have a code, and not already be a prize.',
+            'gift_vault_locked' => 'Your vault is private and locked: unlock it to give a key, so the key can be set aside for the person.',
+            'gift_created' => 'Key given to %s. Copy their link below and send it to them.',
+            'gift_cancel_confirm' => 'Withdraw this gift? The link stops working and the key is free again in your vault.',
             'collab_saved_lives' => 'Saved. %d planned live(s) now have this cast in their title.',
             'overlay_saved_warnings' => 'Overlay saved. %d line(s) of the settings were skipped; see the list under the text.',
             'overlay_type_off' => 'This kind of overlay is switched off for now.',
@@ -2452,8 +2481,8 @@ return [
             'giveaway_finish_hint' => 'Every winner has their key. Finish the giveaway to return the %d unclaimed key(s) to your vault.',
             'giveaways_intro' => 'Named giveaways with prizes from your key vault. Each winner gets a link that only their Twitch account can use.',
             'giveaways_empty' => 'No giveaways yet.',
-            'giveaway_prizes_explain' => 'Choose keys marked "for giveaway". They stay in your vault, linked to this giveaway, and are only marked given away when a winner claims them.',
-            'giveaway_no_keys_for_giveaway' => 'No prizes yet. Mark keys "for giveaway" in your vault to add them here.',
+            'giveaway_prizes_explain' => 'Keys marked for giveaway come first; available keys can be added too (they become "for giveaway"). Nothing leaves the vault until a winner claims.',
+            'giveaway_no_keys_for_giveaway' => 'No prizes yet, and no available keys in your vault to add.',
             'giveaway_no_prizes' => 'No prizes yet.',
             'giveaway_no_winners' => 'No winners yet.',
             'claim_link_explain' => 'Send each winner their link, or post it in the chat: it only works for their Twitch account.',

@@ -121,7 +121,8 @@ final class KeysController
 
     /**
      * The key list's query, without filters or ordering. Shared by the list
-     * and by the on-demand edit form, so both see a key the same way.
+     * and by the on-demand edit form, so both see a key the same way. With
+     * each key's giveaway or gift and its winner, when it has one.
      * Deliberately no k.key_code in the select list.
      */
     private static function listSql(): string
@@ -134,7 +135,9 @@ final class KeysController
                        gp.code AS game_platform_code, gp.family AS game_platform_family,
                        kp.code AS key_platform_code,
                        (k.key_type = 'review' AND g.release_date IS NOT NULL
-                        AND g.release_date > CURRENT_DATE) AS playable_early
+                        AND g.release_date > CURRENT_DATE) AS playable_early,
+                       k.is_placeholder, gift.prize_id, gift.giveaway_title, gift.is_direct,
+                       gift.winner_name, gift.winner_login, gift.winner_claimed_at
                   FROM game_keys k
                   JOIN games g            ON g.id  = k.game_id
                   JOIN game_platforms gp  ON gp.id = k.game_platform_id
@@ -145,6 +148,16 @@ final class KeysController
                         AND (e.game_platform_id IS NULL OR e.game_platform_id = k.game_platform_id)
                    ORDER BY e.lifts_at DESC LIMIT 1
                  ) emb ON true
+             LEFT JOIN LATERAL (
+                     SELECT p.id AS prize_id, gv.title AS giveaway_title, gv.is_direct,
+                            coalesce(nullif(w.display_name, ''), w.twitch_login) AS winner_name, w.twitch_login AS winner_login,
+                            w.claimed_at AS winner_claimed_at
+                       FROM giveaway_prizes p
+                       JOIN giveaways gv ON gv.id = p.giveaway_id
+                  LEFT JOIN giveaway_winners w ON w.id = p.winner_id AND w.cancelled_at IS NULL
+                      WHERE p.game_key_id = k.id
+                   ORDER BY p.id DESC LIMIT 1
+                 ) gift ON true
                  WHERE k.user_id = :user_id";
     }
 
@@ -218,7 +231,79 @@ final class KeysController
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
             'canAddGames' => CatalogController::canAddGames(),
             'vaultLocked' => !Vault::isUnlocked($userId),
+            'giftable'    => Giveaways::giftableKeys((int) $userId),
+            'twitchReady' => Twitch::isConfigured(),
         ], __('ui.nav.keys'));
+    }
+
+    /**
+     * GET /keys/given — every key given or promised: by giveaway or as a
+     * direct gift, to whom, how, when the link was made and when it was
+     * taken; with Give a key and New giveaway.
+     */
+    public static function given(): void
+    {
+        Auth::requireLogin();
+        $userId = (int) Auth::id();
+        $locale = (string) (Auth::user()['locale'] ?? '');
+
+        $rows = array_map(static function (array $row) use ($locale): array {
+            $token        = Giveaways::tokenOf($row);
+            $row['state'] = PrizeRemovals::stateOf($row);
+            $row['link']  = $row['state'] === 'waiting' && $token !== null ? Giveaways::claimUrl($token, $locale) : null;
+            unset($row['claim_token'], $row['claim_token_hash']);
+
+            return $row;
+        }, Giveaways::given($userId));
+
+        View::render('keys/given', [
+            'rows'        => $rows,
+            'giftable'    => Giveaways::giftableKeys($userId),
+            'twitchReady' => Twitch::isConfigured(),
+            'fresh'       => filter_input(INPUT_GET, 'new', FILTER_VALIDATE_INT) ?: null,
+        ], __('ui.nav.given_keys'));
+    }
+
+    /** POST /keys/give — one key straight to one Twitch account (a direct gift). */
+    public static function give(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        try {
+            $gift = Giveaways::giveDirect(
+                (int) Auth::id(),
+                filter_input(INPUT_POST, 'key_id', FILTER_VALIDATE_INT) ?: 0,
+                (string) ($_POST['login'] ?? ''),
+                trim((string) ($_POST['twitch_id'] ?? '')) ?: null,
+                filter_input(INPUT_POST, 'claim_days', FILTER_VALIDATE_INT) ?: 30
+            );
+        } catch (VaultLocked) {
+            flash('error', __('ui.message.gift_vault_locked'));
+            redirect('/keys');
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect('/keys/given');
+        }
+
+        flash('success', sprintf(__('ui.message.gift_created'), $gift['login']));
+        redirect('/keys/given?new=' . $gift['winner_id']);
+    }
+
+    /** POST /keys/given/cancel — withdraws a link not used yet; a direct gift's key is free again. */
+    public static function cancelGiven(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $winnerId = filter_input(INPUT_POST, 'winner_id', FILTER_VALIDATE_INT) ?: 0;
+        $direct   = Database::connection()->prepare('SELECT g.is_direct FROM giveaway_winners w JOIN giveaways g ON g.id = w.giveaway_id WHERE w.id = ?');
+        $direct->execute([$winnerId]);
+        $isGift = (bool) $direct->fetchColumn();
+
+        $ok = Giveaways::cancelWinner((int) Auth::id(), $winnerId);
+        flash($ok ? 'success' : 'error', __($ok ? ($isGift ? 'ui.message.gift_cancelled' : 'ui.message.winner_cancelled') : 'ui.message.not_found'));
+        redirect('/keys/given');
     }
 
     /**

@@ -41,8 +41,8 @@ $state = static function (string $icon, string $title, string $text, string $ton
             <span class="pub-avatar">
                 <?php if ($avatar): ?><img src="<?= e($avatar) ?>" alt=""><?php else: ?><span><?= e(mb_strtoupper(mb_substr($streamer, 0, 1))) ?></span><?php endif; ?>
             </span>
-            <span class="lp-eyebrow"><?= e(sprintf(__('ui.viewer.giveaway_by'), $streamer)) ?></span>
-            <h1><?= e($g['title']) ?></h1>
+            <span class="lp-eyebrow"><?= e(sprintf(__(!empty($g['is_direct']) ? 'ui.viewer.gift_by' : 'ui.viewer.giveaway_by'), $streamer)) ?></span>
+            <h1><?= e(!empty($g['is_direct']) ? __('ui.viewer.gift_title') : $g['title']) ?></h1>
         </header>
 
         <?php if ($w['removed_at'] !== null): ?>

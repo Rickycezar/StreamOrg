@@ -1,7 +1,7 @@
 <?php
 /** @var array $keys @var array $counts @var array $filters @var array $statuses
  *  @var array $platforms @var array $sources
- *  @var bool $canAddGames @var bool $vaultLocked */
+ *  @var bool $canAddGames @var bool $vaultLocked @var list<array> $giftable @var bool $twitchReady */
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.vault')) ?></h1>
@@ -213,6 +213,7 @@
                 <th data-col="content_type"><?= e(__('ui.field.content_type')) ?></th>
                 <th data-col="redeem_by"><?= e(__('ui.field.redeem_by')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
+                <th data-col="winner"><?= e(__('ui.field.winner')) ?></th>
                 <th data-col="key_code" data-nosort><?= e(__('ui.field.key_code')) ?></th>
             </tr>
             </thead>
@@ -223,6 +224,10 @@
                         <button type="button" class="btn small key-detail" data-id="<?= (int) $key['id'] ?>">
                             <?= e(__('ui.action.details')) ?>
                         </button>
+                        <?php if ($twitchReady && in_array($key['status'], Giveaways::GIFTABLE, true) && !$key['prize_id'] && !$key['is_placeholder']): ?>
+                            <button type="button" class="btn small" data-modal-form="#give-key" data-give-key="<?= (int) $key['id'] ?>"
+                                    data-modal-title="<?= e(__('ui.action.give_key')) ?>"><?= e(__('ui.action.give')) ?></button>
+                        <?php endif; ?>
                         <button type="button" class="btn small" data-modal-form="#edit-key-<?= (int) $key['id'] ?>"
                                 data-modal-title="<?= e($key['game_title']) ?>">
                             <?= e(__('ui.action.edit')) ?>
@@ -268,6 +273,16 @@
                             <?php endforeach; ?>
                         </select>
                     </td>
+                    <td data-col="winner">
+                        <?php if ($key['winner_login']): ?>
+                            <a href="https://twitch.tv/<?= e(rawurlencode((string) $key['winner_login'])) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $key['winner_name']) ?></a>
+                            <small class="muted block"><?= e($key['winner_claimed_at'] ? sprintf(__('ui.label.winner_claimed_on'), fmt_date($key['winner_claimed_at'])) : __('ui.label.winner_waiting')) ?><?= $key['is_direct'] ? ' · ' . e(__('ui.label.direct_gift')) : '' ?></small>
+                        <?php elseif ($key['prize_id']): ?>
+                            <small class="muted"><?= e(sprintf(__('ui.label.in_giveaway'), $key['giveaway_title'])) ?></small>
+                        <?php else: ?>
+                            <span class="muted">—</span>
+                        <?php endif; ?>
+                    </td>
                     <td class="keycell" data-col="key_code">
                         <div class="keyfield">
                             <input type="text" class="key-field masked" readonly
@@ -286,7 +301,7 @@
 
                 <tr id="edit-key-<?= (int) $key['id'] ?>" class="editrow hidden"
                     data-edit-url="<?= e(url('/keys/edit?id=' . (int) $key['id'])) ?>">
-                    <td colspan="9"></td>
+                    <td colspan="10"></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -294,3 +309,7 @@
         </div>
     <?php endif; ?>
 </section>
+
+<?php if ($twitchReady): ?>
+    <?= View::partial('keys/_give_form', ['giftable' => $giftable]) ?>
+<?php endif; ?>

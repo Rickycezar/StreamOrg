@@ -52,10 +52,11 @@ final class ErrorLogTest extends DatabaseTestCase
     public function testNoticesAndImportsAreNotNotified(): void
     {
         ErrorLog::record('notice', 'Twitch said no', 'src/C.php', 1);
-        ErrorLog::record('error', 'Old failure', null, null, null, ['source' => 'import', 'at' => '2026-01-02T03:04:05Z', 'notify' => false]);
+        $at = (new DateTimeImmutable('-3 days', new DateTimeZone('UTC')))->setTime(3, 4, 5);
+        ErrorLog::record('error', 'Old failure', null, null, null, ['source' => 'import', 'at' => $at->format(DATE_ATOM), 'notify' => false]);
 
         self::assertSame(0, $this->notices());
-        self::assertSame('2026-01-02', substr((string) $this->pdo->query("SELECT first_seen AT TIME ZONE 'UTC' FROM app_errors WHERE message = 'Old failure'")->fetchColumn(), 0, 10));
+        self::assertSame($at->format('Y-m-d'), substr((string) $this->pdo->query("SELECT first_seen AT TIME ZONE 'UTC' FROM app_errors WHERE message = 'Old failure'")->fetchColumn(), 0, 10));
     }
 
     public function testAnOlderImportedLineDoesNotHideTheLatestDetails(): void

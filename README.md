@@ -118,17 +118,23 @@ private preview. Preview access: streamorg@outlook.com.
   window, and an optional surprise mode that hides them until opened.
   Several can run at once — a month-long one and a quick surprise.
 - **Prizes from the vault, copied only when needed**: a prize just points at
-  a key marked "for giveaway". With a recoverable vault the key is opened
+  a key in the vault (marked "for giveaway", listed first, or available). With a recoverable vault the key is opened
   only when its winner claims it; with a private vault the streamer makes the
   prizes claimable when ready, and can take the copies back. The vault key is
   marked given away when its prize is claimed.
 - **Finishing** a giveaway ends the links not used yet, returns unclaimed
   keys to the vault and deletes their copies.
-- **Winners by Twitch account**: drawn from chat entries, typed in after an
-  external game such as Marbles, or picked by hand. Either the winner picks a
+- **Winners by Twitch account**: drawn from chat entries, found with a Twitch
+  search after an external game such as Marbles, or picked by hand; the
+  account picked is stored by its Twitch id. Either the winner picks a
   key from the giveaway, or a key is assigned to them.
 - **Claim links only the winner can open**: the link works for that Twitch
   account only, signed in, until it expires (30 days by default).
+- **Direct gifts**: a key given straight to one person, from the vault or
+  from *Given keys*, without a giveaway; they claim it the same way.
+- **Given keys**: everyone a key was given or promised to, with the key,
+  how they won, when the link was sent and when the key was taken; the
+  vault also shows each key's winner.
 
 ### Chat bot
 - **One bot for every channel** (`bot/`, a small Node service): it joins the

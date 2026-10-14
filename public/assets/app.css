@@ -3288,3 +3288,15 @@ a.note.unread:hover { background: var(--accent-soft); filter: brightness(.98); }
 .admin-group a { display: flex; justify-content: space-between; gap: .5rem; padding: .3rem .4rem; border-radius: 6px; color: var(--text-2); }
 .admin-group a:hover { background: var(--surface-2); color: var(--accent); text-decoration: none; }
 .page-head .page-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.twitch-pick label[hidden] { display: none; }
+.twitch-pick-chosen { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; margin-bottom: .5rem; border: 1px solid var(--accent-border, var(--border)); border-radius: 8px; background: var(--accent-soft); }
+.twitch-pick-chosen[hidden] { display: none; }
+.twitch-pick-chosen img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.twitch-pick-chosen img[hidden] { display: none; }
+.twitch-pick-chosen span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.twitch-pick-option { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.twitch-pick-option:hover, .twitch-pick-option:focus-visible { background: var(--surface-2); }
+.twitch-pick-results { margin-bottom: .4rem; }
+.prize-group { margin: .5rem 0 .1rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.prize-group:first-child { margin-top: 0; }
+.prize-option.is-marked { background: var(--accent-soft); border-left: 3px solid var(--accent); }

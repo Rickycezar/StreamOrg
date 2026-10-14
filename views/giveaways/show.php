@@ -155,12 +155,16 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
         <input type="hidden" name="id" value="<?= $id ?>">
         <p class="muted small"><?= e(__('ui.message.giveaway_prizes_explain')) ?></p>
         <div class="prize-pick">
-            <?php foreach ($available as $key): ?>
-                <label class="inline prize-option">
-                    <input type="checkbox" name="keys[]" value="<?= (int) $key['id'] ?>" <?= $key['is_placeholder'] ? 'disabled' : '' ?>>
+            <?php $group = null;
+            foreach ($available as $key):
+                if ($group !== $key['status']): $group = $key['status']; ?>
+                    <p class="prize-group"><?= e(__($group === 'for_giveaway' ? 'ui.label.prize_group_marked' : 'ui.label.prize_group_available')) ?></p>
+                <?php endif; ?>
+                <label class="inline prize-option<?= $key['status'] === 'for_giveaway' ? ' is-marked' : '' ?>">
+                    <input type="checkbox" name="keys[]" value="<?= (int) $key['id'] ?>">
                     <span>
                         <?= e($key['title']) ?>
-                        <small class="muted"><?= e(code_label('game_platform', $key['platform_code'])) ?><?= $key['expires_at'] ? ' · ' . e(sprintf(__('ui.label.redeem_by_date'), fmt_date($key['expires_at']))) : '' ?><?= $key['is_placeholder'] ? ' · ' . e(__('ui.label.placeholder_key')) : '' ?></small>
+                        <small class="muted"><?= e(code_label('game_platform', $key['platform_code'])) ?><?= $key['expires_at'] ? ' · ' . e(sprintf(__('ui.label.redeem_by_date'), fmt_date($key['expires_at']))) : '' ?></small>
                     </span>
                 </label>
             <?php endforeach; ?>
@@ -243,11 +247,21 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
         <?= Csrf::field() ?>
         <input type="hidden" name="id" value="<?= $id ?>">
         <div class="grid">
-            <label class="grow">
-                <span><?= e(__('ui.field.twitch_user')) ?></span>
-                <input type="text" name="login" required pattern="@?[A-Za-z0-9_]{3,25}" placeholder="@nick" spellcheck="false">
+            <div class="grow twitch-pick" data-twitch-pick data-search-url="<?= e(url('/giveaways/winners/search')) ?>"
+                 data-empty="<?= e(__('ui.label.picker_none')) ?>">
+                <label>
+                    <span><?= e(__('ui.field.twitch_user')) ?></span>
+                    <input type="search" name="login" required autocomplete="off" spellcheck="false" placeholder="<?= e(__('ui.label.winner_search_hint')) ?>" data-twitch-pick-search>
+                </label>
+                <input type="hidden" name="twitch_id" value="" data-twitch-pick-id>
+                <div class="twitch-pick-chosen" data-twitch-pick-chosen hidden>
+                    <img alt="" data-twitch-pick-avatar>
+                    <span><strong data-twitch-pick-name></strong> <small class="muted" data-twitch-pick-login></small></span>
+                    <button type="button" class="btn small" data-twitch-pick-change><?= e(__('ui.action.change')) ?></button>
+                </div>
+                <div class="cast-add-results twitch-pick-results" data-twitch-pick-results></div>
                 <small class="muted"><?= e(__('ui.label.twitch_user_hint')) ?></small>
-            </label>
+            </div>
             <label>
                 <span><?= e(__('ui.field.winner_method')) ?></span>
                 <select name="method">
