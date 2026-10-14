@@ -1,5 +1,5 @@
 <?php
-/** @var array $giveaways @var array $content @var string $join what viewers type before a giveaway's keyword */
+/** @var array $giveaways @var array $content @var string $join what viewers type before a giveaway's keyword ('' while the join command is hidden) */
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.giveaways')) ?></h1>
@@ -22,14 +22,14 @@
                     <span class="badge giveaway-status-<?= e($g['status']) ?>"><?= e(code_label('giveaway_status', $g['status'])) ?></span>
                 </span>
                 <span class="muted small">
-                    <code><?= e($join) ?> <?= e((string) $g['keyword']) ?></code>
+                    <code><?= e($join . $g['keyword']) ?></code>
                     <?php if ($g['is_surprise']): ?> · <?= e(__('ui.label.surprise')) ?><?php endif; ?>
                     <?php if ($g['ends_at']): ?> · <?= e(sprintf(__('ui.label.until_date'), fmt_datetime($g['ends_at'], 'd/m H:i'))) ?><?php endif; ?>
                 </span>
                 <span class="giveaway-counts">
                     <span><b><?= (int) $g['claimed_count'] ?>/<?= (int) $g['prize_count'] ?></b> <?= e(__('ui.label.prizes_claimed')) ?></span>
                     <span><b><?= (int) $g['winner_count'] ?></b> <?= e(__('ui.label.winners')) ?></span>
-                    <?php if ($g['entry_method'] === 'chat'): ?><span><b><?= (int) $g['entry_count'] ?></b> <?= e(__('ui.label.entries')) ?></span><?php endif; ?>
+                    <?php if (Giveaways::entryMethodOf($g) === 'chat'): ?><span><b><?= (int) $g['entry_count'] ?></b> <?= e(__('ui.label.entries')) ?></span><?php endif; ?>
                 </span>
                 <?php if ($g['content_title']): ?>
                     <small class="muted"><?= e(__('ui.field.during_content')) ?>: <?= e(mb_strimwidth($g['content_title'], 0, 70, '…')) ?></small>

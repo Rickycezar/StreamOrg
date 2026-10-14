@@ -416,7 +416,7 @@ final class GiveawaysTest extends DatabaseTestCase
         self::assertNull(Giveaways::publicView('not-a-code'));
     }
 
-    public function testTheAnnouncementSaysHowToEnterOnlyWhileChatEntriesAreOpen(): void
+    public function testTheAnnouncementNamesNoChatCommandWhileJoiningIsHidden(): void
     {
         $giveawayId = $this->giveaway();
         $this->pdo->exec("UPDATE users SET locale = 'en' WHERE id = {$this->user}");
@@ -424,11 +424,8 @@ final class GiveawaysTest extends DatabaseTestCase
         $this->pdo->exec("UPDATE bot_account SET is_enabled = true, twitch_login = 'phpunit_bot', twitch_user_id = '1', command_prefix = '!' WHERE id = 1");
         ChatBot::setChannel($this->user, true);
 
-        $text = Giveaways::announcement(Giveaways::find($this->user, $giveawayId));
-        self::assertStringStartsWith('🎁 Xmas keys is on! Type !join xmas to enter! Prizes: ', $text);
-
-        $this->pdo->exec("UPDATE giveaways SET status = 'closed' WHERE id = {$giveawayId}");
         self::assertStringStartsWith('🎁 Xmas keys is on! Prizes: ', Giveaways::announcement(Giveaways::find($this->user, $giveawayId)));
+        self::assertNull(ChatBot::joinCommand($this->user, 'xmas'));
     }
 
 }

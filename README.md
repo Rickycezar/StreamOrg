@@ -116,7 +116,6 @@ private preview. Preview access: streamorg@outlook.com.
 ### Giveaways
 - **Named giveaways** with a short keyword for the chat, rules, an entry
   window, and an optional surprise mode that hides them until opened.
-  Viewers enter by chat through the chat bot (`!join` and the keyword).
   Several can run at once — a month-long one and a quick surprise.
 - **Prizes from the vault, copied only when needed**: a prize just points at
   a key in the vault (marked "for giveaway", listed first, or available). With a recoverable vault the key is opened
@@ -125,14 +124,14 @@ private preview. Preview access: streamorg@outlook.com.
   marked given away when its prize is claimed.
 - **Finishing** a giveaway ends the links not used yet, returns unclaimed
   keys to the vault and deletes their copies.
-- **Winners by Twitch account**: drawn from the chat entries, found with a Twitch
+- **Winners by Twitch account**: found with a Twitch
   search after an external game such as Marbles, or picked by hand; the
   account picked is stored by its Twitch id. Either the winner picks a
   key from the giveaway, or a key is assigned to them.
 - **Claim links only the winner can open**: the link works for that Twitch
   account only, signed in, until it expires (30 days by default).
 - **Public prize page**: each giveaway has a page anyone can open (the
-  link the chat bot gives), with how to enter by chat, its rules, the
+  link the chat bot gives), with its rules, the
   prizes still to win and the ones already won, never a code. *Post in
   chat* makes the bot announce the giveaway with that link.
 - **Direct gifts**: a key given straight to one person, from the vault or
@@ -145,7 +144,7 @@ private preview. Preview access: streamorg@outlook.com.
 - **One bot for every channel** (`bot/`, a small Node service): it joins the
   Twitch chat of streamers who add it from *Stream tools → Chat bot* (or whom an
   admin adds) and answers commands: `!heartbeat` (is it listening?), the
-  giveaways (`!giveaway`, `!join <keyword>`, `!prizes <name>` with a link to
+  giveaways (`!giveaway`, `!prizes <name>` with a link to
   the giveaway's public prize page), the schedule (`!today`, `!week`) and
   `!watchtime`, in the streamer's language.
 - **Never floods the chat**: replies go through a queue per channel, paced
@@ -595,8 +594,13 @@ matter) with a claim link. The token's SHA-256 is used to find the winner,
 and an encrypted copy lets the streamer copy the link again. Claiming locks
 the winner and prize rows, checks the account, the expiry and any embargo
 on the game, then marks the prize claimed and the vault key `given_away`.
-Chat entries (`giveaway_entries`, written by the chat bot's join command)
-are kept through closing, so winners can still be drawn, and deleted when
+Chat entries (`giveaway_entries`) would come from the chat bot's join
+command, which is built but hidden until the giveaway page gets a name
+picker (`ChatBot::HIDDEN` and `HIDDEN` in `bot/src/commands.js`): it is
+listed nowhere and never answered, and while it is hidden
+`Giveaways::chatEntries()` is off, so entering by chat, the entries and
+drawing from them are shown nowhere (a giveaway set to chat reads as
+picked by hand). Entries are kept through closing, so winners can still be drawn, and deleted when
 the giveaway is finished. Each giveaway has a random `public_code` naming
 its public prize page (`/giveaway?g=…`, `Giveaways::publicView`): prizes and
 winners' display names, never codes, nothing for direct gifts, cancelled

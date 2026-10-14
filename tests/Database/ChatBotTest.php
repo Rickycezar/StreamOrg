@@ -11,12 +11,14 @@ final class ChatBotTest extends DatabaseTestCase
         $en = ChatBot::defaults('en');
         $pt = ChatBot::defaults('pt-BR');
 
-        self::assertSame(array_keys(ChatBot::CODES), array_keys($en));
-        self::assertSame(array_keys(ChatBot::CODES), array_keys($pt));
+        $offered = array_values(array_diff(array_keys(ChatBot::CODES), ChatBot::HIDDEN));
+
+        self::assertSame($offered, array_keys($en));
+        self::assertSame($offered, array_keys($pt));
+        self::assertArrayNotHasKey('join', $pt, 'A hidden built-in is listed nowhere.');
         self::assertSame('giveaway', $en['giveaway']['trigger']);
         self::assertSame('sorteio', $pt['giveaway']['trigger']);
         self::assertSame(array_keys(ChatBot::MESSAGES['prizes']), array_keys($pt['prizes']['messages']));
-        self::assertSame('', $pt['join']['messages']['already'], 'Saying nothing is a valid message.');
         self::assertSame('giveaway', ChatBot::defaults('xx')['giveaway']['trigger'], 'Another language falls back to English.');
     }
 
@@ -35,6 +37,13 @@ final class ChatBotTest extends DatabaseTestCase
         self::assertSame('premiacao', ChatBot::commandsFor($pt)['prizes']['trigger']);
         self::assertSame('Qual?', ChatBot::commandsFor($pt)['prizes']['messages']['ask']);
         self::assertSame('prizes', ChatBot::commandsFor($en)['prizes']['trigger'], 'The English default is untouched.');
+
+        try {
+            ChatBot::commandFromInput('join', self::INPUT);
+            self::fail('A hidden built-in was accepted');
+        } catch (UserError) {
+            self::assertTrue(true);
+        }
 
         $this->expectException(UserError::class);
         ChatBot::saveCommand(null, 'prizes', ChatBot::commandFromInput('prizes', self::INPUT), 'xx');

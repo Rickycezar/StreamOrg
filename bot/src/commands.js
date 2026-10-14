@@ -13,6 +13,12 @@
 /** Every built-in behaviour the bot knows. */
 export const CODES = ['heartbeat', 'giveaway', 'join', 'prizes', 'today', 'week', 'watchtime'];
 
+/**
+ * Built-ins not offered yet (the site lists them nowhere): never loaded,
+ * so never answered nor mentioned in other replies.
+ */
+export const HIDDEN = ['join'];
+
 /** The language whose defaults a channel falls back to. */
 export const FALLBACK_LOCALE = 'en';
 
@@ -139,7 +145,7 @@ export class CommandBook {
         const personal = new Map();
 
         for (const row of rows) {
-            if (!CODES.includes(row.code)) continue;
+            if (!CODES.includes(row.code) || HIDDEN.includes(row.code)) continue;
 
             if (row.userId === null) {
                 const locale = row.locale || FALLBACK_LOCALE;

@@ -10,6 +10,10 @@ released, so a bot change that needs a database change is released
 together with the site, site first; until the migration is applied the bot
 waits (and says so in its health check and logs) instead of running.
 
+## Unreleased
+- The join command (`!join` / `!participar`) is hidden for now: never
+  answered, and the giveaway list no longer says how to enter by chat.
+
 ## 0.5.0 — 2026-10-14
 - Speaks each streamer's language: the default commands are per language,
   English filling any gap. A custom command keeps its trigger when a new

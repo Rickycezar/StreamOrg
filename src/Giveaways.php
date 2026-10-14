@@ -39,6 +39,35 @@ final class Giveaways
 
     private const CIPHER = 'aes-256-gcm';
 
+    /**
+     * Whether viewers can enter giveaways by chat. Off while the chat bot's
+     * join command is hidden (ChatBot::HIDDEN): then entering by chat is
+     * offered and shown nowhere — no option, no entries, no draw — and a
+     * giveaway set to it reads as picked by hand.
+     */
+    public static function chatEntries(): bool
+    {
+        return !in_array('join', ChatBot::HIDDEN, true);
+    }
+
+    /**
+     * The ways to take part a giveaway form offers.
+     *
+     * @return list<string>
+     */
+    public static function entryMethods(): array
+    {
+        return array_values(array_filter(self::ENTRY_METHODS, static fn (string $m): bool => $m !== 'chat' || self::chatEntries()));
+    }
+
+    /** A giveaway's way to take part as shown: chat reads as manual while chat entries are off. */
+    public static function entryMethodOf(array $giveaway): string
+    {
+        $method = (string) $giveaway['entry_method'];
+
+        return $method === 'chat' && !self::chatEntries() ? 'manual' : $method;
+    }
+
     /** A giveaway of this user, or null. */
     public static function find(int $userId, int $giveawayId): ?array
     {

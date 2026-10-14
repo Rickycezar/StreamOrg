@@ -69,3 +69,12 @@ test('{target} is the first word after the command, without @, or the user', () 
     assert.equal(targetOf('!hug', 'Ana'), 'Ana');
     assert.equal(targetOf('!hug @@<script>', 'Ana'), 'script');
 });
+
+test('hidden built-ins are never answered, even switched on', () => {
+    const book = new CommandBook();
+    book.load([heartbeat, { ...heartbeat, code: 'join', trigger: 'join' }, { ...heartbeat, userId: 7, code: 'join', trigger: 'entrar' }]);
+
+    assert.equal(book.match(1, '!', '!join natal'), null);
+    assert.equal(book.match(7, '!', '!entrar natal'), null);
+    assert.equal(book.builtinsFor(7).has('join'), false);
+});

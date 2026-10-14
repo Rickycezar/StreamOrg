@@ -46,8 +46,9 @@ $local = static fn (?string $at): string => $at ? substr(str_replace(' ', 'T', $
         <label>
             <span><?= e(__('ui.field.entry_method')) ?></span>
             <select name="entry_method">
-                <?php foreach (Giveaways::ENTRY_METHODS as $method): ?>
-                    <option value="<?= e($method) ?>" <?= $v('entry_method', 'chat') === $method ? 'selected' : '' ?>><?= e(code_label('entry_method', $method)) ?></option>
+                <?php $current = $g !== null ? Giveaways::entryMethodOf($g) : 'manual'; ?>
+                <?php foreach (Giveaways::entryMethods() as $method): ?>
+                    <option value="<?= e($method) ?>" <?= $current === $method ? 'selected' : '' ?>><?= e(code_label('entry_method', $method)) ?></option>
                 <?php endforeach; ?>
             </select>
         </label>

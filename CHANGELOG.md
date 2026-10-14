@@ -5,6 +5,16 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## Unreleased
+
+### Changed
+- Entering a giveaway by chat (the chat bot's `!join` / `!participar`) is
+  hidden until the giveaway page gets a name picker: the command is never
+  answered nor listed, and the giveaway pages, the bot's announcement, the
+  giveaway form (entering by chat, the entries, drawing from them) and the
+  guides no longer mention it. Giveaways set to chat read as picked by
+  hand.
+
 ## 0.9.1 — 2026-10-14
 
 ### Fixed

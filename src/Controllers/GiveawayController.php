@@ -27,7 +27,9 @@ final class GiveawayController
         $stmt->execute([Auth::id()]);
 
         View::render('giveaways/index', [
-            'join'      => ChatBot::account()['command_prefix'] . (ChatBot::commandsFor((int) Auth::id())['join']['trigger'] ?? __('ui.label.join_command')),
+            'join'      => isset(ChatBot::commandsFor((int) Auth::id())['join'])
+                ? ChatBot::account()['command_prefix'] . ChatBot::commandsFor((int) Auth::id())['join']['trigger'] . ' '
+                : '',
             'giveaways' => $stmt->fetchAll(),
             'content'   => self::contentOptions(),
         ], __('ui.nav.giveaways'));
@@ -95,7 +97,9 @@ final class GiveawayController
         $public   = !($giveaway['is_surprise'] && $giveaway['status'] === 'planned') && $giveaway['status'] !== 'cancelled';
 
         View::render('giveaways/show', [
-            'joinCommand' => ChatBot::account()['command_prefix'] . ($commands['join']['trigger'] ?? __('ui.label.join_command')) . ' ' . $giveaway['keyword'],
+            'joinCommand' => isset($commands['join'])
+                ? ChatBot::account()['command_prefix'] . $commands['join']['trigger'] . ' ' . $giveaway['keyword']
+                : null,
             'canPost'     => $public && !in_array($giveaway['status'], Giveaways::ENDED, true) && ChatBot::canPost($userId),
             'publicUrl'   => $public ? Giveaways::publicUrl((string) $giveaway['public_code'], $locale) : null,
             'giveaway'    => $giveaway,
@@ -421,7 +425,7 @@ final class GiveawayController
         json_response(['ok' => true, 'results' => array_slice($results, 0, 10)]);
     }
 
-    /** Draws a winner among the chat entries. */
+    /** Draws a winner among the chat entries (only while entering by chat is offered). */
     public static function draw(): void
     {
         Auth::requireLogin();
@@ -429,6 +433,11 @@ final class GiveawayController
 
         $giveaway = self::posted();
         $back     = '/giveaways/show?id=' . (int) $giveaway['id'];
+
+        if (!Giveaways::chatEntries()) {
+            flash('error', __('ui.message.not_found'));
+            redirect($back);
+        }
 
         try {
             $result = Giveaways::draw((int) Auth::id(), (int) $giveaway['id']);
@@ -499,7 +508,7 @@ final class GiveawayController
             $starts !== null && $ends !== null && strtotime($ends) < strtotime($starts) => 'ui.message.giveaway_bad_dates',
             !is_int($days) || $days < 1 || $days > 365                       => 'ui.message.giveaway_bad_days',
             !in_array($_POST['winner_mode'] ?? '', Giveaways::WINNER_MODES, true),
-            !in_array($_POST['entry_method'] ?? '', Giveaways::ENTRY_METHODS, true) => 'ui.message.invalid_input',
+            !in_array($_POST['entry_method'] ?? '', Giveaways::entryMethods(), true) => 'ui.message.invalid_input',
             default                                                          => null,
         };
 

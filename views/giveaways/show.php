@@ -1,11 +1,12 @@
 <?php
 /**
- * One giveaway: its rules, prizes, winners and chat entries.
+ * One giveaway: its rules, prizes, winners and chat entries (while
+ * entering by chat is offered, see Giveaways::chatEntries).
  *
  * @var array $giveaway @var array $prizes @var array $available @var array $winners
  * @var array $entries @var array $content @var bool $vaultLocked @var bool $twitchReady @var bool $needsCopies
  * @var array{waiting:int, locked:int} $waitingWinners @var bool $nudge @var bool $takeBackWarn
- * @var string $joinCommand what viewers type to enter @var bool $canPost whether the bot can post it in chat
+ * @var ?string $joinCommand what viewers type to enter, null while the join command is hidden @var bool $canPost whether the bot can post it in chat
  * @var ?string $publicUrl the public prize page, when the giveaway is visible
  */
 $g       = $giveaway;
@@ -103,8 +104,8 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
 
 <section class="card giveaway-summary">
     <dl>
-        <div><dt><?= e(__('ui.field.keyword')) ?></dt><dd><code><?= e($joinCommand) ?></code></dd></div>
-        <div><dt><?= e(__('ui.field.entry_method')) ?></dt><dd><?= e(code_label('entry_method', $g['entry_method'])) ?></dd></div>
+        <div><dt><?= e(__('ui.field.keyword')) ?></dt><dd><code><?= e($joinCommand ?? (string) $g['keyword']) ?></code></dd></div>
+        <div><dt><?= e(__('ui.field.entry_method')) ?></dt><dd><?= e(code_label('entry_method', Giveaways::entryMethodOf($g))) ?></dd></div>
         <div><dt><?= e(__('ui.field.winner_mode')) ?></dt><dd><?= e(code_label('winner_mode', $g['winner_mode'])) ?></dd></div>
         <div><dt><?= e(__('ui.field.entries_open')) ?></dt><dd><?= e($g['starts_at'] ? fmt_datetime($g['starts_at']) : '—') ?></dd></div>
         <div><dt><?= e(__('ui.field.entries_close')) ?></dt><dd><?= e($g['ends_at'] ? fmt_datetime($g['ends_at']) : '—') ?></dd></div>
@@ -242,7 +243,7 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
     <div class="card-head">
         <h2><?= e(__('ui.label.winners')) ?> (<?= count(array_filter($winners, static fn ($w) => $w['state'] !== 'cancelled')) ?>)</h2>
         <div class="card-actions">
-            <?php if ($g['entry_method'] === 'chat' && $entries !== [] && $g['status'] !== 'cancelled'): ?>
+            <?php if (Giveaways::entryMethodOf($g) === 'chat' && $entries !== [] && $g['status'] !== 'cancelled'): ?>
                 <form method="post" action="<?= e(url('/giveaways/winners/draw')) ?>">
                     <?= Csrf::field() ?>
                     <input type="hidden" name="id" value="<?= $id ?>">
@@ -346,12 +347,12 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
     <?php endif; ?>
 </section>
 
-<?php if ($g['entry_method'] === 'chat'): ?>
+<?php if (Giveaways::entryMethodOf($g) === 'chat'): ?>
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.label.entries')) ?> (<?= count($entries) ?>)</h2>
     </div>
-    <p class="muted small"><?= e(sprintf(__('ui.message.giveaway_entries_explain'), $joinCommand)) ?></p>
+    <p class="muted small"><?= e(sprintf(__('ui.message.giveaway_entries_explain'), (string) $joinCommand)) ?></p>
     <?php if ($entries === []): ?>
         <p class="empty"><?= e(__('ui.message.giveaway_no_entries')) ?></p>
     <?php else: ?>

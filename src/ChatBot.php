@@ -52,6 +52,13 @@ final class ChatBot
     /** The language whose defaults a channel falls back to. */
     public const FALLBACK_LOCALE = 'en';
 
+    /**
+     * Built-ins not offered yet: kept in the database, but listed nowhere,
+     * never answered by the bot, and never mentioned (the giveaway pages
+     * show no chat command to enter with).
+     */
+    public const HIDDEN = ['join'];
+
     public const PERMISSIONS = ['everyone', 'subscriber', 'vip', 'moderator', 'broadcaster'];
 
     /** Placeholders a streamer's own commands may use: {target} is the first word after the command, or the user. */
@@ -304,7 +311,7 @@ final class ChatBot
         $ordered = [];
 
         foreach (array_keys(self::CODES) as $code) {
-            if (isset($byCode[$code])) {
+            if (isset($byCode[$code]) && !in_array($code, self::HIDDEN, true)) {
                 $ordered[$code] = $byCode[$code];
             }
         }
@@ -365,7 +372,7 @@ final class ChatBot
      */
     public static function commandFromInput(string $code, array $input): array
     {
-        if (!isset(self::CODES[$code])) {
+        if (!isset(self::CODES[$code]) || in_array($code, self::HIDDEN, true)) {
             throw new UserError(__('ui.message.not_found'));
         }
 
