@@ -9,8 +9,10 @@ declare(strict_types=1);
  * stays consistent. With Twitch configured, games are added Twitch first:
  * the search lists Twitch categories, and the game's details are filled in
  * from Steam or IGDB (GameCatalog::addFromTwitch), so every game has its
- * category from the start. Without Twitch, the provider flagged default
- * is used, never offering a choice.
+ * category from the start. Steam games with no Twitch category of their
+ * own name are listed after them (refs "steam:<app id>"), added from Steam
+ * with their category looked up (GameCatalog::addFromSteam). Without
+ * Twitch, the provider flagged default is used, never offering a choice.
  *
  * Admins keep /admin/import, where the provider is selectable.
  */
@@ -120,31 +122,96 @@ final class CatalogController
         json_response(['ok' => true, 'results' => $results]);
     }
 
-    /** @return list<array{ref:string, title:string, year:?string, image:?string, known:bool}> */
+    /**
+     * Twitch categories, then Steam games none of them is named after.
+     *
+     * @return list<array{ref:string, title:string, year:?string, image:?string, known:bool, source:string}>
+     */
     private static function twitchResults(string $term): array
     {
         $categories = Twitch::searchCategories($term);
+        $results    = [];
 
-        if ($categories === []) {
+        if ($categories !== []) {
+            $ids  = array_column($categories, 'id');
+            $stmt = Database::connection()->prepare(
+                "SELECT DISTINCT twitch_category_id FROM games
+                  WHERE twitch_category_source <> 'default'
+                    AND twitch_category_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ')'
+            );
+            $stmt->execute($ids);
+            $known = array_flip($stmt->fetchAll(PDO::FETCH_COLUMN));
+
+            foreach ($categories as $c) {
+                $results[] = [
+                    'ref'    => $c['id'],
+                    'title'  => $c['name'],
+                    'year'   => null,
+                    'image'  => $c['cover'],
+                    'known'  => isset($known[$c['id']]),
+                    'source' => 'Twitch',
+                ];
+            }
+        }
+
+        return array_merge($results, self::steamResults($term, array_column($results, 'title')));
+    }
+
+    /**
+     * Steam games for a search, without playtests and the like, nor the
+     * ones a Twitch result already stands for.
+     *
+     * @param list<string> $taken titles already listed
+     * @return list<array{ref:string, title:string, year:?string, image:?string, known:bool, source:string}>
+     */
+    private static function steamResults(string $term, array $taken): array
+    {
+        $steam = Providers::get('steam');
+
+        if ($steam === null || !$steam->isAvailable()) {
             return [];
         }
 
-        $ids  = array_column($categories, 'id');
+        try {
+            $found = $steam->search($term);
+        } catch (Throwable $e) {
+            ErrorLog::note('Steam search: ' . $e->getMessage());
+            return [];
+        }
+
+        $found = array_values(array_filter($found, static function (array $r) use ($taken): bool {
+            if (GameCatalog::isSteamExtra($r['title'])) {
+                return false;
+            }
+
+            foreach ($taken as $title) {
+                if (GameCatalog::sameName($title, $r['title'])) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+
+        if ($found === []) {
+            return [];
+        }
+
+        $refs = array_column($found, 'ref');
         $stmt = Database::connection()->prepare(
-            "SELECT DISTINCT twitch_category_id FROM games
-              WHERE twitch_category_source <> 'default'
-                AND twitch_category_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ')'
+            "SELECT source_ref FROM games WHERE source_provider = 'steam' AND source_ref IN (" . implode(',', array_fill(0, count($refs), '?')) . ')'
         );
-        $stmt->execute($ids);
+        $stmt->execute($refs);
         $known = array_flip($stmt->fetchAll(PDO::FETCH_COLUMN));
 
-        return array_map(static fn (array $c): array => [
-            'ref'   => $c['id'],
-            'title' => $c['name'],
-            'year'  => null,
-            'image' => $c['cover'],
-            'known' => isset($known[$c['id']]),
-        ], $categories);
+        return array_map(static fn (array $r): array => [
+            'ref'    => 'steam:' . $r['ref'],
+            'title'  => $r['title'],
+            'year'   => null,
+            'image'  => $r['image'],
+            'known'  => isset($known[$r['ref']]),
+            'source' => 'Steam',
+        ], array_slice($found, 0, 8));
     }
 
     /** AJAX: add a Twitch category's game (or import a default-provider result). */
@@ -154,6 +221,10 @@ final class CatalogController
         Csrf::verify(json: true);
 
         $ref = trim((string) ($_POST['ref'] ?? ''));
+
+        if (str_starts_with($ref, 'steam:')) {
+            self::addFromSteam(substr($ref, 6));
+        }
 
         if (Twitch::isConfigured()) {
             self::addFromTwitch($ref);
@@ -215,6 +286,35 @@ final class CatalogController
             'developer' => $result['developer'],
             'publisher' => $result['publisher'],
             'message'   => $result['created'] ? __('ui.message.imported') : __('ui.message.import_updated'),
+        ]);
+    }
+
+    /** Responds with the game a Steam app stands for, adding it when new. */
+    private static function addFromSteam(string $appId): never
+    {
+        try {
+            $result = Database::transaction(static function (PDO $pdo) use ($appId): array {
+                $result = GameCatalog::addFromSteam($pdo, $appId);
+                GameCatalog::syncReleaseEmbargo($pdo, (int) Auth::id(), $result['id']);
+
+                return $result;
+            });
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        } catch (Throwable $e) {
+            ErrorLog::note('add from Steam: ' . $e->getMessage());
+            json_response(['ok' => false, 'error' => __('ui.message.server_error')], 500);
+        }
+
+        json_response([
+            'ok'        => true,
+            'id'        => $result['id'],
+            'title'     => $result['title'],
+            'created'   => $result['created'],
+            'precision' => $result['precision'],
+            'developer' => $result['developer'],
+            'publisher' => $result['publisher'],
+            'message'   => __($result['created'] ? 'ui.message.imported' : 'ui.message.already_in_catalog'),
         ]);
     }
 

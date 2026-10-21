@@ -575,9 +575,9 @@ return [
             'viewers_title' => 'Se você entra como espectador',
             'viewers_text' => "- O id da sua conta da Twitch, seu nome, nome de exibição e o endereço da sua foto de perfil da Twitch.\n- Os prêmios que você ganhou e resgatou, com as chaves e quando você as resgatou.\nA entrada pela Twitch não pede nenhuma permissão, e o acesso que a Twitch concede é revogado assim que o StreamOrg sabe quem você é: o StreamOrg nunca consegue ler nem publicar nada na sua conta.",
             'giveaways_title' => 'Sorteios',
-            'giveaways_text' => "Quando você ganha, o streamer registra seu nome da Twitch para que só a sua conta consiga resgatar o prêmio.\nQuando você participa de um sorteio pelo chat, seu nome da Twitch e o horário ficam guardados só até o sorteio ser concluído, e então são apagados.",
+            'giveaways_text' => "Quando você ganha, o streamer registra seu nome da Twitch para que só a sua conta consiga resgatar o prêmio. Seu nome de exibição da Twitch também aparece ao lado do prêmio na página pública de prêmios do sorteio, que qualquer pessoa com o link pode abrir.\nQuando você participa de um sorteio pelo chat, seu nome da Twitch e o horário ficam guardados só até o sorteio ser concluído, e então são apagados.",
             'bot_title' => 'O bot do chat',
-            'bot_text' => "O bot do StreamOrg só entra no chat da Twitch dos streamers que o adicionam (ou pedem a um administrador para adicionar, o que podem desfazer no perfil). Ele responde comandos e, enquanto o canal está ao vivo, guarda estatísticas simples para aquele streamer.\n- O quê: o id, o nome e o nome de exibição da sua conta da Twitch; por live, quantas mensagens você mandou e, aproximadamente, quanto tempo esteve no chat (verificado uma vez por minuto), com o conteúdo que o streamer tinha ao vivo e a categoria da live. Nunca o texto das suas mensagens, nem registro de quem usou um comando.\n- Por quê: para o streamer ver como as lives e os conteúdos patrocinados foram com a comunidade dele.\n- Quem vê: o streamer daquele canal e o administrador do StreamOrg. Nunca é vendido nem compartilhado.\n- Eventos do canal: quando você segue, se inscreve, dá uma inscrição de presente, manda bits, faz raid ou compartilha uma sequência naquele canal, o seu nome na Twitch e o que foi (o nível, os meses, a quantidade), nunca o texto. Guardados por 90 dias.\n- Lista de seguidores: só nos canais em que o administrador do StreamOrg ligou isso, a lista de seguidores do canal (id e nome na Twitch e desde quando você segue) é verificada uma vez por dia, para o streamer saber quem deixou de seguir. Ela fica guardada enquanto a verificação estiver ligada.\n- Por quanto tempo: 12 meses, depois é apagado. O registro de atividade do bot (qual comando foi respondido em qual canal, sem nomes de espectadores) é apagado depois de 14 dias.\nPara apagar as suas estatísticas, escreva para o endereço em Seus direitos.",
+            'bot_text' => "O bot do StreamOrg só entra no chat da Twitch dos streamers que o adicionam (ou pedem a um administrador para adicionar, o que podem desfazer no perfil). Ele responde comandos e, enquanto o canal está ao vivo, guarda estatísticas simples para aquele streamer.\n- O quê: o id, o nome e o nome de exibição da sua conta da Twitch; por live, quantas mensagens você mandou e, aproximadamente, quanto tempo esteve no chat (verificado uma vez por minuto), com o conteúdo que o streamer tinha ao vivo e a categoria da live. Nunca o texto das suas mensagens, nem registro de quem usou um comando.\n- Por quê: para o streamer ver como as lives e os conteúdos patrocinados foram com a comunidade dele.\n- Quem vê: o streamer daquele canal e o administrador do StreamOrg. O seu tempo total assistido naquele canal (e desde quando é contado) também pode ser mostrado no chat dele a qualquer pessoa que pergunte ao bot, com o comando de tempo assistido e o seu nome. Nunca é vendido nem compartilhado.\n- Eventos do canal: quando você segue, se inscreve, dá uma inscrição de presente, manda bits, faz raid ou compartilha uma sequência naquele canal, o seu nome na Twitch e o que foi (o nível, os meses, a quantidade), nunca o texto. Guardados por 90 dias.\n- Lista de seguidores: só nos canais em que o administrador do StreamOrg ligou isso, a lista de seguidores do canal (id e nome na Twitch e desde quando você segue) é verificada uma vez por dia, para o streamer saber quem deixou de seguir. Ela fica guardada enquanto a verificação estiver ligada.\n- Por quanto tempo: 12 meses, depois é apagado. O registro de atividade do bot (qual comando foi respondido em qual canal, sem nomes de espectadores) é apagado depois de 14 dias.\nPara apagar as suas estatísticas, escreva para o endereço em Seus direitos.",
             'twitch_title' => 'Twitch e hospedagem',
             'twitch_text' => "Dados são trocados com a Twitch só para oferecer esses recursos, sob os termos da própria Twitch. Nada é vendido nem compartilhado com mais ninguém.\nO StreamOrg roda em um servidor alugado da Hetzner, na União Europeia.",
             'cookies_title' => 'Cookies',
@@ -1854,6 +1854,10 @@ return [
             'giveaway_public_page' => 'Página de prêmios',
             'unfollows_turn_on' => 'Ligar o acompanhamento de unfollows',
             'unfollows_turn_off' => 'Desligar o acompanhamento de unfollows',
+            'show_manual_games' => 'Adicionados à mão (%d)',
+            'convert_games' => 'Converter jogos à mão para Steam (%d)',
+            'find_on_steam' => 'Steam',
+            'use_steam_game' => 'Usar este jogo da Steam',
         ],
 
         'field' => [
@@ -1983,6 +1987,7 @@ return [
             'event' => 'Evento',
             'who' => 'Quem',
             'details' => 'Detalhes',
+            'added_at' => 'Adicionado em',
         ],
 
         'label' => [
@@ -2350,6 +2355,8 @@ return [
             'unfollows_checked' => 'Última verificação',
             'unfollows_followers' => '%s seguidores',
             'unfollows_problem' => 'Problema',
+            'by_hand' => 'À mão',
+            'steam_game' => 'Jogo na Steam',
         ],
 
         'message' => [
@@ -2779,6 +2786,14 @@ return [
             'unfollows_none' => 'Nenhum unfollow notado.',
             'unfollows_admin_hint' => 'Uma verificação diária da lista de seguidores dos canais que você escolher (na lista de canais acima), para saber quem deixou de seguir. Desligado, ninguém vê a página de Unfollows e nada é verificado. Canais grandes (mais de 30.000 seguidores) ficam de fora.',
             'bot_reconnect_for_follows' => 'Reconecte a conta do bot para ele ver follows (e ler listas de seguidores) nos canais onde é moderador.',
+            'convert_games_hint' => 'Liga cada jogo adicionado à mão ao seu jogo na Steam quando a correspondência é certa (pela categoria da Twitch, ou exatamente o mesmo nome) e preenche publicadora, desenvolvedora, lançamento e artes. O jogo continua o mesmo, com suas chaves e conteúdos. Os outros são listados para você escolher um a um.',
+            'convert_games_confirm' => 'Procurar na Steam todos os jogos adicionados à mão e preencher os que têm correspondência certa? Pode levar um minuto.',
+            'games_converted' => '%d de %d jogos adicionados à mão agora vêm da Steam.',
+            'games_not_found' => 'Sem correspondência certa para: %s. Use Steam em cada um para escolher.',
+            'games_convert_failed' => 'Não foi possível converter: %s.',
+            'game_converted' => '%s agora vem da Steam, com seus dados.',
+            'game_already_linked' => 'Esse jogo da Steam já está no catálogo como %s (#%d).',
+            'find_on_steam_explain' => 'Escolha este jogo na Steam: ele mantém suas chaves, conteúdos e categoria da Twitch, e recebe da Steam a publicadora, a desenvolvedora, o lançamento, a descrição e as artes.',
         ],
         'channel_event' => [
             'follow' => 'Follow',

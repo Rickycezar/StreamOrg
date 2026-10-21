@@ -119,7 +119,7 @@ final class ContentController
         $backlog = $stmt->fetchAll();
 
         $sql = "SELECT s.id, s.title, s.title_template, s.collab_session_id, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
-                       s.category_id, s.category_name,
+                       s.category_id, s.category_name, s.created_at,
                        sp.code AS platform_code,
                        count(sg.game_id)                                     AS game_count,
                        count(sg.game_key_id)                                 AS keyed_count,

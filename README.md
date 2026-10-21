@@ -75,11 +75,19 @@ private preview. Preview access: streamorg@outlook.com.
   row's buttons.
 
 ### Catalogue
-- **Twitch first**: with Twitch connected, a game is added by picking its
-  Twitch category; its store page, release date, studios, genres and artwork
-  are then filled in from Steam (found exactly through IGDB) or IGDB itself,
-  using the same Twitch credentials. Non-game categories keep Twitch's name
-  and box art.
+- **Twitch and Steam together**: with Twitch connected, the game search
+  lists Twitch categories and, after them, Steam games no category is named
+  after (playtests and soundtracks left out), each marked with its source.
+  A Twitch category's store page, release date, studios, genres and artwork
+  are filled in from Steam (found exactly through IGDB, else by exactly the
+  same name) or IGDB itself, using the same Twitch credentials; a Steam game
+  gets its Twitch category by name. Non-game categories keep Twitch's name
+  and box art. A game already added by hand is filled in where it is,
+  instead of being added twice.
+- **Converting games added by hand** (Administration → Games): every one
+  with a certain Steam match is linked and filled in at once, and the rest
+  one by one from a Steam search; each keeps its keys, content and
+  embargoes.
 - **Every game has a Twitch category** — several may share one, and a game
   Twitch does not list streams as Just Chatting until it is found. Imports
   look the category up on their own; admins can set it by hand or look up

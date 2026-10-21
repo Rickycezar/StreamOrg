@@ -379,6 +379,7 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                 <th data-col="deadline"><?= e(__('ui.field.deadline')) ?></th>
                 <th data-col="key"><?= e(__('ui.field.key')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
+                <th data-col="added"><?= e(__('ui.field.added_at')) ?></th>
             </tr>
             </thead>
             <tbody>
@@ -464,10 +465,12 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                             <?php endforeach; ?>
                         </select>
                     </td>
+                    <td class="dates" data-col="added" data-label="<?= e(__('ui.field.added_at')) ?>" data-sort="<?= e(sort_key($row['created_at'])) ?>"
+                        title="<?= e(fmt_datetime($row['created_at'])) ?>"><?= e(fmt_date($row['created_at'])) ?></td>
                 </tr>
 
                 <tr id="edit-content-<?= (int) $row['id'] ?>" class="editrow hidden">
-                    <td colspan="8">
+                    <td colspan="9">
                         <form class="inline-edit" data-endpoint="/content/update" data-id="<?= (int) $row['id'] ?>">
                             <div class="grid">
                                 <?php if ($row['collab_session_id']): ?>

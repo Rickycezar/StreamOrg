@@ -50,6 +50,7 @@
         publishers: { endpoint: '/pickers/companies?type=publishers', label: 'name' },
         developers: { endpoint: '/pickers/companies?type=developers', label: 'name' },
         categories: { endpoint: '/pickers/twitch-categories', label: 'name' },
+        steam:      { endpoint: '/admin/games/steam-search', label: 'name' },
         users:      { endpoint: '/pickers/users', label: 'name' },
     };
 
@@ -77,6 +78,13 @@
                 + (item.year ? ' <span class="picker-year">' + escape(String(item.year)) + '</span>' : '')
                 + (studios ? '<small class="picker-sub">' + escape(studios) + '</small>' : '')
                 + '</span></div>';
+        }
+
+        if (kind === 'steam') {
+            return '<div class="picker-option">'
+                + (item.cover ? '<img class="picker-cover" src="' + escape(item.cover) + '" alt="">'
+                              : '<span class="picker-cover"></span>')
+                + '<span class="picker-text"><span class="picker-title">' + escape(item.name) + '</span></span></div>';
         }
 
         if (kind === 'categories') {
@@ -120,7 +128,7 @@
             },
             load: async function (query, callback) {
                 const glue = conf.endpoint.indexOf('?') === -1 ? '?' : '&';
-                const response = await fetch(url(conf.endpoint) + glue + new URLSearchParams({ q: query }), {
+                const response = await fetch(url(conf.endpoint) + glue + new URLSearchParams({ q: query || select.dataset.query || '' }), {
                     headers: { 'Accept': 'application/json' }
                 });
                 const data = await response.json().catch(function () { return { ok: false }; });
@@ -484,6 +492,13 @@
 
     /** Marks a Twitch search result whose game the catalogue already has. */
     function knownBadge(title, item) {
+        if (item.source) {
+            const source = document.createElement('span');
+            source.className = 'badge off result-source';
+            source.textContent = item.source;
+            title.append(' ', source);
+        }
+
         if (!item.known) return;
 
         const badge = document.createElement('span');

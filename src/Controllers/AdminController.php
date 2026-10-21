@@ -185,14 +185,21 @@ final class AdminController
 
         $pdo = Database::connection();
 
+        $manualOnly = ($_GET['source'] ?? '') === 'manual';
+        $steam      = Providers::get('steam');
+
         View::render('admin/games', [
             'twitchReady' => Twitch::isConfigured(),
+            'steamReady'  => $steam !== null && $steam->isAvailable(),
             'missing'     => TwitchCategories::defaults($pdo),
+            'manual'      => (int) $pdo->query('SELECT count(*) FROM games WHERE source_provider IS NULL')->fetchColumn(),
+            'manualOnly'  => $manualOnly,
             'games' => $pdo->query(
                 'SELECT g.*, p.name AS publisher_name, d.name AS developer_name
                    FROM games g
               LEFT JOIN publishers p ON p.id = g.publisher_id
-              LEFT JOIN developers d ON d.id = g.developer_id
+              LEFT JOIN developers d ON d.id = g.developer_id'
+                . ($manualOnly ? ' WHERE g.source_provider IS NULL' : '') . '
                ORDER BY g.title'
             )->fetchAll(),
         ], __('ui.nav.games'));
@@ -319,6 +326,77 @@ final class AdminController
         flash('success', sprintf(__('ui.message.twitch_categories_filled'), $result['found'], $result['checked'])
             . ($result['left'] > 0 ? ' ' . sprintf(__('ui.message.twitch_categories_left'), $result['left']) : ''));
         redirect('/admin/games');
+    }
+
+    /** GET /admin/games/steam-search?q=… — Steam games for the by-hand converter's picker. */
+    public static function steamSearch(): void
+    {
+        Auth::requireAdmin();
+
+        $steam = Providers::get('steam');
+        $term  = trim((string) ($_GET['q'] ?? ''));
+
+        if ($steam === null || !$steam->isAvailable() || mb_strlen($term) < 2) {
+            json_response(['ok' => true, 'items' => []]);
+        }
+
+        $items = [];
+
+        foreach ($steam->search($term) as $r) {
+            if (!GameCatalog::isSteamExtra($r['title'])) {
+                $items[] = ['id' => (string) $r['ref'], 'name' => $r['title'] . ' · ' . $r['ref'], 'cover' => $r['image']];
+            }
+        }
+
+        json_response(['ok' => true, 'items' => $items]);
+    }
+
+    /** POST /admin/games/steam — links a game added by hand to the Steam game chosen, and fills it in. */
+    public static function attachSteam(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $gameId = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: 0;
+        $ref    = trim((string) ($_POST['ref'] ?? ''));
+        $steam  = Providers::get('steam');
+
+        if (!ctype_digit($ref) || $steam === null || !$steam->isAvailable()) {
+            flash('error', __('ui.message.invalid_input'));
+            redirect('/admin/games?source=manual');
+        }
+
+        try {
+            $result = Database::transaction(static fn (PDO $pdo): array => GameCatalog::attach($pdo, $gameId, $steam, $ref));
+            flash('success', sprintf(__('ui.message.game_converted'), $result['title']));
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+        } catch (Throwable $e) {
+            ErrorLog::note("attach game #{$gameId} to Steam {$ref}: " . $e->getMessage());
+            flash('error', __('ui.message.provider_error'));
+        }
+
+        redirect('/admin/games?source=manual');
+    }
+
+    /** POST /admin/games/convert — every game added by hand that has a sure Steam match gets it. */
+    public static function convertGames(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        set_time_limit(600);
+
+        $result = GameCatalog::convertManual(Database::connection());
+
+        flash('success', sprintf(__('ui.message.games_converted'), count($result['converted']), $result['checked'])
+            . ($result['missing'] !== [] ? ' ' . sprintf(__('ui.message.games_not_found'), implode(', ', array_slice($result['missing'], 0, 20))) : ''));
+
+        if ($result['failed'] !== []) {
+            flash('error', sprintf(__('ui.message.games_convert_failed'), implode(', ', array_slice($result['failed'], 0, 20))));
+        }
+
+        redirect('/admin/games?source=manual');
     }
 
     public static function publishers(): void

@@ -214,6 +214,7 @@
                 <th data-col="redeem_by"><?= e(__('ui.field.redeem_by')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
                 <th data-col="winner"><?= e(__('ui.field.winner')) ?></th>
+                <th data-col="added"><?= e(__('ui.field.added_at')) ?></th>
                 <th data-col="key_code" data-nosort><?= e(__('ui.field.key_code')) ?></th>
             </tr>
             </thead>
@@ -287,6 +288,8 @@
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
+                    <td class="dates" data-col="added" data-label="<?= e(__('ui.field.added_at')) ?>" data-sort="<?= e(sort_key($key['created_at'])) ?>"
+                        title="<?= e(fmt_datetime($key['created_at'])) ?>"><?= e(fmt_date($key['created_at'])) ?></td>
                     <td class="keycell" data-col="key_code" data-label="<?= e(__('ui.field.key_code')) ?>">
                         <div class="keyfield">
                             <input type="text" class="key-field masked" readonly
@@ -305,7 +308,7 @@
 
                 <tr id="edit-key-<?= (int) $key['id'] ?>" class="editrow hidden"
                     data-edit-url="<?= e(url('/keys/edit?id=' . (int) $key['id'])) ?>">
-                    <td colspan="10"></td>
+                    <td colspan="11"></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

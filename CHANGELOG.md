@@ -5,6 +5,30 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## Unreleased
+
+### Added
+- Searching for a game shows Twitch categories and Steam games together,
+  each marked with where it comes from.
+- Administration → Games: games added by hand can be converted to Steam —
+  all the certain matches at once, or one by one from a Steam search —
+  getting their publisher, developer, release date, description and
+  artwork while keeping their keys, content and embargoes.
+- Content and the key vault have an "Added" column (when each was added),
+  to sort by; like the other columns it can be hidden or moved.
+
+### Fixed
+- Adding a game from its Twitch category no longer ends up "by hand", with
+  no publisher or developer: a Twitch token that had stopped working is
+  replaced instead of IGDB's answer being taken as "nothing found", and when
+  IGDB has no Steam link the Steam game with exactly that name is used.
+  Adding a game that was already added by hand fills it in.
+
+### Changed
+- The privacy policy says that winners' Twitch display names appear on the
+  giveaway's public prize page, and that a viewer's watch time in a channel
+  can be shown in its chat to anyone who asks the bot.
+
 ## 0.9.4 — 2026-10-14
 
 ### Changed

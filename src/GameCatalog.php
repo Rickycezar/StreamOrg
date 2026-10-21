@@ -28,11 +28,12 @@ final class GameCatalog
      * that only had the Just Chatting stand-in takes it; otherwise its
      * category is looked up.
      *
+     * @param ?array $detail the provider's record, when the caller already fetched it
      * @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string}
      */
-    public static function importFromProvider(PDO $pdo, Provider $provider, string $ref, bool $refreshImages = false, ?array $category = null): array
+    public static function importFromProvider(PDO $pdo, Provider $provider, string $ref, bool $refreshImages = false, ?array $category = null, ?array $detail = null): array
     {
-        $detail = $provider->fetch($ref);
+        $detail ??= $provider->fetch($ref);
 
         if ($detail === null || trim($detail['title']) === '') {
             throw new RuntimeException("Provider returned nothing for ref {$ref}.");
@@ -119,12 +120,14 @@ final class GameCatalog
      * Adds a game starting from its Twitch category, then fills in its
      * details from wherever they can be found, most exact first:
      *   1. Steam, by the app id IGDB records for the category's IGDB id;
-     *   2. IGDB itself, by that id;
-     *   3. only Twitch's name and box art — always the case for categories
+     *   2. Steam, by a game there with exactly the category's name;
+     *   3. IGDB itself, by that id;
+     *   4. only Twitch's name and box art — always the case for categories
      *      with no IGDB id, which are the non-game ones (Just Chatting,
-     *      Music…): a title search would find unrelated games named alike.
+     *      Music…): a looser title search would find unrelated games.
      * A game already in the catalogue under that category (or that title)
-     * is returned instead of added twice.
+     * is returned instead of added twice; if it was added by hand, it gets
+     * the details now (see attach).
      *
      * @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string, via:string}
      */
@@ -139,6 +142,16 @@ final class GameCatalog
         $existing = self::findByCategory($pdo, $category);
 
         if ($existing !== null) {
+            if (!self::isImported($pdo, $existing)) {
+                foreach (self::detailSources($category) as [$provider, $ref]) {
+                    try {
+                        return self::attach($pdo, $existing, $provider, $ref) + ['via' => $provider->code()];
+                    } catch (Throwable $e) {
+                        ErrorLog::note("details for game #{$existing} via {$provider->code()}: " . $e->getMessage());
+                    }
+                }
+            }
+
             return self::summary($pdo, $existing, false) + ['via' => 'catalog'];
         }
 
@@ -206,13 +219,14 @@ final class GameCatalog
     {
         $igdb = IgdbProvider::forTwitch();
 
-        if ($category['igdb_id'] === null || $igdb === null) {
+        if ($category['igdb_id'] === null) {
             return;
         }
 
         $steam = Providers::get('steam');
+        $steam = $steam !== null && $steam->isAvailable() ? $steam : null;
 
-        if ($steam !== null && $steam->isAvailable()) {
+        if ($steam !== null && $igdb !== null) {
             $appId = $igdb->steamAppId($category['igdb_id']);
 
             if ($appId !== null) {
@@ -220,7 +234,206 @@ final class GameCatalog
             }
         }
 
-        yield [$igdb, $category['igdb_id']];
+        if ($steam !== null) {
+            $appId = self::steamMatch($steam, (string) $category['name']);
+
+            if ($appId !== null) {
+                yield [$steam, $appId];
+            }
+        }
+
+        if ($igdb !== null) {
+            yield [$igdb, $category['igdb_id']];
+        }
+    }
+
+    /**
+     * "HELLBOUND, Inc.™" and "Hellbound, Inc." are the same name, and so are
+     * "Dressmaker (2026)" (Twitch tells namesakes apart by year) and "Dressmaker".
+     */
+    public static function sameName(string $a, string $b): bool
+    {
+        $fold = static fn (string $t): string => (string) preg_replace(
+            '/[^\p{L}\p{N}]+/u',
+            '',
+            mb_strtolower(str_replace(['™', '®', '©'], '', (string) preg_replace('/\s*\((?:19|20)\d{2}\)\s*$/', '', $t)))
+        );
+
+        return $fold($a) !== '' && $fold($a) === $fold($b);
+    }
+
+    /** Steam results that are not the game itself: playtests, soundtracks, demos, servers… */
+    public static function isSteamExtra(string $title): bool
+    {
+        return (bool) preg_match('/\b(playtest|soundtrack|ost|demo|dedicated server|sdk|artbook|art book|dlc|season pass|wallpaper)s?\b/iu', $title);
+    }
+
+    /** The Steam app with exactly this name (playtests, soundtracks and such aside), or null. */
+    public static function steamMatch(Provider $steam, string $title): ?string
+    {
+        $term = trim((string) preg_replace('/\s*\((?:19|20)\d{2}\)\s*$/', '', $title));
+
+        foreach ($steam->search($term) as $result) {
+            if (!self::isSteamExtra($result['title']) && self::sameName($result['title'], $title)) {
+                return (string) $result['ref'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Whether a game came from a provider (as opposed to being added by hand). */
+    public static function isImported(PDO $pdo, int $gameId): bool
+    {
+        $stmt = $pdo->prepare('SELECT source_provider IS NOT NULL FROM games WHERE id = ?');
+        $stmt->execute([$gameId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Gives a game added by hand its provider record and fills it in from
+     * there, keeping the same row — its keys, content and embargoes stay
+     * attached — and its Twitch category.
+     *
+     * @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string}
+     * @throws UserError when another game already is that provider record
+     */
+    public static function attach(PDO $pdo, int $gameId, Provider $provider, string $ref, bool $refreshImages = true): array
+    {
+        $stmt = $pdo->prepare('SELECT id, title FROM games WHERE source_provider = ? AND source_ref = ? AND id <> ?');
+        $stmt->execute([$provider->code(), $ref, $gameId]);
+        $other = $stmt->fetch();
+
+        if ($other !== false) {
+            throw new UserError(sprintf(__('ui.message.game_already_linked'), $other['title'], (int) $other['id']));
+        }
+
+        $detail = $provider->fetch($ref);
+
+        if ($detail === null || trim((string) $detail['title']) === '') {
+            throw new UserError(__('ui.message.provider_error'));
+        }
+
+        $pdo->prepare('UPDATE games SET source_provider = ?, source_ref = ? WHERE id = ?')->execute([$provider->code(), $detail['ref'], $gameId]);
+
+        $result = self::importFromProvider($pdo, $provider, (string) $detail['ref'], $refreshImages, null, $detail);
+
+        if ($result['id'] !== $gameId) {
+            throw new RuntimeException("attach: provider record {$provider->code()} {$ref} landed on #{$result['id']}, not #{$gameId}");
+        }
+
+        return ['created' => false] + $result;
+    }
+
+    /**
+     * The Steam app a game added by hand most surely is: through its Twitch
+     * category's IGDB record, else the Steam game with exactly its name.
+     */
+    public static function steamFor(PDO $pdo, int $gameId): ?string
+    {
+        $steam = Providers::get('steam');
+
+        if ($steam === null || !$steam->isAvailable()) {
+            return null;
+        }
+
+        $stmt = $pdo->prepare('SELECT title, twitch_category_id, twitch_category_source FROM games WHERE id = ?');
+        $stmt->execute([$gameId]);
+        $game = $stmt->fetch();
+
+        if ($game === false) {
+            return null;
+        }
+
+        if ($game['twitch_category_source'] !== TwitchCategories::DEFAULT_SOURCE && Twitch::isConfigured()) {
+            $category = Twitch::category((string) $game['twitch_category_id']);
+            $igdb     = IgdbProvider::forTwitch();
+
+            if ($category !== null && $category['igdb_id'] !== null && $igdb !== null) {
+                $appId = $igdb->steamAppId((string) $category['igdb_id']);
+
+                if ($appId !== null) {
+                    return $appId;
+                }
+            }
+        }
+
+        return self::steamMatch($steam, (string) $game['title']);
+    }
+
+    /**
+     * Links every game added by hand that has a sure Steam match (see
+     * steamFor) to it and fills it in, one game at a time.
+     *
+     * @return array{checked:int, converted:list<string>, missing:list<string>, failed:list<string>}
+     */
+    public static function convertManual(PDO $pdo): array
+    {
+        $steam  = Providers::get('steam');
+        $games  = $pdo->query('SELECT id, title FROM games WHERE source_provider IS NULL ORDER BY title')->fetchAll();
+        $result = ['checked' => count($games), 'converted' => [], 'missing' => [], 'failed' => []];
+
+        if ($steam === null || !$steam->isAvailable()) {
+            return $result;
+        }
+
+        foreach ($games as $game) {
+            $appId = self::steamFor($pdo, (int) $game['id']);
+
+            if ($appId === null) {
+                $result['missing'][] = (string) $game['title'];
+                continue;
+            }
+
+            try {
+                $done = Database::transaction(static fn (PDO $tx): array => self::attach($tx, (int) $game['id'], $steam, $appId));
+                $result['converted'][] = $done['title'];
+            } catch (Throwable $e) {
+                ErrorLog::note("convert game #{$game['id']} to Steam {$appId}: " . $e->getMessage());
+                $result['failed'][] = $game['title'] . ($e instanceof UserError ? ' (' . $e->getMessage() . ')' : '');
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Adds a game found on Steam: the one already there for that app, or a
+     * game added by hand with exactly that name (which gets the details),
+     * or a new one; its Twitch category is looked up by name.
+     *
+     * @return array{id:int, created:bool, title:string, release:?string, precision:string, publisher:?string, developer:?string, via:string}
+     */
+    public static function addFromSteam(PDO $pdo, string $appId): array
+    {
+        $steam = Providers::get('steam');
+
+        if ($steam === null || !$steam->isAvailable() || !ctype_digit($appId)) {
+            throw new UserError(__('ui.message.provider_unavailable'));
+        }
+
+        $stmt = $pdo->prepare("SELECT id FROM games WHERE source_provider = 'steam' AND source_ref = ?");
+        $stmt->execute([$appId]);
+        $known = $stmt->fetchColumn();
+
+        if ($known !== false) {
+            return self::summary($pdo, (int) $known, false) + ['via' => 'catalog'];
+        }
+
+        $detail = $steam->fetch($appId);
+
+        if ($detail === null) {
+            throw new UserError(__('ui.message.provider_error'));
+        }
+
+        foreach ($pdo->query('SELECT id, title FROM games WHERE source_provider IS NULL')->fetchAll() as $plain) {
+            if (self::sameName((string) $plain['title'], (string) $detail['title'])) {
+                return self::attach($pdo, (int) $plain['id'], $steam, $appId, false) + ['via' => 'steam'];
+            }
+        }
+
+        return self::importFromProvider($pdo, $steam, $appId, false, null, $detail) + ['via' => 'steam'];
     }
 
     /** Gives a game the category it was added from, unless it already has a real one. */

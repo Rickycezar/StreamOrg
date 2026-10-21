@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 /**
  * IGDB, via Twitch's OAuth. Needs a client id and secret from the Twitch
- * developer console. Tokens are cached in the session for their lifetime.
+ * developer console. Tokens are cached in the session, per client id, for
+ * their lifetime; a token Twitch no longer accepts (a regenerated secret,
+ * a revoked token) is replaced and the call made once more, instead of the
+ * answer being taken as "nothing found".
  */
 final class IgdbProvider extends Provider
 {
@@ -154,28 +157,46 @@ final class IgdbProvider extends Provider
     /** @return list<array<string,mixed>> */
     private function query(string $apicalypse): array
     {
-        $token = $this->token();
+        foreach ([false, true] as $fresh) {
+            $token = $this->token($fresh);
 
-        if ($token === null) {
-            return [];
+            if ($token === null) {
+                ErrorLog::note('IGDB: no access token from Twitch');
+                return [];
+            }
+
+            $response = Http::post('https://api.igdb.com/v4/games', $apicalypse, [
+                'Client-ID'     => $this->setting('client_id'),
+                'Authorization' => 'Bearer ' . $token,
+                'Accept'        => 'application/json',
+            ]);
+
+            if ((int) $response['status'] !== 401) {
+                break;
+            }
         }
-
-        $response = Http::post('https://api.igdb.com/v4/games', $apicalypse, [
-            'Client-ID'     => $this->setting('client_id'),
-            'Authorization' => 'Bearer ' . $token,
-            'Accept'        => 'application/json',
-        ]);
 
         $data = Http::json($response);
 
-        return is_array($data) ? $data : [];
+        if (!is_array($data) || (int) $response['status'] !== 200) {
+            ErrorLog::note('IGDB answered ' . (int) $response['status'] . ': ' . mb_substr((string) ($response['body'] ?? ''), 0, 200));
+            return [];
+        }
+
+        return $data;
     }
 
-    private function token(): ?string
+    /** The session key of this app's token: a token belongs to one client id. */
+    private function tokenKey(): string
     {
-        $cached = $_SESSION[self::TOKEN_KEY] ?? null;
+        return self::TOKEN_KEY . ':' . substr(hash('sha256', $this->setting('client_id')), 0, 12);
+    }
 
-        if (is_array($cached) && ($cached['expires'] ?? 0) > time() + 60) {
+    private function token(bool $fresh = false): ?string
+    {
+        $cached = $_SESSION[$this->tokenKey()] ?? null;
+
+        if (!$fresh && is_array($cached) && ($cached['expires'] ?? 0) > time() + 60) {
             return (string) $cached['token'];
         }
 
@@ -191,7 +212,8 @@ final class IgdbProvider extends Provider
             return null;
         }
 
-        $_SESSION[self::TOKEN_KEY] = [
+        unset($_SESSION[self::TOKEN_KEY]);
+        $_SESSION[$this->tokenKey()] = [
             'token'   => (string) $data['access_token'],
             'expires' => time() + (int) ($data['expires_in'] ?? 3600),
         ];

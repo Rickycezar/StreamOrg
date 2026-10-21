@@ -576,9 +576,9 @@ return [
             'viewers_title' => 'If you sign in as a viewer',
             'viewers_text' => "- Your Twitch account id, name, display name and the address of your Twitch profile picture.\n- The prizes you won and claimed, with their keys and when you claimed them.\nTwitch sign-in asks for no permission, and the access Twitch grants is revoked as soon as StreamOrg knows who you are: StreamOrg can never read or post anything on your account.",
             'giveaways_title' => 'Giveaways',
-            'giveaways_text' => "When you win, the streamer records your Twitch name so that only your account can claim the prize.\nWhen you enter a giveaway from the chat, your Twitch name and the time are kept only until the giveaway is finished, then deleted.",
+            'giveaways_text' => "When you win, the streamer records your Twitch name so that only your account can claim the prize. Your Twitch display name also appears next to the prize on the giveaway's public prize page, which anyone with its link can open.\nWhen you enter a giveaway from the chat, your Twitch name and the time are kept only until the giveaway is finished, then deleted.",
             'bot_title' => 'The chat bot',
-            'bot_text' => "The StreamOrg bot only joins the Twitch chats of streamers who add it (or have an administrator add it, which they can undo on their profile). It answers commands and, while the channel is live, keeps simple statistics for that streamer.\n- What: your Twitch account id, name and display name; per broadcast, the number of messages you sent and roughly how long you were in the chat (checked once a minute), with the content the streamer had live and the stream category. Never the text of your messages, and no record of who used a command.\n- Why: so the streamer can see how their streams and sponsored content did with their community.\n- Who sees it: the streamer of that channel and StreamOrg's administrator. It is never sold or shared.\n- Channel events: when you follow, subscribe, give a subscription, cheer bits, raid or share a watch streak in that channel, your Twitch name and what it was (the tier, the months, the amount), never the text. Kept for 90 days.\n- Follower list: only in channels where StreamOrg's administrator switched it on, the channel's follower list (Twitch id, name and when you followed) is checked once a day, to tell the streamer who stopped following. It is kept while the check is on.\n- How long: 12 months, then deleted. The bot's activity log (which command was answered in which channel, without viewer names) is deleted after 14 days.\nTo have your statistics deleted, write to the address under Your rights.",
+            'bot_text' => "The StreamOrg bot only joins the Twitch chats of streamers who add it (or have an administrator add it, which they can undo on their profile). It answers commands and, while the channel is live, keeps simple statistics for that streamer.\n- What: your Twitch account id, name and display name; per broadcast, the number of messages you sent and roughly how long you were in the chat (checked once a minute), with the content the streamer had live and the stream category. Never the text of your messages, and no record of who used a command.\n- Why: so the streamer can see how their streams and sponsored content did with their community.\n- Who sees it: the streamer of that channel and StreamOrg's administrator. Your total watch time in that channel (and since when it is counted) can also be shown in its chat to anyone who asks the bot, with the watch time command and your name. It is never sold or shared.\n- Channel events: when you follow, subscribe, give a subscription, cheer bits, raid or share a watch streak in that channel, your Twitch name and what it was (the tier, the months, the amount), never the text. Kept for 90 days.\n- Follower list: only in channels where StreamOrg's administrator switched it on, the channel's follower list (Twitch id, name and when you followed) is checked once a day, to tell the streamer who stopped following. It is kept while the check is on.\n- How long: 12 months, then deleted. The bot's activity log (which command was answered in which channel, without viewer names) is deleted after 14 days.\nTo have your statistics deleted, write to the address under Your rights.",
             'twitch_title' => 'Twitch and hosting',
             'twitch_text' => "Data is exchanged with Twitch only to provide these features, under Twitch's own terms. Nothing is sold or shared with anyone else.\nStreamOrg runs on a server rented from Hetzner, in the European Union.",
             'cookies_title' => 'Cookies',
@@ -1855,6 +1855,10 @@ return [
             'giveaway_public_page' => 'Prize page',
             'unfollows_turn_on' => 'Turn unfollow tracking on',
             'unfollows_turn_off' => 'Turn unfollow tracking off',
+            'show_manual_games' => 'Added by hand (%d)',
+            'convert_games' => 'Convert by-hand games to Steam (%d)',
+            'find_on_steam' => 'Steam',
+            'use_steam_game' => 'Use this Steam game',
         ],
 
         'field' => [
@@ -1984,6 +1988,7 @@ return [
             'event' => 'Event',
             'who' => 'Who',
             'details' => 'Details',
+            'added_at' => 'Added',
         ],
 
         'label' => [
@@ -2351,6 +2356,8 @@ return [
             'unfollows_checked' => 'Last check',
             'unfollows_followers' => '%s followers',
             'unfollows_problem' => 'Problem',
+            'by_hand' => 'By hand',
+            'steam_game' => 'Steam game',
         ],
 
         'message' => [
@@ -2780,6 +2787,14 @@ return [
             'unfollows_none' => 'No unfollows noticed.',
             'unfollows_admin_hint' => 'A daily look at the follower list of the channels you choose (in the channel list above), to tell who stopped following. Off, nobody sees the Unfollows page and nothing is checked. Large channels (over 30,000 followers) are skipped.',
             'bot_reconnect_for_follows' => 'Reconnect the bot account to let it see follows (and read follower lists) in channels where it is a moderator.',
+            'convert_games_hint' => 'Links each game added by hand to its Steam game when the match is certain (through its Twitch category, or exactly the same name), and fills in publisher, developer, release date and artwork. The game stays the same, with its keys and content. The others are listed so you can pick them one by one.',
+            'convert_games_confirm' => 'Look every game added by hand up on Steam and fill in the ones with a certain match? It can take a minute.',
+            'games_converted' => '%d of %d games added by hand now come from Steam.',
+            'games_not_found' => 'No certain match for: %s. Use Steam on each to pick it.',
+            'games_convert_failed' => 'Could not convert: %s.',
+            'game_converted' => '%s now comes from Steam, with its details.',
+            'game_already_linked' => 'That Steam game is already in the catalogue as %s (#%d).',
+            'find_on_steam_explain' => 'Pick this game on Steam: it keeps its keys, content and Twitch category, and gets the publisher, developer, release date, description and artwork from Steam.',
         ],
         'channel_event' => [
             'follow' => 'Follow',

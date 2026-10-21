@@ -128,7 +128,7 @@ final class KeysController
     private static function listSql(): string
     {
         return "SELECT k.id, k.key_type, k.content_type, k.status, k.region,
-                       k.received_at, k.expires_at, k.notes,
+                       k.received_at, k.expires_at, k.notes, k.created_at,
                        emb.lifts_at AS embargo_until,
                        (emb.lifts_at IS NOT NULL AND emb.lifts_at > now()) AS under_embargo,
                        k.game_id, g.title AS game_title, g.release_date,

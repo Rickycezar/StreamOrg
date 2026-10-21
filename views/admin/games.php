@@ -1,4 +1,12 @@
-<?php /** @var array $games @var array $publishers @var array $developers @var bool $twitchReady @var int $missing */ ?>
+<?php
+/**
+ * Administration → Games: the shared catalogue, adding games, their Twitch
+ * categories, and turning games added by hand into Steam ones.
+ *
+ * @var array $games @var bool $twitchReady @var bool $steamReady @var int $missing
+ * @var int $manual games added by hand @var bool $manualOnly whether only those are listed
+ */
+?>
 <h1><?= e(__('ui.nav.games')) ?></h1>
 <p class="muted">
     <?= e(__('ui.message.games_intro')) ?>
@@ -9,6 +17,18 @@
     <div class="card-head">
         <h2><?= e(__('ui.nav.games')) ?> (<?= count($games) ?>)</h2>
         <div class="card-actions">
+            <?php if ($manual > 0 || $manualOnly): ?>
+                <a class="btn<?= $manualOnly ? ' primary' : '' ?>" href="<?= e(url($manualOnly ? '/admin/games' : '/admin/games?source=manual')) ?>">
+                    <?= e(sprintf(__('ui.action.show_manual_games'), $manual)) ?>
+                </a>
+            <?php endif; ?>
+            <?php if ($steamReady && $manual > 0): ?>
+                <form method="post" action="<?= e(url('/admin/games/convert')) ?>">
+                    <?= Csrf::field() ?>
+                    <button type="submit" class="btn" title="<?= e(__('ui.message.convert_games_hint')) ?>"
+                            data-confirm="<?= e(__('ui.message.convert_games_confirm')) ?>"><?= e(sprintf(__('ui.action.convert_games'), $manual)) ?></button>
+                </form>
+            <?php endif; ?>
             <?php if ($twitchReady && $missing > 0): ?>
                 <form method="post" action="<?= e(url('/admin/games/categories')) ?>">
                     <?= Csrf::field() ?>
@@ -95,7 +115,7 @@
                     <td data-label="<?= e(__('ui.nav.publishers')) ?>"><?= e($game['publisher_name'] ?: '—') ?></td>
                     <td data-label="<?= e(__('ui.nav.developers')) ?>"><?= e($game['developer_name'] ?: '—') ?></td>
                     <td data-label="<?= e(__('ui.field.release_date')) ?>"><?= e(fmt_date($game['release_date'])) ?></td>
-                    <td data-label="<?= e(__('ui.field.source')) ?>"><?= $game['source_provider'] ? e(code_label('api_provider', $game['source_provider'])) : '—' ?></td>
+                    <td data-label="<?= e(__('ui.field.source')) ?>"><?= $game['source_provider'] ? e(code_label('api_provider', $game['source_provider'])) : '<span class="badge warn">' . e(__('ui.label.by_hand')) . '</span>' ?></td>
                     <td data-label="<?= e(__('ui.field.twitch_category')) ?>">
                         <?php if ($game['twitch_category_source'] === TwitchCategories::DEFAULT_SOURCE): ?>
                             <span class="badge" title="<?= e(__('ui.message.twitch_category_default_hint')) ?>"><?= e($game['twitch_category_name']) ?> · <?= e(__('ui.label.default')) ?></span>
@@ -104,6 +124,10 @@
                         <?php endif; ?>
                     </td>
                     <td class="rowactions">
+                        <?php if ($steamReady && !$game['source_provider']): ?>
+                            <button type="button" class="btn small primary" data-modal-form="#steam-<?= (int) $game['id'] ?>"
+                                    data-modal-title="<?= e($game['title']) ?>"><?= e(__('ui.action.find_on_steam')) ?></button>
+                        <?php endif; ?>
                         <?php if ($twitchReady): ?>
                             <button type="button" class="btn small" data-modal-form="#cat-<?= (int) $game['id'] ?>"
                                     data-modal-title="<?= e($game['title']) ?>"><?= e(__('ui.field.twitch_category')) ?></button>
@@ -121,6 +145,25 @@
         </div>
     <?php endif; ?>
 </section>
+
+<?php if ($steamReady): foreach ($games as $game): if ($game['source_provider']) { continue; } ?>
+    <form id="steam-<?= (int) $game['id'] ?>" method="post" action="<?= e(url('/admin/games/steam')) ?>" class="subform hidden">
+        <?= Csrf::field() ?>
+        <input type="hidden" name="game_id" value="<?= (int) $game['id'] ?>">
+        <p class="muted small"><?= e(__('ui.message.find_on_steam_explain')) ?></p>
+        <label>
+            <span><?= e(__('ui.label.steam_game')) ?></span>
+            <select name="ref" required data-picker="steam" data-placeholder="<?= e(__('ui.label.picker_search')) ?>"
+                    data-query="<?= e(trim((string) preg_replace('/\s*\((?:19|20)\d{2}\)\s*$/', '', (string) $game['title']))) ?>">
+                <option value=""></option>
+            </select>
+        </label>
+        <div class="card-actions">
+            <button type="submit" class="btn primary"><?= e(__('ui.action.use_steam_game')) ?></button>
+            <button type="button" class="btn row-cancel"><?= e(__('ui.action.cancel')) ?></button>
+        </div>
+    </form>
+<?php endforeach; endif; ?>
 
 <?php if ($twitchReady): foreach ($games as $game): ?>
     <form id="cat-<?= (int) $game['id'] ?>" method="post" action="<?= e(url('/admin/games/category')) ?>" class="subform hidden">
