@@ -20,7 +20,7 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-progress \
         --optimize-autoloader --ignore-platform-req='ext-*'
 
 # ---- 2. Runtime --------------------------------------------------------------
-FROM php:8.2-apache
+FROM php:8.2.35-apache
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \

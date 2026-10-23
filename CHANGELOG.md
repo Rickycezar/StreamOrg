@@ -5,6 +5,13 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.9.6 — 2026-10-23
+
+### Security
+- PHP updated to 8.2.35, which fixes two critical vulnerabilities that
+  could allow remote code execution without signing in. The image is now
+  pinned to that exact PHP release.
+
 ## 0.9.5 — 2026-10-21
 
 ### Added
