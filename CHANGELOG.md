@@ -5,6 +5,16 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## Unreleased
+
+### Fixed
+- Shoutout overlays could not look up channels ("404" on /overlay/lookup):
+  the Twitch app token kept for overlays had stopped working, and a refused
+  token was only forgotten in the visitor's session, so the dead one kept
+  being reused. Now a token Twitch refuses is dropped everywhere and the
+  call is made once more with a new one; saving the Twitch settings also
+  drops it.
+
 ## 0.9.6 — 2026-10-23
 
 ### Security

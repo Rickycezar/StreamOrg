@@ -51,11 +51,30 @@ final class Twitch
         ];
     }
 
-    /** Drops the cached row so a settings save takes effect immediately. */
+    /** Drops the cached row and app tokens so a settings save takes effect immediately. */
     public static function forget(): void
     {
         self::$settings = null;
+        self::dropToken();
+    }
+
+    /**
+     * Forgets the app token everywhere it is kept: this session's copy and
+     * the shared one requests without a session (overlays) use. Called when
+     * Twitch refuses it, so the next call asks for a new one instead of
+     * reusing a dead token until it would have expired.
+     */
+    private static function dropToken(): void
+    {
         unset($_SESSION[self::TOKEN_KEY]);
+
+        try {
+            if (Settings::get(self::SHARED_TOKEN_KEY) !== null) {
+                Settings::set(self::SHARED_TOKEN_KEY, '', null);
+            }
+        } catch (Throwable $e) {
+            ErrorLog::note('Twitch: could not forget the shared app token: ' . $e->getMessage());
+        }
     }
 
     /** Enabled, and holding both halves of the credential pair. */
@@ -304,52 +323,66 @@ final class Twitch
      */
     public static function app(string $method, string $path, array $query = [], ?array $body = null): array
     {
-        $token = self::token();
+        $url = 'https://api.twitch.tv/helix/' . $path . ($query === [] ? '' : '?' . self::query($query));
 
-        if ($token === null) {
-            return ['status' => 0, 'body' => '', 'error' => self::$lastError ?? 'No app token.'];
-        }
+        foreach ([1, 2] as $attempt) {
+            $token = self::token();
 
-        $url     = 'https://api.twitch.tv/helix/' . $path . ($query === [] ? '' : '?' . self::query($query));
-        $headers = [
-            'Client-Id'     => self::clientId(),
-            'Authorization' => 'Bearer ' . $token,
-            'Accept'        => 'application/json',
-        ];
+            if ($token === null) {
+                return ['status' => 0, 'body' => '', 'error' => self::$lastError ?? 'No app token.'];
+            }
 
-        $response = match ($method) {
-            'GET'    => Http::get($url, $headers),
-            'DELETE' => Http::delete($url, $headers),
-            default  => Http::post($url, (string) json_encode($body), $headers + ['Content-Type' => 'application/json']),
-        };
+            $headers = [
+                'Client-Id'     => self::clientId(),
+                'Authorization' => 'Bearer ' . $token,
+                'Accept'        => 'application/json',
+            ];
 
-        if ($response['status'] === 401) {
-            unset($_SESSION[self::TOKEN_KEY]);
+            $response = match ($method) {
+                'GET'    => Http::get($url, $headers),
+                'DELETE' => Http::delete($url, $headers),
+                default  => Http::post($url, (string) json_encode($body), $headers + ['Content-Type' => 'application/json']),
+            };
+
+            if ($response['status'] !== 401) {
+                break;
+            }
+
+            self::dropToken();
         }
 
         return $response;
     }
 
-    /** @param array<string, string|int> $query */
+    /**
+     * A Helix GET with the app token; a token Twitch refuses is replaced and
+     * the call made once more.
+     *
+     * @param array<string, string|int> $query
+     */
     private static function get(string $path, array $query): array
     {
-        $token = self::token();
+        foreach ([1, 2] as $attempt) {
+            $token = self::token();
 
-        if ($token === null) {
-            return [];
-        }
+            if ($token === null) {
+                return [];
+            }
 
-        $response = Http::get(
-            'https://api.twitch.tv/helix/' . $path . '?' . self::query($query),
-            [
-                'Client-Id'     => self::clientId(),
-                'Authorization' => 'Bearer ' . $token,
-                'Accept'        => 'application/json',
-            ]
-        );
+            $response = Http::get(
+                'https://api.twitch.tv/helix/' . $path . '?' . self::query($query),
+                [
+                    'Client-Id'     => self::clientId(),
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept'        => 'application/json',
+                ]
+            );
 
-        if ($response['status'] === 401) {
-            unset($_SESSION[self::TOKEN_KEY]);
+            if ($response['status'] !== 401) {
+                break;
+            }
+
+            self::dropToken();
         }
 
         $data = Http::json($response);
