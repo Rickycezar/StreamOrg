@@ -5,7 +5,7 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
-## Unreleased
+## 0.9.7 — 2026-10-25
 
 ### Fixed
 - Shoutout overlays could not look up channels ("404" on /overlay/lookup):
