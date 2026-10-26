@@ -5,6 +5,17 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.10.1 — 2026-10-26
+
+### Changed
+- The content length is one joined control (−60, −30, the minutes, +30,
+  +60), with the length in hours under it, and "Today" is joined to the
+  start field.
+
+### Fixed
+- Clicking the minutes of the length (or its label) also took an hour
+  off it.
+
 ## 0.10.0 — 2026-10-26
 
 This release has database migrations (048: game hashtags, the sponsor's

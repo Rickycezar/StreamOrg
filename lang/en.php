@@ -840,7 +840,7 @@ return [
                 'calendar_title' => 'Plan on the calendar',
                 'calendar_text' => "Plans without a date wait in the column beside the calendar.\nDrag one onto a day: it lands at your usual start time, or right after what you already have that day.\nDrag it back to the column to take its date away. Switch between month, week and day at the top.\nClick a plan to see its details and game art; Edit there changes anything, the game, key and embargo included.",
                 'resize_title' => 'How long it runs',
-                'resize_text' => "In the week or day view, drag the bottom edge of a plan to make it longer or shorter.\nNew plans take your usual length for sponsored content, set under Profile → Defaults.\nIn the form, \"Today\" puts the start in today's first free spot; the length (±30 min and ±1 h buttons) and the end time follow each other.",
+                'resize_text' => "In the week or day view, drag the bottom edge of a plan to make it longer or shorter.\nNew plans take your usual length for sponsored content, set under Profile → Defaults.\nIn the form, \"Today\" puts the start in today's first free spot; the length (±30 and ±60 min buttons) and the end time follow each other.",
                 'statuses_title' => 'From planned to done',
                 'statuses_text' => "Each plan is always in one of these states:\nPlanned: still to come.\nLive: on air right now.\nDone: it happened.\nCancelled: it will not happen.\nWith live tracking on (in your profile), StreamOrg follows your Twitch channel and moves plans along for you.",
                 'title_title' => 'A title that credits everyone',

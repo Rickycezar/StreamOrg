@@ -706,6 +706,9 @@
 
         end.disabled = !start.value;
         end.value = start.value ? wallFromMinutes(wallMinutes(start.value) + length) : '';
+
+        const human = box.querySelector('[data-when-human]');
+        if (human) human.textContent = Math.floor(length / 60) + 'h' + String(length % 60).padStart(2, '0');
     }
 
     onPage(function () {
