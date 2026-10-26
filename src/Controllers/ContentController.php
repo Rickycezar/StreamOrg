@@ -28,6 +28,8 @@ final class ContentController
                     string_agg(g.title, ', ' ORDER BY sg.play_order) AS games,
                     (array_agg(t.path ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_path,
                     (array_agg(t.updated_at ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_version,
+                    (array_agg(art.path ORDER BY sg.play_order) FILTER (WHERE art.path IS NOT NULL))[1] AS art_path,
+                    (array_agg(art.updated_at ORDER BY sg.play_order) FILTER (WHERE art.path IS NOT NULL))[1] AS art_version,
                     count(sg.game_id) FILTER (WHERE sg.game_key_id IS NULL) AS unkeyed,
                     max(emb.lifts_at)                                       AS embargo_until,
                     bool_or(s.scheduled_start IS NOT NULL
@@ -42,6 +44,7 @@ final class ContentController
           LEFT JOIN stream_games sg        ON sg.stream_id = s.id
           LEFT JOIN games g                ON g.id = sg.game_id
           LEFT JOIN game_images t          ON t.game_id = g.id AND t.kind = 'thumb'
+          " . GameImages::artJoin('g.id') . "
           LEFT JOIN game_keys k            ON k.id = sg.game_key_id
           LEFT JOIN game_embargoes emb     ON emb.game_id = sg.game_id AND emb.user_id = s.user_id
                                           AND (emb.game_platform_id IS NULL
@@ -58,9 +61,8 @@ final class ContentController
         $userId = Auth::id();
 
         $filters = [
-            'status'   => (string) ($_GET['status'] ?? ''),
-            'platform' => (string) ($_GET['platform'] ?? ''),
-            'keyed'    => (string) ($_GET['keyed'] ?? ''),
+            'status'   => filter_values('status', self::STATUSES),
+            'platform' => filter_values('platform'),
             'dated'    => (string) ($_GET['dated'] ?? ''),
             'q'        => trim((string) ($_GET['q'] ?? '')),
         ];
@@ -68,14 +70,6 @@ final class ContentController
         $stmt = $pdo->prepare('SELECT status, count(*) AS total FROM streams WHERE user_id = ? GROUP BY status');
         $stmt->execute([$userId]);
         $counts = array_column($stmt->fetchAll(), 'total', 'status');
-
-        $stmt = $pdo->prepare(
-            "SELECT count(*) FROM stream_games sg
-               JOIN streams s ON s.id = sg.stream_id
-              WHERE s.user_id = ? AND s.status = 'planned' AND sg.game_key_id IS NULL"
-        );
-        $stmt->execute([$userId]);
-        $missingKeys = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
             "SELECT count(*) FROM streams
@@ -118,11 +112,14 @@ final class ContentController
         $stmt->execute(['user' => $userId]);
         $backlog = $stmt->fetchAll();
 
-        $sql = "SELECT s.id, s.title, s.title_template, s.collab_session_id, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes,
+        $sql = "SELECT s.id, s.title, s.title_template, s.collab_session_id, s.status, s.scheduled_start, s.deadline, s.ended_at, s.vod_url, s.notes, s.planned_minutes,
                        s.category_id, s.category_name, s.created_at,
                        sp.code AS platform_code,
                        count(sg.game_id)                                     AS game_count,
                        count(sg.game_key_id)                                 AS keyed_count,
+                       (array_agg(sg.game_id ORDER BY sg.play_order))[1]     AS game_id,
+                       (array_agg(sg.game_key_id ORDER BY sg.play_order))[1] AS game_key_id,
+                       (array_agg(g.title ORDER BY sg.play_order))[1]        AS game_title,
                        max(emb.lifts_at)                                     AS embargo_until,
                        min(k.expires_at)                                     AS expires_at,
                        bool_or(s.scheduled_start IS NOT NULL
@@ -149,14 +146,14 @@ final class ContentController
 
         $params = ['user' => $userId];
 
-        if (in_array($filters['status'], self::STATUSES, true)) {
-            $sql .= ' AND s.status = :status';
-            $params['status'] = $filters['status'];
+        if ($filters['status'] !== []) {
+            $sql .= ' AND s.status = ANY(CAST(:status AS text[]))';
+            $params['status'] = pg_text_array($filters['status']);
         }
 
-        if ($filters['platform'] !== '') {
-            $sql .= ' AND sp.code = :platform';
-            $params['platform'] = $filters['platform'];
+        if ($filters['platform'] !== []) {
+            $sql .= ' AND sp.code = ANY(CAST(:platform AS text[]))';
+            $params['platform'] = pg_text_array($filters['platform']);
         }
 
         if ($filters['q'] !== '') {
@@ -171,12 +168,6 @@ final class ContentController
         }
 
         $sql .= ' GROUP BY s.id, sp.code';
-
-        if ($filters['keyed'] === 'with') {
-            $sql .= ' HAVING count(sg.game_key_id) > 0';
-        } elseif ($filters['keyed'] === 'without') {
-            $sql .= ' HAVING count(sg.game_key_id) = 0';
-        }
 
         $sql .= ' ORDER BY s.scheduled_start ASC NULLS FIRST, s.deadline ASC NULLS LAST, s.id DESC';
 
@@ -203,8 +194,7 @@ final class ContentController
         $keys = $stmt->fetchAll();
 
         $stmt = $pdo->prepare(
-            "SELECT game_id, lifts_at FROM game_embargoes
-              WHERE user_id = ? AND kind = 'release' AND game_platform_id IS NULL"
+            'SELECT game_id, max(lifts_at) AS lifts_at FROM game_embargoes WHERE user_id = ? GROUP BY game_id'
         );
         $stmt->execute([$userId]);
         $embargoByGame = array_column($stmt->fetchAll(), 'lifts_at', 'game_id');
@@ -223,9 +213,12 @@ final class ContentController
         $stmt->execute([$userId]);
         $collabs = $stmt->fetchAll();
 
+        $sponsors = $pdo->query(
+            'SELECT code, uses_game_tag FROM key_platforms WHERE tags_content ORDER BY sort_order'
+        )->fetchAll();
+
         View::render('content/index', [
             'counts'      => $counts,
-            'missingKeys' => $missingKeys,
             'thisWeek'    => $thisWeek,
             'warnings'      => $warnings,
             'warningTotal'  => $warningTotal,
@@ -243,6 +236,7 @@ final class ContentController
             'twitchSchedule' => TwitchSchedule::status((int) $userId),
             'twitchCategories' => Twitch::isConfigured(),
             'content'     => $content,
+            'contentArt'  => GameImages::artFor($pdo, array_column($content, 'game_id')),
             'filters'     => $filters,
             'statuses'    => self::STATUSES,
             'keyStatuses' => KeysController::STATUSES,
@@ -251,9 +245,9 @@ final class ContentController
             'preselect'   => filter_input(INPUT_GET, 'collab', FILTER_VALIDATE_INT) ?: null,
             'keys'        => $keys,
             'keySources'  => $pdo->query('SELECT code FROM key_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
-            'tagSources'  => $pdo->query(
-                'SELECT code FROM key_platforms WHERE tags_content ORDER BY sort_order'
-            )->fetchAll(PDO::FETCH_COLUMN),
+            'tagSources'  => array_column($sponsors, 'code'),
+            'sponsors'    => $sponsors,
+            'titleOrder'  => ContentDefaults::titleOrder((int) $userId),
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
             'canAddGames' => CatalogController::canAddGames(),
             'twitchLogin' => TwitchUser::connection((int) Auth::id())['twitch_login'] ?? null,
@@ -308,8 +302,8 @@ final class ContentController
         try {
             $stmt = $pdo->prepare(
                 'INSERT INTO streams (user_id, streaming_platform_id, title, title_template, status,
-                                      scheduled_start, deadline, notes, category_id, category_name)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
+                                      scheduled_start, deadline, notes, category_id, category_name, planned_minutes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
             );
             $stmt->execute([
                 Auth::id(),
@@ -322,6 +316,7 @@ final class ContentController
                 trim((string) ($_POST['notes'] ?? '')) ?: null,
                 $category[0],
                 $category[1],
+                ContentDefaults::minutesFromInput((string) ($_POST['planned_minutes'] ?? '')),
             ]);
 
             $streamId = (int) $stmt->fetchColumn();
@@ -374,7 +369,7 @@ final class ContentController
                 )->execute([Auth::id(), $gameId]);
 
                 if (array_key_exists('embargo_until', $_POST)) {
-                    self::writeReleaseEmbargo($pdo, $gameId, (string) $_POST['embargo_until']);
+                    self::writeEmbargo($pdo, $gameId, (string) $_POST['embargo_until']);
                 }
             }
 
@@ -618,20 +613,75 @@ final class ContentController
      * row, so a game always carries an explicit answer. Marked manual so a
      * later API refresh will not overwrite a date set by hand.
      */
-    private static function writeReleaseEmbargo(PDO $pdo, int $gameId, string $value): void
+    /**
+     * The embargo date typed in a content form, for one game: it changes
+     * the game's most recent embargo (the one the forms and lists show),
+     * or adds a release embargo when the game has none. Left empty,
+     * nothing changes.
+     */
+    private static function writeEmbargo(PDO $pdo, int $gameId, string $value): void
     {
         $lifts = trim($value);
 
         if ($lifts === '') {
-            $lifts = (new DateTimeImmutable('today'))->format('Y-m-d H:i:sP');
+            return;
+        }
+
+        $stmt = $pdo->prepare('SELECT id FROM game_embargoes WHERE user_id = ? AND game_id = ? ORDER BY lifts_at DESC, id DESC LIMIT 1');
+        $stmt->execute([Auth::id(), $gameId]);
+        $latest = $stmt->fetchColumn();
+
+        if ($latest !== false) {
+            $pdo->prepare("UPDATE game_embargoes SET lifts_at = ?, source = 'manual' WHERE id = ?")->execute([$lifts, $latest]);
+            return;
         }
 
         $pdo->prepare(
             "INSERT INTO game_embargoes (user_id, game_id, kind, lifts_at, source)
-             VALUES (?, ?, 'release', ?, 'manual')
-             ON CONFLICT (user_id, game_id, kind, COALESCE(game_platform_id, 0))
-             DO UPDATE SET lifts_at = EXCLUDED.lifts_at, source = 'manual'"
+             VALUES (?, ?, 'release', ?, 'manual')"
         )->execute([Auth::id(), $gameId, $lifts]);
+    }
+
+    /**
+     * Sets the game a piece of content covers (and the key for it), or
+     * none: the link is replaced, and no key changes status — a key only
+     * changes when its owner says so. A key must be theirs and for that
+     * game, or it is left out.
+     */
+    private static function setGame(PDO $pdo, int $streamId, ?int $gameId, ?int $keyId): void
+    {
+        $pdo->prepare('DELETE FROM stream_games WHERE stream_id = ?')->execute([$streamId]);
+
+        if ($gameId === null) {
+            return;
+        }
+
+        $check = $pdo->prepare('SELECT 1 FROM games WHERE id = ?');
+        $check->execute([$gameId]);
+
+        if ($check->fetchColumn() === false) {
+            throw new UserError(__('ui.message.invalid_input'));
+        }
+
+        if ($keyId !== null) {
+            $check = $pdo->prepare('SELECT 1 FROM game_keys WHERE id = ? AND user_id = ? AND game_id = ?');
+            $check->execute([$keyId, Auth::id(), $gameId]);
+
+            if ($check->fetchColumn() === false) {
+                $keyId = null;
+            }
+        }
+
+        $pdo->prepare('INSERT INTO stream_games (stream_id, game_id, game_key_id, play_order) VALUES (?, ?, ?, 1)')
+            ->execute([$streamId, $gameId, $keyId]);
+
+        $pdo->prepare(
+            "INSERT INTO game_coverage (user_id, game_id, status)
+             VALUES (?, ?, 'scheduled')
+             ON CONFLICT (user_id, game_id) DO UPDATE
+                SET status = 'scheduled'
+              WHERE game_coverage.status IN ('wishlist', 'key_requested', 'key_received')"
+        )->execute([Auth::id(), $gameId]);
     }
 
     /** AJAX: inline edit of one piece of content. */
@@ -665,11 +715,15 @@ final class ContentController
         $status    = in_array($_POST['status'] ?? '', self::STATUSES, true) ? $_POST['status'] : 'planned';
         $scheduled = trim((string) ($_POST['scheduled_start'] ?? '')) ?: null;
         $deadline  = trim((string) ($_POST['deadline'] ?? '')) ?: null;
+        $minutes   = ContentDefaults::minutesFromInput((string) ($_POST['planned_minutes'] ?? ''));
 
         $template = TitleCounters::templateFor((int) Auth::id(), $title);
         $notice   = null;
 
-        $current = $pdo->prepare('SELECT scheduled_start, collab_session_id FROM streams WHERE id = ? AND user_id = ?');
+        $current = $pdo->prepare(
+            'SELECT s.scheduled_start, coalesce(s.planned_minutes, u.content_minutes) AS minutes, s.collab_session_id
+               FROM streams s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.user_id = ?'
+        );
         $current->execute([$id, Auth::id()]);
         $before = $current->fetch();
 
@@ -677,15 +731,18 @@ final class ContentController
             $was = $before['scheduled_start'] !== null ? (new DateTimeImmutable($before['scheduled_start']))->getTimestamp() : null;
             $now = $scheduled !== null ? (new DateTimeImmutable($scheduled))->getTimestamp() : null;
 
-            if ($was !== $now) {
+            $longer = $minutes !== null && $minutes !== (int) $before['minutes'];
+
+            if ($was !== $now || $longer) {
                 try {
-                    $notice = CollabSessions::guardTimeChange((int) Auth::id(), $id, $scheduled !== null ? new DateTimeImmutable($scheduled) : null, null);
+                    $notice = CollabSessions::guardTimeChange((int) Auth::id(), $id, $scheduled !== null ? new DateTimeImmutable($scheduled) : null, $minutes);
                 } catch (UserError $e) {
                     json_response(['ok' => false, 'error' => $e->getMessage()], 409);
                 }
 
                 if ($notice !== null) {
                     $scheduled = $before['scheduled_start'];
+                    $minutes   = null;
                 }
             }
         }
@@ -696,6 +753,7 @@ final class ContentController
             'UPDATE streams
                 SET title = :title, streaming_platform_id = :platform, status = :status,
                     scheduled_start = :scheduled, deadline = :deadline,
+                    planned_minutes = coalesce(:minutes, planned_minutes),
                     vod_url = :vod, notes = :notes, title_template = :template
               WHERE id = :id AND user_id = :user'
         );
@@ -707,6 +765,7 @@ final class ContentController
             'status'    => $status,
             'scheduled' => $scheduled,
             'deadline'  => $deadline,
+            'minutes'   => $minutes,
             'vod'       => safe_url($_POST['vod_url'] ?? null),
             'notes'     => trim((string) ($_POST['notes'] ?? '')) ?: null,
             'id'        => $id,
@@ -737,6 +796,19 @@ final class ContentController
                 ->execute([$category[0], $category[1], $id, Auth::id()]);
         }
 
+        if (array_key_exists('game_id', $_POST)) {
+            try {
+                self::setGame(
+                    $pdo,
+                    $id,
+                    filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: null,
+                    filter_input(INPUT_POST, 'game_key_id', FILTER_VALIDATE_INT) ?: null
+                );
+            } catch (UserError $e) {
+                json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+            }
+        }
+
         if (array_key_exists('embargo_until', $_POST)) {
             $rawEmbargo = (string) $_POST['embargo_until'];
 
@@ -748,7 +820,7 @@ final class ContentController
             $games->execute([$id, Auth::id()]);
 
             foreach ($games->fetchAll(PDO::FETCH_COLUMN) as $gameId) {
-                self::writeReleaseEmbargo($pdo, (int) $gameId, $rawEmbargo);
+                self::writeEmbargo($pdo, (int) $gameId, $rawEmbargo);
             }
         }
 
@@ -927,7 +999,6 @@ final class ContentController
     public static function plannerItem(array $row): array
     {
         $warnings = array_values(array_filter([
-            (int) $row['unkeyed'] > 0     ? __('ui.label.no_key') : null,
             $row['breaks_embargo']        ? __('ui.label.before_embargo') : null,
             $row['expires_before_use']    ? __('ui.label.expires_first') : null,
         ]));
@@ -955,7 +1026,11 @@ final class ContentController
                 'thumb'       => $row['thumb_path'] !== null
                     ? GameImages::publicUrl($row['thumb_path'], (string) $row['thumb_version'])
                     : null,
+                'art'         => $row['art_path'] !== null
+                    ? GameImages::publicUrl($row['art_path'], (string) $row['art_version'])
+                    : ($row['games'] !== null ? url('/assets/game-missing.svg') : null),
                 'deadline'    => $row['deadline'] ? fmt_date($row['deadline']) : null,
+                'deadlineShort' => $row['deadline'] ? fmt_datetime($row['deadline'], 'd/m') : null,
                 'warnings'    => $warnings,
             ],
         ];
@@ -1007,6 +1082,65 @@ final class ContentController
             json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
         }
 
+        self::moveTo($id, $when, $minutes);
+    }
+
+    /**
+     * POST /content/today — puts undated content in the first free spot of
+     * today's schedule (see TodaySlot), keeping its own length.
+     */
+    public static function scheduleToday(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(json: true);
+
+        $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+        if (!$id) {
+            json_response(['ok' => false, 'error' => __('ui.message.invalid_input')], 400);
+        }
+
+        $pdo  = Database::connection();
+        $stmt = $pdo->prepare("SELECT planned_minutes FROM streams WHERE id = ? AND user_id = ? AND status = 'planned'");
+        $stmt->execute([$id, Auth::id()]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            json_response(['ok' => false, 'error' => __('ui.message.planner_not_movable')], 409);
+        }
+
+        $minutes = (int) ($row['planned_minutes'] ?? ContentDefaults::minutes((int) Auth::id()));
+        $when    = TodaySlot::find($pdo, (int) Auth::id(), $minutes, $id);
+
+        if ($when === null) {
+            json_response(['ok' => false, 'error' => __('ui.message.today_full')], 409);
+        }
+
+        self::moveTo($id, $when, null);
+    }
+
+    /**
+     * GET /content/today-slot?minutes=…&id=… — where content of that
+     * length would go today (the form's "Today" button), leaving out the
+     * content being edited.
+     */
+    public static function todaySlot(): void
+    {
+        Auth::requireLogin();
+
+        $minutes = ContentDefaults::minutesFromInput((string) ($_GET['minutes'] ?? '')) ?? ContentDefaults::minutes((int) Auth::id());
+        $skip    = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: null;
+        $when    = TodaySlot::find(Database::connection(), (int) Auth::id(), $minutes, $skip);
+
+        if ($when === null) {
+            json_response(['ok' => false, 'error' => __('ui.message.today_full')], 409);
+        }
+
+        json_response(['ok' => true, 'start' => $when->format('Y-m-d\TH:i')]);
+    }
+
+    /** Sets (or clears) a planned item's start and answers with it as a planner item. */
+    private static function moveTo(int $id, ?DateTimeImmutable $when, ?int $minutes): never
+    {
         try {
             $proposed = CollabSessions::guardTimeChange((int) Auth::id(), $id, $when, $minutes);
         } catch (UserError $e) {

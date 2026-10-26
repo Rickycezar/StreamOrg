@@ -15,8 +15,8 @@ final class SupportAdminController
         Auth::requireAdmin();
 
         $show     = (string) ($_GET['show'] ?? 'open');
-        $priority = (string) ($_GET['priority'] ?? '');
-        $impact   = (string) ($_GET['impact'] ?? '');
+        $priority = filter_values('priority', BugReports::PRIORITIES);
+        $impact   = filter_values('impact', BugReports::IMPACTS);
         $query    = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 120);
 
         View::render('admin/bugs', [

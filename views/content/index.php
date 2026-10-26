@@ -1,61 +1,45 @@
 <?php
-/** @var array $counts @var int $missingKeys @var int $thisWeek @var array $backlog
- *  @var array $content @var array $filters @var array $statuses @var array $platforms
- *  @var array $keys @var array $keySources @var array $gamePlatforms
+/** @var array $counts @var int $thisWeek @var array $backlog
+ *  @var array $content @var array<int, array{path:string, updated_at:string}> $contentArt @var array $filters @var array $statuses @var array $platforms
+ *  @var array $keys @var array $keySources @var array $gamePlatforms @var list<string> $tagSources
+ *  @var list<array{code:string, uses_game_tag:bool}> $sponsors @var list<string> $titleOrder
  *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
  *  @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
  *  @var array<string, array{base:int, dates:list<array{0:int, 1:int}>}> $timeline counters and the content they number
  *  @var string $collabPrefix the word before collab guests ("ft.")
  *  @var array{state:string, synced:int, last:?string} $twitchSchedule */
+
+/** A key as the content forms list it: platform, type, status, site and its redeem-by date. */
+$keyLabel = static fn (array $k): string => code_label('game_platform', $k['platform_code']) . ' · '
+    . code_label('key_type', $k['key_type']) . ' · '
+    . code_label('key_status', $k['status']) . ' · '
+    . code_label('key_platform', $k['source_code'])
+    . ($k['expires_at'] ? ' · ' . __('ui.label.redeem_by') . ' ' . fmt_date($k['expires_at']) : '');
+?>
+<?php
+$tab = in_array($_GET['tab'] ?? '', ['calendar', 'list'], true)
+    ? (string) $_GET['tab']
+    : (array_filter($filters, static fn ($v): bool => $v !== '' && $v !== null && $v !== []) !== [] ? 'list' : 'calendar');
+$filterActive = array_filter($filters, static fn ($v): bool => $v !== '' && $v !== []) !== [];
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.content')) ?></h1>
     <?php $helpPage = 'content'; require dirname(__DIR__) . '/partials/help_link.php'; ?>
+    <button type="button" class="btn primary" data-new data-modal-form="#add-content"
+            data-modal-title="<?= e(__('ui.action.add_content')) ?>"><?= e(__('ui.action.add_content')) ?></button>
 </div>
-
-<section class="tiles">
-    <?php foreach ($statuses as $status): ?>
-        <a class="tile <?= $filters['status'] === $status ? 'active' : '' ?>"
-           href="<?= e(url('/content?status=' . $status)) ?>">
-            <span class="tile-value"><?= (int) ($counts[$status] ?? 0) ?></span>
-            <span class="tile-label"><?= e(code_label('stream_status', $status)) ?></span>
-        </a>
-    <?php endforeach; ?>
-
-    <a class="tile <?= $filters['keyed'] === 'without' ? 'active' : '' ?>"
-       href="<?= e(url('/content?keyed=without')) ?>"
-       title="<?= e(__('ui.label.missing_key_hint')) ?>">
-        <span class="tile-value <?= $missingKeys > 0 ? 'warn' : '' ?>"><?= $missingKeys ?></span>
-        <span class="tile-label"><?= e(__('ui.label.missing_key')) ?></span>
-    </a>
-
-    <span class="tile" title="<?= e(__('ui.label.embargoed_hint')) ?>">
-        <span class="tile-value"><?= (int) $embargoed ?></span>
-        <span class="tile-label"><?= e(__('ui.label.embargoed')) ?></span>
-    </span>
-
-    <a class="tile <?= $filters['dated'] === 'undated' ? 'active' : '' ?>"
-       href="<?= e(url('/content?dated=undated')) ?>" title="<?= e(__('ui.label.undated_hint')) ?>">
-        <span class="tile-value"><?= (int) $undated ?></span>
-        <span class="tile-label"><?= e(__('ui.label.undated')) ?></span>
-    </a>
-
-    <span class="tile" title="<?= e(__('ui.label.conflicts_hint')) ?>">
-        <span class="tile-value <?= $warningTotal > 0 ? 'danger' : '' ?>"><?= (int) $warningTotal ?></span>
-        <span class="tile-label"><?= e(__('ui.label.conflicts')) ?></span>
-    </span>
-
-    <span class="tile total">
-        <span class="tile-value"><?= $thisWeek ?></span>
-        <span class="tile-label"><?= e(__('ui.label.this_week')) ?></span>
-    </span>
-</section>
 
 <?php
 $vendor = static fn (string $file): string => url('/assets/vendor/' . $file)
     . '?v=' . (@filemtime(dirname(__DIR__, 2) . '/public/assets/vendor/' . $file) ?: 0);
 $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
 ?>
+<?= View::partial('partials/tabs', ['name' => 'content', 'active' => $tab, 'tabs' => [
+    'calendar' => __('ui.label.tab_calendar'),
+    'list'     => __('ui.label.tab_list'),
+]]) ?>
+
+<div data-tab-panel="calendar" <?= $tab === 'calendar' ? '' : 'hidden' ?>>
 <section class="card planner"
          data-planner
          data-fc-src="<?= e($vendor('fullcalendar.js')) ?>"
@@ -97,20 +81,15 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
             <div class="backlog-list">
                 <?php foreach ($backlog as $row): ?>
                     <?php $item = ContentController::plannerItem($row); ?>
-                    <div class="backlog-item" data-id="<?= (int) $row['id'] ?>"
-                         data-event="<?= e(json_encode($item, JSON_UNESCAPED_UNICODE)) ?>">
-                        <?php if ($item['extendedProps']['thumb']): ?>
-                            <img class="picker-cover" src="<?= e($item['extendedProps']['thumb']) ?>" alt="">
-                        <?php else: ?>
-                            <span class="picker-cover"></span>
-                        <?php endif; ?>
-                        <span class="backlog-text">
-                            <span class="backlog-title"><?= e($row['title']) ?></span>
-                            <small class="muted">
-                                <?= e($row['games'] ?: '—') ?>
-                                <?php if ($row['deadline']): ?> · <?= e(__('ui.field.deadline')) ?> <?= e(fmt_date($row['deadline'])) ?><?php endif; ?>
-                            </small>
+                    <div class="backlog-item undated-row" data-id="<?= (int) $row['id'] ?>"
+                         data-event="<?= e(json_encode($item, JSON_UNESCAPED_UNICODE)) ?>"<?= $item['extendedProps']['art'] ? ' data-row-art style="--row-art: url(&quot;' . e($item['extendedProps']['art']) . '&quot;)"' : '' ?>>
+                        <span class="undated-open">
+                            <small class="undated-game"><?= e($row['games'] ?: __('ui.dashboard.no_games')) ?></small>
+                            <strong class="undated-title"><?= e($row['title']) ?></strong>
                         </span>
+                        <?php if ($row['deadline']): ?>
+                            <span class="badge undated-due" title="<?= e(__('ui.field.deadline') . ' ' . fmt_date($row['deadline'])) ?>"><?= e((string) $item['extendedProps']['deadlineShort']) ?></span>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
                 <p class="empty backlog-empty <?= $backlog === [] ? '' : 'hidden' ?>"><?= e(__('ui.message.planner_backlog_empty')) ?></p>
@@ -118,247 +97,244 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
         </aside>
     </div>
 </section>
+</div>
 
-<form class="card filters" method="get" action="<?= e(url('/content')) ?>">
-    <label>
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($filters['q']) ?>">
-    </label>
-    <label>
-        <span><?= e(__('ui.field.status')) ?></span>
-        <select name="status">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach ($statuses as $status): ?>
-                <option value="<?= e($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>>
-                    <?= e(code_label('stream_status', $status)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <label>
-        <span><?= e(__('ui.field.platform')) ?></span>
-        <select name="platform">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach ($platforms as $platform): ?>
-                <option value="<?= e($platform) ?>" <?= $filters['platform'] === $platform ? 'selected' : '' ?>>
-                    <?= e(code_label('streaming_platform', $platform)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <label>
-        <span><?= e(__('ui.field.key')) ?></span>
-        <select name="keyed">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <option value="with"    <?= $filters['keyed'] === 'with' ? 'selected' : '' ?>><?= e(__('ui.label.with_key')) ?></option>
-            <option value="without" <?= $filters['keyed'] === 'without' ? 'selected' : '' ?>><?= e(__('ui.label.without_key')) ?></option>
-        </select>
-    </label>
-    <label>
-        <span><?= e(__('ui.field.scheduled')) ?></span>
-        <select name="dated">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <option value="dated"   <?= $filters['dated'] === 'dated' ? 'selected' : '' ?>><?= e(__('ui.label.dated')) ?></option>
-            <option value="undated" <?= $filters['dated'] === 'undated' ? 'selected' : '' ?>><?= e(__('ui.label.undated')) ?></option>
-        </select>
-    </label>
+<div data-tab-panel="list" <?= $tab === 'list' ? '' : 'hidden' ?>>
+<section class="tiles">
+    <?php foreach ($statuses as $status): ?>
+        <a class="tile <?= $filters['status'] === [$status] ? 'active' : '' ?>"
+           href="<?= e(url('/content?status=' . $status)) ?>">
+            <span class="tile-value"><?= (int) ($counts[$status] ?? 0) ?></span>
+            <span class="tile-label"><?= e(code_label('stream_status', $status)) ?></span>
+        </a>
+    <?php endforeach; ?>
 
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/content')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+    <span class="tile" title="<?= e(__('ui.label.embargoed_hint')) ?>">
+        <span class="tile-value"><?= (int) $embargoed ?></span>
+        <span class="tile-label"><?= e(__('ui.label.embargoed')) ?></span>
+    </span>
+
+    <a class="tile <?= $filters['dated'] === 'undated' ? 'active' : '' ?>"
+       href="<?= e(url('/content?dated=undated')) ?>" title="<?= e(__('ui.label.undated_hint')) ?>">
+        <span class="tile-value"><?= (int) $undated ?></span>
+        <span class="tile-label"><?= e(__('ui.label.undated')) ?></span>
+    </a>
+
+    <span class="tile" title="<?= e(__('ui.label.conflicts_hint')) ?>">
+        <span class="tile-value <?= $warningTotal > 0 ? 'danger' : '' ?>"><?= (int) $warningTotal ?></span>
+        <span class="tile-label"><?= e(__('ui.label.conflicts')) ?></span>
+    </span>
+
+    <span class="tile total">
+        <span class="tile-value"><?= $thisWeek ?></span>
+        <span class="tile-label"><?= e(__('ui.label.this_week')) ?></span>
+    </span>
+</section>
+
+<form class="card filters" method="get" action="<?= e(url('/content')) ?>" data-filters>
+    <input type="hidden" name="tab" value="list">
+    <?= View::partial('partials/filter_search', ['value' => $filters['q']]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'status', 'label' => __('ui.field.status'), 'selected' => $filters['status'],
+        'options' => array_combine($statuses, array_map(static fn ($s) => code_label('stream_status', $s), $statuses)),
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'platform', 'label' => __('ui.field.platform'), 'selected' => $filters['platform'],
+        'options' => array_combine($platforms, array_map(static fn ($p) => code_label('streaming_platform', $p), $platforms)),
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'dated', 'label' => __('ui.field.scheduled'), 'selected' => $filters['dated'], 'multiple' => false,
+        'options' => ['dated' => __('ui.label.dated'), 'undated' => __('ui.label.undated')],
+    ]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/content?tab=list', 'active' => $filterActive]) ?>
 </form>
 
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.nav.content')) ?> (<?= count($content) ?>)</h2>
-        <button type="button" class="btn primary" data-new data-modal-form="#add-content"
-                data-modal-title="<?= e(__('ui.action.add_content')) ?>"><?= e(__('ui.action.add_content')) ?></button>
     </div>
 
-    <form id="add-content" class="subform hidden" method="post" action="<?= e(url('/content')) ?>">
+    <form id="add-content" class="subform hidden content-form" method="post" action="<?= e(url('/content')) ?>">
         <?= Csrf::field() ?>
-        <div class="grid">
+        <fieldset class="form-section">
+            <legend><?= e(__('ui.label.section_content')) ?></legend>
             <div class="title-block">
                 <?= View::partial('content/title_field', [
                     'prefixes' => $prefixes,
                     'value'    => ContentDefaults::newTitle($prefixes)['value'],
                     'caret'    => ContentDefaults::newTitle($prefixes)['caret'],
                     'streamId' => null,
+                    'order'    => $titleOrder,
                 ]) ?>
             </div>
-            <label>
-                <span><?= e(__('ui.field.platform')) ?></span>
-                <select name="platform" required>
-                    <?php foreach ($platforms as $platform): ?>
-                        <option value="<?= e($platform) ?>" <?= $platform === 'twitch' ? 'selected' : '' ?>>
-                            <?= e(code_label('streaming_platform', $platform)) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label>
-                <span><?= e(__('ui.field.scheduled')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                <input type="datetime-local" name="scheduled_start">
-                <small class="muted"><?= e(__('ui.label.undated_ok')) ?></small>
-            </label>
-            <label>
-                <span><?= e(__('ui.field.deadline')) ?></span>
-                <input type="datetime-local" name="deadline" value="<?= e($defaultDeadline) ?>">
-                <small class="muted"><?= e(__('ui.label.deadline_default')) ?></small>
-            </label>
-            <label>
-                <span><?= e(__('ui.field.status')) ?></span>
-                <select name="status">
-                    <?php foreach ($statuses as $status): ?>
-                        <option value="<?= e($status) ?>"><?= e(code_label('stream_status', $status)) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-        </div>
-
-        <div class="grid">
-            <label>
-                <span><?= e(__('ui.nav.collabs')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                <select name="collab_id" id="content-collab">
-                    <option value=""><?= e(__('ui.label.no_collab')) ?></option>
-                    <?php foreach ($collabs as $c): ?>
-                        <option value="<?= (int) $c['id'] ?>"><?= e($c['title']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-
-            <label>
-                <span><?= e(__('ui.field.sponsor')) ?> <small class="muted"><?= e(__('ui.label.tag_only')) ?></small></span>
-                <select id="content-sponsor">
-                    <option value=""><?= e(__('ui.label.none')) ?></option>
-                    <?php foreach ($tagSources as $src): ?>
-                        <option value="<?= e(code_label('key_platform', $src)) ?>">
-                            <?= e(code_label('key_platform', $src)) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-        </div>
-
-        <div class="grid">
-            <label class="grow">
-                <span><?= e(__('ui.field.game')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                <select name="game_id" id="content-game" data-picker="games"
-                        data-placeholder="<?= e(__('ui.label.no_game')) ?>">
-                    <option value=""><?= e(__('ui.label.no_game')) ?></option>
-                </select>
-            </label>
-
-            <?php if ($twitchCategories): ?>
-                <label class="grow">
-                    <span><?= e(__('ui.field.twitch_category')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                    <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.category_from_game')) ?>">
-                        <option value=""><?= e(__('ui.label.category_from_game')) ?></option>
-                    </select>
-                </label>
-            <?php endif; ?>
-
-            <label class="grow">
-                <span><?= e(__('ui.field.key')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                <select name="game_key_id" id="content-key" disabled>
-                    <option value=""><?= e(__('ui.label.no_key_needed')) ?></option>
-                </select>
-            </label>
-
-            <label>
-                <span><?= e(__('ui.field.embargo')) ?> <small class="muted"><?= e(__('ui.label.per_game')) ?></small></span>
-                <input type="datetime-local" name="embargo_until" id="content-embargo"
-                       data-default="<?= e($defaultEmbargo) ?>" disabled>
-                <small class="muted"><?= e(__('ui.label.embargo_default')) ?></small>
-            </label>
-        </div>
-
-        <div class="inline-actions">
-            <?php if ($canAddGames): ?>
-                <button type="button" class="btn small" data-toggle="#inline-game">+ <?= e(__('ui.action.new_game_api')) ?></button>
-            <?php endif; ?>
-            <button type="button" class="btn small" data-toggle="#inline-key">+ <?= e(__('ui.action.new_key')) ?></button>
-        </div>
-
-        <?php if ($canAddGames): ?>
-        <fieldset id="inline-game" class="inset hidden" data-game-import="#content-game">
-            <legend><?= e(__('ui.action.new_game_api')) ?></legend>
-            <label>
-                <span><?= e(__('ui.action.search')) ?></span>
-                <input type="search" class="game-import-search" autocomplete="off"
-                       placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
-            </label>
-            <div class="results game-import-results"></div>
-        </fieldset>
-        <?php endif; ?>
-
-        <fieldset id="inline-key" class="inset hidden">
-            <legend><?= e(__('ui.action.new_key')) ?></legend>
-            <p class="muted small"><?= e(__('ui.message.inline_key_hint')) ?></p>
             <div class="grid">
                 <label>
                     <span><?= e(__('ui.field.platform')) ?></span>
-                    <select id="inline-key-platform">
-                        <?php foreach ($gamePlatforms as $platform): ?>
-                            <option value="<?= e($platform) ?>" <?= $platform === 'pc_steam' ? 'selected' : '' ?>>
-                                <?= e(code_label('game_platform', $platform)) ?>
+                    <select name="platform" required>
+                        <?php foreach ($platforms as $platform): ?>
+                            <option value="<?= e($platform) ?>" <?= $platform === 'twitch' ? 'selected' : '' ?>>
+                                <?= e(code_label('streaming_platform', $platform)) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </label>
                 <label>
-                    <span><?= e(__('ui.field.source')) ?></span>
-                    <select id="inline-key-source">
-                        <?php foreach ($keySources as $source): ?>
-                            <option value="<?= e($source) ?>"><?= e(code_label('key_platform', $source)) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-                <label>
-                    <span><?= e(__('ui.field.key_type')) ?></span>
-                    <select id="inline-key-type">
-                        <?php foreach (['common', 'review'] as $type): ?>
-                            <option value="<?= e($type) ?>"><?= e(code_label('key_type', $type)) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-                <label>
-                    <span><?= e(__('ui.field.content_type')) ?></span>
-                    <select id="inline-key-content">
-                        <?php foreach (['game', 'dlc'] as $type): ?>
-                            <option value="<?= e($type) ?>"><?= e(code_label('content_type', $type)) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-                <label>
                     <span><?= e(__('ui.field.status')) ?></span>
-                    <select id="inline-key-status">
-                        <?php foreach ($keyStatuses as $st): ?>
-                            <option value="<?= e($st) ?>"><?= e(code_label('key_status', $st)) ?></option>
+                    <select name="status">
+                        <?php foreach ($statuses as $status): ?>
+                            <option value="<?= e($status) ?>"><?= e(code_label('stream_status', $status)) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </label>
-                <label>
-                    <span><?= e(__('ui.field.redeem_by')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
-                    <input type="datetime-local" id="inline-key-expires">
-                </label>
-                <label class="grow">
-                    <span><?= e(__('ui.field.key_code')) ?></span>
-                    <span class="keyfield">
-                        <input type="text" id="inline-key-code" class="key-field masked"
-                               autocomplete="off" spellcheck="false">
-                    </span>
                 </label>
             </div>
-            <button type="button" class="btn" id="inline-key-save"><?= e(__('ui.action.save_key')) ?></button>
-            <span id="inline-key-result" class="muted small"></span>
         </fieldset>
 
-        <label>
-            <span><?= e(__('ui.field.notes')) ?></span>
-            <textarea name="notes" rows="2"></textarea>
-        </label>
+        <fieldset class="form-section">
+            <legend><?= e(__('ui.label.section_credits')) ?></legend>
+            <div class="grid">
+                <?= View::partial('content/sponsor_field', ['sponsors' => $tagSources, 'selected' => '']) ?>
+                <label>
+                    <span><?= e(__('ui.nav.collabs')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                    <select name="collab_id" id="content-collab" data-content-collab>
+                        <option value=""><?= e(__('ui.label.no_collab')) ?></option>
+                        <?php foreach ($collabs as $c): ?>
+                            <option value="<?= (int) $c['id'] ?>"><?= e($c['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+            <legend><?= e(__('ui.label.section_game')) ?></legend>
+            <div class="grid">
+                <label class="grow">
+                    <span><?= e(__('ui.field.game')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                    <select name="game_id" id="content-game" data-picker="games" data-content-game
+                            data-placeholder="<?= e(__('ui.label.no_game')) ?>">
+                        <option value=""><?= e(__('ui.label.no_game')) ?></option>
+                    </select>
+                </label>
+                <?php if ($twitchCategories): ?>
+                    <label class="grow">
+                        <span><?= e(__('ui.field.twitch_category')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                        <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.category_from_game')) ?>">
+                            <option value=""><?= e(__('ui.label.category_from_game')) ?></option>
+                        </select>
+                    </label>
+                <?php endif; ?>
+
+                <label class="grow">
+                    <span><?= e(__('ui.field.key')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                    <select name="game_key_id" id="content-key" data-content-key disabled>
+                        <option value=""><?= e('—') ?></option>
+                    </select>
+                </label>
+
+                <label data-content-embargo-field>
+                    <span><?= e(__('ui.field.embargo')) ?> <small class="muted"><?= e(__('ui.label.per_game')) ?></small></span>
+                    <input type="datetime-local" name="embargo_until" id="content-embargo" data-content-embargo
+                           data-default="<?= e($defaultEmbargo) ?>" disabled>
+                    <small class="muted"><?= e(__('ui.label.embargo_default')) ?></small>
+                </label>
+            </div>
+
+            <div class="inline-actions">
+                <?php if ($canAddGames): ?>
+                    <button type="button" class="btn small" data-toggle="#inline-game">+ <?= e(__('ui.action.new_game_api')) ?></button>
+                <?php endif; ?>
+                <button type="button" class="btn small" data-toggle="#inline-key" data-inline-key-open>+ <?= e(__('ui.action.new_key')) ?></button>
+            </div>
+
+            <?php if ($canAddGames): ?>
+            <fieldset id="inline-game" class="inset hidden" data-game-import="#content-game">
+                <legend><?= e(__('ui.action.new_game_api')) ?></legend>
+                <label>
+                    <span><?= e(__('ui.action.search')) ?></span>
+                    <input type="search" class="game-import-search" autocomplete="off"
+                           placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
+                </label>
+                <div class="results game-import-results"></div>
+            </fieldset>
+            <?php endif; ?>
+
+            <fieldset id="inline-key" class="inset hidden">
+                <legend><?= e(__('ui.action.new_key')) ?></legend>
+                <p class="muted small"><?= e(__('ui.message.inline_key_hint')) ?></p>
+                <div class="grid">
+                    <label>
+                        <span><?= e(__('ui.field.platform')) ?></span>
+                        <select id="inline-key-platform">
+                            <?php foreach ($gamePlatforms as $platform): ?>
+                                <option value="<?= e($platform) ?>" <?= $platform === 'pc_steam' ? 'selected' : '' ?>>
+                                    <?= e(code_label('game_platform', $platform)) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span><?= e(__('ui.field.source')) ?></span>
+                        <select id="inline-key-source">
+                            <?php foreach ($keySources as $source): ?>
+                                <option value="<?= e($source) ?>"><?= e(code_label('key_platform', $source)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span><?= e(__('ui.field.key_type')) ?></span>
+                        <select id="inline-key-type">
+                            <?php foreach (['common', 'review'] as $type): ?>
+                                <option value="<?= e($type) ?>"><?= e(code_label('key_type', $type)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span><?= e(__('ui.field.content_type')) ?></span>
+                        <select id="inline-key-content">
+                            <?php foreach (['game', 'dlc'] as $type): ?>
+                                <option value="<?= e($type) ?>"><?= e(code_label('content_type', $type)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span><?= e(__('ui.field.status')) ?></span>
+                        <select id="inline-key-status">
+                            <?php foreach ($keyStatuses as $st): ?>
+                                <option value="<?= e($st) ?>"><?= e(code_label('key_status', $st)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span><?= e(__('ui.field.redeem_by')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                        <input type="datetime-local" id="inline-key-expires">
+                    </label>
+                    <label class="grow">
+                        <span><?= e(__('ui.field.key_code')) ?></span>
+                        <span class="keyfield">
+                            <input type="text" id="inline-key-code" class="key-field masked"
+                                   autocomplete="off" spellcheck="false">
+                        </span>
+                    </label>
+                </div>
+                <button type="button" class="btn" id="inline-key-save"><?= e(__('ui.action.save_key')) ?></button>
+                <span id="inline-key-result" class="muted small"></span>
+            </fieldset>
+        </fieldset>
+
+        <fieldset class="form-section">
+            <legend><?= e(__('ui.label.section_when')) ?></legend>
+            <?= View::partial('content/when_fields', [
+                'start' => '', 'minutes' => $contentMinutes, 'deadline' => $defaultDeadline, 'streamId' => null, 'isNew' => true,
+            ]) ?>
+        </fieldset>
+
+        <fieldset class="form-section">
+            <legend><?= e(__('ui.field.notes')) ?></legend>
+            <label>
+                <span class="visually-hidden"><?= e(__('ui.field.notes')) ?></span>
+                <textarea name="notes" rows="2"></textarea>
+            </label>
+        </fieldset>
 
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
@@ -384,20 +360,20 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
             </thead>
             <tbody>
             <?php foreach ($content as $row): ?>
-                <tr data-content-id="<?= (int) $row['id'] ?>">
+                <tr data-content-id="<?= (int) $row['id'] ?>"<?= $row['game_id'] ? row_art($contentArt[(int) $row['game_id']]['path'] ?? null, $contentArt[(int) $row['game_id']]['updated_at'] ?? null) : '' ?>>
                     <td class="rowactions">
                         <?php if ($twitchLogin !== null && $row['platform_code'] === 'twitch'): ?>
                             <button type="button" class="btn small twitch-push" data-id="<?= (int) $row['id'] ?>"
                                     title="<?= e(sprintf(__('ui.action.twitch_send_hint'), $twitchLogin)) ?>">
-                                <?= e(__('ui.action.twitch_send')) ?>
+                                <?= icon_label('twitch', __('ui.action.twitch_send')) ?>
                             </button>
                         <?php endif; ?>
                         <button type="button" class="btn small content-detail" data-id="<?= (int) $row['id'] ?>">
-                            <?= e(__('ui.action.details')) ?>
+                            <?= icon_label('eye', __('ui.action.details')) ?>
                         </button>
                         <button type="button" class="btn small" data-modal-form="#edit-content-<?= (int) $row['id'] ?>"
                                 data-modal-title="<?= e($row['title']) ?>">
-                            <?= e(__('ui.action.edit')) ?>
+                            <?= icon_label('edit', __('ui.action.edit')) ?>
                         </button>
                     </td>
                     <td data-col="scheduled" data-sort="<?= e(sort_key($row['scheduled_start'])) ?>" data-label="<?= e(__('ui.field.scheduled')) ?>">
@@ -408,6 +384,9 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                         <?php endif; ?>
                     </td>
                     <td data-card-title data-col="title" data-label="<?= e(__('ui.field.title')) ?>">
+                        <?php $cover = $row['game_id'] ? ($contentArt[(int) $row['game_id']] ?? null) : null; ?>
+                        <img class="card-cover" loading="lazy" alt=""
+                             src="<?= e($cover ? GameImages::publicUrl($cover['path'], $cover['updated_at']) : url('/assets/game-missing.svg')) ?>">
                         <?= e($row['title']) ?>
                         <?php if ($row['collab_session_id']): ?>
                             <a class="badge together-badge" href="<?= e(url(CollabSessions::LINK . (int) $row['collab_session_id'])) ?>">👥 <?= e(__('ui.label.together_badge')) ?></a>
@@ -448,10 +427,8 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                         <?php endif; ?>
                     </td>
                     <td data-col="key" data-sort="<?= (int) $row['game_count'] === 0 ? '' : e((string) ((int) $row['keyed_count'] / (int) $row['game_count'])) ?>" data-label="<?= e(__('ui.field.key')) ?>">
-                        <?php if ((int) $row['game_count'] === 0): ?>
+                        <?php if ((int) $row['keyed_count'] === 0): ?>
                             <span class="muted">—</span>
-                        <?php elseif ((int) $row['keyed_count'] === 0): ?>
-                            <span class="badge warn"><?= e(__('ui.label.no_key')) ?></span>
                         <?php else: ?>
                             <span class="badge ok"><?= (int) $row['keyed_count'] ?>/<?= (int) $row['game_count'] ?></span>
                         <?php endif; ?>
@@ -471,76 +448,124 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
 
                 <tr id="edit-content-<?= (int) $row['id'] ?>" class="editrow hidden">
                     <td colspan="9">
-                        <form class="inline-edit" data-endpoint="/content/update" data-id="<?= (int) $row['id'] ?>">
-                            <div class="grid">
+                        <form class="inline-edit content-form" data-endpoint="/content/update" data-id="<?= (int) $row['id'] ?>">
                                 <?php if ($row['collab_session_id']): ?>
                                     <p class="notice together-note"><?= e(__('ui.message.together_edit_note')) ?>
                                         <a href="<?= e(url(CollabSessions::LINK . (int) $row['collab_session_id'])) ?>"><?= e(__('ui.action.together_open')) ?></a></p>
                                 <?php endif; ?>
+                            <fieldset class="form-section">
+                                <legend><?= e(__('ui.label.section_content')) ?></legend>
                                 <div class="title-block">
                                     <?= View::partial('content/title_field', [
                                         'prefixes' => $prefixes,
                                         'value'    => (string) ($row['title_template'] ?? $row['title']),
                                         'streamId' => (int) $row['id'],
+                                        'order'    => $titleOrder,
                                     ]) ?>
                                 </div>
-                                <label>
-                                    <span><?= e(__('ui.field.platform')) ?></span>
-                                    <select name="platform">
-                                        <?php foreach ($platforms as $platform): ?>
-                                            <option value="<?= e($platform) ?>" <?= $row['platform_code'] === $platform ? 'selected' : '' ?>>
-                                                <?= e(code_label('streaming_platform', $platform)) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                                <label>
-                                    <span><?= e(__('ui.field.status')) ?></span>
-                                    <select name="status">
-                                        <?php foreach ($statuses as $status): ?>
-                                            <option value="<?= e($status) ?>" <?= $row['status'] === $status ? 'selected' : '' ?>>
-                                                <?= e(code_label('stream_status', $status)) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                                <label>
-                                    <span><?= e(__('ui.field.scheduled')) ?></span>
-                                    <input type="datetime-local" name="scheduled_start"
-                                           value="<?= e($row['scheduled_start'] ? substr(str_replace(' ', 'T', $row['scheduled_start']), 0, 16) : '') ?>">
-                                </label>
-                                <label>
-                                    <span><?= e(__('ui.field.deadline')) ?></span>
-                                    <input type="datetime-local" name="deadline"
-                                           value="<?= e($row['deadline'] ? substr(str_replace(' ', 'T', $row['deadline']), 0, 16) : '') ?>">
-                                </label>
-                                <?php if ((int) $row['game_count'] > 0): ?>
+                                <div class="grid">
                                     <label>
-                                        <span><?= e(__('ui.field.embargo')) ?> <small class="muted"><?= e(__('ui.label.per_game')) ?></small></span>
-                                        <input type="datetime-local" name="embargo_until"
-                                               value="<?= e($row['embargo_until'] ? substr(str_replace(' ', 'T', $row['embargo_until']), 0, 16) : '') ?>">
+                                        <span><?= e(__('ui.field.platform')) ?></span>
+                                        <select name="platform">
+                                            <?php foreach ($platforms as $platform): ?>
+                                                <option value="<?= e($platform) ?>" <?= $row['platform_code'] === $platform ? 'selected' : '' ?>>
+                                                    <?= e(code_label('streaming_platform', $platform)) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
                                     </label>
-                                <?php endif; ?>
-                                <?php if ($twitchCategories): ?>
+                                    <label>
+                                        <span><?= e(__('ui.field.status')) ?></span>
+                                        <select name="status">
+                                            <?php foreach ($statuses as $status): ?>
+                                                <option value="<?= e($status) ?>" <?= $row['status'] === $status ? 'selected' : '' ?>>
+                                                    <?= e(code_label('stream_status', $status)) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <?= View::partial('content/sponsor_field', ['sponsors' => $tagSources, 'selected' => '']) ?>
+                                </div>
+                            </fieldset>
+                            <fieldset class="form-section">
+                                <legend><?= e(__('ui.label.section_game')) ?></legend>
+                                <div class="grid content-game-fields">
                                     <label class="grow">
-                                        <span><?= e(__('ui.field.twitch_category')) ?></span>
-                                        <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.category_from_game')) ?>">
-                                            <option value=""><?= e(__('ui.label.category_from_game')) ?></option>
-                                            <?php if ($row['category_id']): ?>
-                                                <option value="<?= e($row['category_id']) ?>" selected><?= e((string) $row['category_name']) ?></option>
+                                        <span><?= e(__('ui.field.game')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                                        <select name="game_id" id="content-game-<?= (int) $row['id'] ?>" data-picker="games" data-content-game
+                                                data-placeholder="<?= e(__('ui.label.no_game')) ?>">
+                                            <option value=""><?= e(__('ui.label.no_game')) ?></option>
+                                            <?php if ($row['game_id']): ?>
+                                                <option value="<?= (int) $row['game_id'] ?>" selected><?= e((string) $row['game_title']) ?></option>
                                             <?php endif; ?>
                                         </select>
                                     </label>
-                                <?php endif; ?>
-                                <label class="grow">
-                                    <span><?= e(__('ui.field.vod_url')) ?></span>
-                                    <input type="url" name="vod_url" value="<?= e($row['vod_url'] ?? '') ?>">
-                                </label>
-                            </div>
-                            <label>
-                                <span><?= e(__('ui.field.notes')) ?></span>
-                                <input type="text" name="notes" value="<?= e($row['notes'] ?? '') ?>">
-                            </label>
+                                    <?php if ($twitchCategories): ?>
+                                        <label class="grow">
+                                            <span><?= e(__('ui.field.twitch_category')) ?></span>
+                                            <select name="category_id" data-picker="categories" data-placeholder="<?= e(__('ui.label.category_from_game')) ?>">
+                                                <option value=""><?= e(__('ui.label.category_from_game')) ?></option>
+                                                <?php if ($row['category_id']): ?>
+                                                    <option value="<?= e($row['category_id']) ?>" selected><?= e((string) $row['category_name']) ?></option>
+                                                <?php endif; ?>
+                                            </select>
+                                        </label>
+                                    <?php endif; ?>
+                                    <label class="grow">
+                                        <span><?= e(__('ui.field.key')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                                        <select name="game_key_id" data-content-key>
+                                            <option value=""><?= e('—') ?></option>
+                                            <?php $listed = false; foreach ($keys as $k): if ((int) $k['game_id'] !== (int) $row['game_id']) { continue; } $listed = $listed || (int) $k['id'] === (int) $row['game_key_id']; ?>
+                                                <option value="<?= (int) $k['id'] ?>" <?= (int) $k['id'] === (int) $row['game_key_id'] ? 'selected' : '' ?>><?= e($keyLabel($k)) ?></option>
+                                            <?php endforeach; ?>
+                                            <?php if ($row['game_key_id'] && !$listed): ?>
+                                                <option value="<?= (int) $row['game_key_id'] ?>" selected><?= e(__('ui.label.current_key')) ?></option>
+                                            <?php endif; ?>
+                                        </select>
+                                    </label>
+                                    <label data-content-embargo-field>
+                                        <span><?= e(__('ui.field.embargo')) ?> <small class="muted"><?= e(__('ui.label.per_game')) ?></small></span>
+                                        <input type="datetime-local" name="embargo_until" data-content-embargo data-default="<?= e($defaultEmbargo) ?>"
+                                               value="<?= e($row['embargo_until'] ? substr(str_replace(' ', 'T', $row['embargo_until']), 0, 16) : '') ?>">
+                                    </label>
+                                    <?php if ($canAddGames): ?>
+                                        <div class="inline-actions">
+                                            <button type="button" class="btn small" data-toggle="#inline-game-<?= (int) $row['id'] ?>">+ <?= e(__('ui.action.new_game_api')) ?></button>
+                                        </div>
+                                        <fieldset id="inline-game-<?= (int) $row['id'] ?>" class="inset hidden" data-game-import="#content-game-<?= (int) $row['id'] ?>">
+                                            <legend><?= e(__('ui.action.new_game_api')) ?></legend>
+                                            <label>
+                                                <span><?= e(__('ui.action.search')) ?></span>
+                                                <input type="search" class="game-import-search" autocomplete="off"
+                                                       placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
+                                            </label>
+                                            <div class="results game-import-results"></div>
+                                        </fieldset>
+                                    <?php endif; ?>
+                                </div>
+                            </fieldset>
+                            <fieldset class="form-section">
+                                <legend><?= e(__('ui.label.section_when')) ?></legend>
+                                <?= View::partial('content/when_fields', [
+                                    'start'    => $row['scheduled_start'] ? substr(str_replace(' ', 'T', (string) $row['scheduled_start']), 0, 16) : '',
+                                    'minutes'  => (int) ($row['planned_minutes'] ?? $contentMinutes),
+                                    'deadline' => $row['deadline'] ? substr(str_replace(' ', 'T', (string) $row['deadline']), 0, 16) : '',
+                                    'streamId' => (int) $row['id'],
+                                ]) ?>
+                            </fieldset>
+                            <fieldset class="form-section">
+                                <legend><?= e(__('ui.label.section_more')) ?></legend>
+                                <div class="grid">
+                                    <label class="grow">
+                                        <span><?= e(__('ui.field.vod_url')) ?></span>
+                                        <input type="url" name="vod_url" value="<?= e($row['vod_url'] ?? '') ?>">
+                                    </label>
+                                    <label class="grow">
+                                        <span><?= e(__('ui.field.notes')) ?></span>
+                                        <input type="text" name="notes" value="<?= e($row['notes'] ?? '') ?>">
+                                    </label>
+                                </div>
+                            </fieldset>
                             <div class="editrow-actions">
                                 <button type="submit" class="btn primary small"><?= e(__('ui.action.save')) ?></button>
                                 <button type="button" class="btn small row-cancel"><?= e(__('ui.action.cancel')) ?></button>
@@ -558,21 +583,23 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
         </div>
     <?php endif; ?>
 </section>
+</div>
 
 <?php
 $pageGlobals = [
     'STREAMORG_TITLE_TIMELINE' => (object) $timeline,
     'STREAMORG_COLLAB_PREFIX'  => $collabPrefix,
-    'STREAMORG_SPONSOR_NAMES'  => array_map(static fn (string $code): string => code_label('key_platform', $code), $tagSources),
+    'STREAMORG_SPONSORS' => array_map(static fn (array $s): array => [
+        'code'     => $s['code'],
+        'label'    => code_label('key_platform', $s['code']),
+        'game_tag' => (bool) $s['uses_game_tag'],
+    ], $sponsors),
     'STREAMORG_KEYS' => array_map(static fn (array $k): array => [
         'id'      => (int) $k['id'],
         'game_id' => (int) $k['game_id'],
-        'label'   => code_label('game_platform', $k['platform_code']) . ' · '
-                   . code_label('key_type', $k['key_type']) . ' · '
-                   . code_label('key_status', $k['status']) . ' · '
-                   . code_label('key_platform', $k['source_code'])
-                   . ($k['expires_at'] ? ' · ' . __('ui.label.redeem_by') . ' ' . fmt_date($k['expires_at']) : ''),
+        'label'   => $keyLabel($k),
         'expires' => $k['expires_at'],
+        'source'  => $k['source_code'],
     ], $keys),
     'STREAMORG_GAMES' => new stdClass(),
     'STREAMORG_COLLABS' => (object) array_reduce($collabs, static function (array $carry, array $c): array {

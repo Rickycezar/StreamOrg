@@ -22,13 +22,14 @@ final class EmbargoController
 
         $stmt = $pdo->prepare(
             "SELECT e.*, g.title AS game_title, g.release_date, g.release_precision,
-                    gp.code AS platform_code,
+                    gp.code AS platform_code, art.path AS art_path, art.updated_at AS art_version,
                     (e.lifts_at > now()) AS active,
                     (SELECT count(*) FROM game_keys k
                       WHERE k.game_id = e.game_id AND k.user_id = e.user_id) AS key_count
                FROM game_embargoes e
                JOIN games g                ON g.id = e.game_id
           LEFT JOIN game_platforms gp      ON gp.id = e.game_platform_id
+          " . GameImages::artJoin('e.game_id') . "
               WHERE e.user_id = ?
            ORDER BY (e.lifts_at > now()) DESC, e.lifts_at, g.title"
         );
@@ -36,9 +37,10 @@ final class EmbargoController
         $embargoes = $stmt->fetchAll();
 
         $stmt = $pdo->prepare(
-            'SELECT DISTINCT g.id, g.title, g.release_date, g.release_precision
+            'SELECT DISTINCT g.id, g.title, g.release_date, g.release_precision, art.path AS art_path, art.updated_at AS art_version
                FROM game_keys k
                JOIN games g ON g.id = k.game_id
+          ' . GameImages::artJoin('g.id') . '
               WHERE k.user_id = :user
                 AND NOT EXISTS (SELECT 1 FROM game_embargoes e
                                  WHERE e.game_id = g.id AND e.user_id = :user)

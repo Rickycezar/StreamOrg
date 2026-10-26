@@ -24,35 +24,19 @@ $link = static function (array $change) use ($subject, $filters): string {
     <?php endforeach; ?>
 </nav>
 
-<form class="card filters" method="get" action="<?= e(url('/admin/data/' . $subject)) ?>">
-    <label>
-        <span><?= e(__('ui.admin_data.user')) ?></span>
-        <select name="user">
-            <option value=""><?= e(__('ui.admin_data.all_users')) ?></option>
-            <?php foreach ($users as $u): ?>
-                <option value="<?= $u['id'] ?>" <?= $filters['user'] === $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?> (<?= $u['items'] ?>)</option>
-            <?php endforeach; ?>
-        </select>
-    </label>
+<form class="card filters" method="get" action="<?= e(url('/admin/data/' . $subject)) ?>" data-filters>
+    <?= View::partial('partials/filter_search', ['value' => $filters['q'], 'placeholder' => __('ui.admin_data.search_' . $subject)]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'user', 'label' => __('ui.admin_data.user'), 'selected' => (string) ($filters['user'] ?? ''), 'multiple' => false,
+        'options' => array_combine(array_map('strval', array_column($users, 'id')), array_map(static fn ($u) => $u['name'] . ' (' . $u['items'] . ')', $users)),
+    ]) ?>
     <?php if (AdminData::STATUSES[$subject] !== []): ?>
-        <label>
-            <span><?= e(__('ui.field.status')) ?></span>
-            <select name="status">
-                <option value=""><?= e(__('ui.admin_data.all_statuses')) ?></option>
-                <?php foreach (AdminData::STATUSES[$subject] as $s): ?>
-                    <option value="<?= e($s) ?>" <?= $filters['status'] === $s ? 'selected' : '' ?>><?= e(code_label(['content' => 'stream_status', 'keys' => 'key_status', 'collabs' => 'collab_status'][$subject], $s)) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </label>
+        <?= View::partial('partials/filter_select', [
+            'name' => 'status', 'label' => __('ui.field.status'), 'selected' => $filters['status'], 'multiple' => false,
+            'options' => array_combine(AdminData::STATUSES[$subject], array_map(static fn ($s) => code_label(['content' => 'stream_status', 'keys' => 'key_status', 'collabs' => 'collab_status'][$subject], $s), AdminData::STATUSES[$subject])),
+        ]) ?>
     <?php endif; ?>
-    <label>
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($filters['q']) ?>" placeholder="<?= e(__('ui.admin_data.search_' . $subject)) ?>">
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/admin/data/' . $subject)) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+    <?= View::partial('partials/filter_actions', ['clear' => '/admin/data/' . $subject, 'active' => $filters['q'] !== '' || !empty($filters['user']) || $filters['status'] !== '']) ?>
 </form>
 
 <section class="card">

@@ -15,7 +15,7 @@
 
 <section class="tiles compact">
     <?php foreach ($statuses as $status): ?>
-        <a class="tile <?= $filters['status'] === $status ? 'active' : '' ?>"
+        <a class="tile <?= $filters['status'] === [$status] ? 'active' : '' ?>"
            href="<?= e(url('/keys?status=' . $status)) ?>">
             <span class="tile-value"><?= (int) ($counts[$status] ?? 0) ?></span>
             <span class="tile-label"><?= e(code_label('key_status', $status)) ?></span>
@@ -23,76 +23,30 @@
     <?php endforeach; ?>
 </section>
 
-<form class="card filters" method="get" action="<?= e(url('/keys')) ?>">
-    <label>
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($filters['q']) ?>" placeholder="<?= e(__('ui.field.game')) ?>">
-    </label>
-
-    <label>
-        <span><?= e(__('ui.field.status')) ?></span>
-        <select name="status">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach ($statuses as $status): ?>
-                <option value="<?= e($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>>
-                    <?= e(code_label('key_status', $status)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <label>
-        <span><?= e(__('ui.field.key_type')) ?></span>
-        <select name="key_type">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach (['common', 'review'] as $type): ?>
-                <option value="<?= e($type) ?>" <?= $filters['key_type'] === $type ? 'selected' : '' ?>>
-                    <?= e(code_label('key_type', $type)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <label>
-        <span><?= e(__('ui.field.content_type')) ?></span>
-        <select name="content_type">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach (['game', 'dlc'] as $type): ?>
-                <option value="<?= e($type) ?>" <?= $filters['content_type'] === $type ? 'selected' : '' ?>>
-                    <?= e(code_label('content_type', $type)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <label>
-        <span><?= e(__('ui.field.platform')) ?></span>
-        <select name="platform">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach ($platforms as $platform): ?>
-                <option value="<?= e($platform['code']) ?>" <?= $filters['platform'] === $platform['code'] ? 'selected' : '' ?>>
-                    <?= e(code_label('game_platform', $platform['code'])) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <label>
-        <span><?= e(__('ui.field.source')) ?></span>
-        <select name="source">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach ($sources as $source): ?>
-                <option value="<?= e($source) ?>" <?= $filters['source'] === $source ? 'selected' : '' ?>>
-                    <?= e(code_label('key_platform', $source)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/keys')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+<?php $filterActive = array_filter($filters, static fn ($v): bool => $v !== '' && $v !== []) !== []; ?>
+<form class="card filters" method="get" action="<?= e(url('/keys')) ?>" data-filters>
+    <?= View::partial('partials/filter_search', ['value' => $filters['q'], 'placeholder' => __('ui.label.search_games')]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'status', 'label' => __('ui.field.status'), 'selected' => $filters['status'],
+        'options' => array_combine($statuses, array_map(static fn ($s) => code_label('key_status', $s), $statuses)),
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'key_type', 'label' => __('ui.field.key_type'), 'selected' => $filters['key_type'],
+        'options' => ['common' => code_label('key_type', 'common'), 'review' => code_label('key_type', 'review')],
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'content_type', 'label' => __('ui.field.content_type'), 'selected' => $filters['content_type'],
+        'options' => ['game' => code_label('content_type', 'game'), 'dlc' => code_label('content_type', 'dlc')],
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'platform', 'label' => __('ui.field.platform'), 'selected' => $filters['platform'],
+        'options' => array_combine(array_column($platforms, 'code'), array_map(static fn ($p) => code_label('game_platform', $p['code']), $platforms)),
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'source', 'label' => __('ui.field.source'), 'selected' => $filters['source'],
+        'options' => array_combine($sources, array_map(static fn ($s) => code_label('key_platform', $s), $sources)),
+    ]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/keys', 'active' => $filterActive]) ?>
 </form>
 
 <section class="card">
@@ -190,10 +144,16 @@
                       placeholder="<?= e(__('ui.label.one_per_line')) ?>"></textarea>
         </label>
 
-        <label>
-            <span><?= e(__('ui.field.notes')) ?></span>
-            <input type="text" name="notes">
-        </label>
+        <div class="grid">
+            <label>
+                <span><?= e(__('ui.field.region')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                <input type="text" name="region" maxlength="50">
+            </label>
+            <label class="grow">
+                <span><?= e(__('ui.field.notes')) ?></span>
+                <input type="text" name="notes">
+            </label>
+        </div>
 
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
@@ -220,25 +180,23 @@
             </thead>
             <tbody>
             <?php foreach ($keys as $key): ?>
-                <tr data-key-id="<?= (int) $key['id'] ?>">
+                <tr data-key-id="<?= (int) $key['id'] ?>"<?= row_art($key['cover_path'], $key['cover_version']) ?>>
                     <td class="rowactions">
                         <button type="button" class="btn small key-detail" data-id="<?= (int) $key['id'] ?>">
-                            <?= e(__('ui.action.details')) ?>
+                            <?= icon_label('eye', __('ui.action.details')) ?>
                         </button>
                         <?php if ($twitchReady && in_array($key['status'], Giveaways::GIFTABLE, true) && !$key['prize_id'] && !$key['is_placeholder']): ?>
                             <button type="button" class="btn small" data-modal-form="#give-key" data-give-key="<?= (int) $key['id'] ?>"
-                                    data-modal-title="<?= e(__('ui.action.give_key')) ?>"><?= e(__('ui.action.give')) ?></button>
+                                    data-modal-title="<?= e(__('ui.action.give_key')) ?>"><?= icon_label('gift', __('ui.action.give')) ?></button>
                         <?php endif; ?>
                         <button type="button" class="btn small" data-modal-form="#edit-key-<?= (int) $key['id'] ?>"
                                 data-modal-title="<?= e($key['game_title']) ?>">
-                            <?= e(__('ui.action.edit')) ?>
+                            <?= icon_label('edit', __('ui.action.edit')) ?>
                         </button>
                     </td>
                     <td data-card-title data-col="game" data-label="<?= e(__('ui.field.game')) ?>">
-                        <?php if ($key['cover_path']): ?>
-                            <img class="card-cover" loading="lazy" alt=""
-                                 src="<?= e(GameImages::publicUrl($key['cover_path'], (string) $key['cover_version'])) ?>">
-                        <?php endif; ?>
+                        <img class="card-cover" loading="lazy" alt=""
+                             src="<?= e($key['cover_path'] ? GameImages::publicUrl($key['cover_path'], (string) $key['cover_version']) : url('/assets/game-missing.svg')) ?>">
                         <?= e($key['game_title']) ?>
                         <?php if ($key['under_embargo']): ?>
                             <span class="badge danger"

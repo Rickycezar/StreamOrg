@@ -180,7 +180,7 @@ final class ErrorLog
      *
      * @return list<array>
      */
-    public static function list(string $show = 'open', string $level = '', string $query = '', int $limit = 200): array
+    public static function list(string $show = 'open', string|array $level = [], string $query = '', int $limit = 200): array
     {
         $where  = [match ($show) {
             'resolved' => 'e.resolved_at IS NOT NULL',
@@ -189,9 +189,11 @@ final class ErrorLog
         }];
         $params = [];
 
-        if (in_array($level, self::LEVELS, true)) {
-            $where[] = 'e.level = :level';
-            $params['level'] = $level;
+        $level = array_values(array_intersect((array) $level, self::LEVELS));
+
+        if ($level !== []) {
+            $where[] = 'e.level = ANY(CAST(:level AS text[]))';
+            $params['level'] = pg_text_array($level);
         }
 
         if (trim($query) !== '') {

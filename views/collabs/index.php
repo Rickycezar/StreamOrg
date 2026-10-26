@@ -4,6 +4,30 @@
  *  @var array<int, array<int, string>> $castRoles each collab's cast roles, by streamer
  *  @var list<array> $together joint plans the user is in @var array<int,int> $onStreamOrg cast members on StreamOrg, by collab
  *  @var array<int,int> $sessions active joint plan, by collab */
+
+/** One chosen streamer in a collab form: picture, name, role, and a way to take them out. */
+$castRow = static function (array $s, string $role, array $roles, bool $onStreamOrg): string {
+    $id     = $s['id'] === '__ID__' ? '__ID__' : (int) $s['id'];
+    $avatar = !empty($s['avatar_url']) ? '<img class="cast-avatar" src="' . e((string) $s['avatar_url']) . '" alt="" loading="lazy" referrerpolicy="no-referrer">'
+                                       : '<span class="cast-avatar">' . e(mb_strtoupper(mb_substr((string) $s['name'], 0, 1))) . '</span>';
+    $options = '';
+
+    foreach ($roles as $r) {
+        $options .= '<option value="' . e($r) . '"' . ($r === $role ? ' selected' : '') . '>' . e(code_label('collab_role', $r)) . '</option>';
+    }
+
+    return '<div class="cast-row" data-cast-id="' . $id . '">'
+        . '<input type="hidden" name="streamers[]" value="' . $id . '">' . $avatar
+        . '<span class="cast-name"><span data-cast-name>' . e((string) $s['name']) . '</span>'
+        . ($onStreamOrg ? ' <span class="badge on-streamorg" title="' . e(__('ui.label.on_streamorg_hint')) . '">' . e(__('ui.label.on_streamorg')) . '</span>' : '')
+        . '</span><select name="roles[' . $id . ']" class="cast-role">' . $options . '</select>'
+        . '<button type="button" class="cast-remove" data-cast-remove aria-label="' . e(__('ui.action.remove')) . '" title="' . e(__('ui.action.remove')) . '">×</button></div>';
+};
+
+/** The search over the user's streamers that adds them to the cast. */
+$castPicker = static fn (): string => '<div class="cast-picker" data-cast-picker>'
+    . '<input type="search" data-cast-pick-search autocomplete="off" placeholder="' . e(__('ui.label.cast_pick_hint')) . '" aria-label="' . e(__('ui.label.cast_pick_hint')) . '">'
+    . '<div class="cast-pick-results" data-cast-pick-results hidden></div></div>';
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.collabs')) ?></h1>
@@ -30,8 +54,9 @@
         <ul>
             <?php foreach ($together as $t):
                 $invited  = $t['member_state'] === 'invited';
-                $toAnswer = !$invited && $t['proposed_at'] !== null && !$t['approves']; ?>
-                <li class="<?= $invited || $toAnswer ? 'needs-you' : '' ?>">
+                $isDraft  = $t['status'] === 'draft';
+                $toAnswer = !$invited && !$isDraft && $t['proposed_at'] !== null && !$t['approves']; ?>
+                <li class="<?= $invited || $toAnswer || $isDraft ? 'needs-you' : '' ?>">
                     <a class="together-link" href="<?= e(url(CollabSessions::LINK . (int) $t['id'])) ?>">
                         <strong><?= e($t['title']) ?></strong>
                         <small class="muted">
@@ -40,14 +65,16 @@
                         </small>
                     </a>
                     <span class="together-time"><?= e($t['agreed_start'] ? fmt_datetime($t['agreed_start']) : __('ui.label.together_no_time')) ?></span>
-                    <?php if ($invited): ?>
+                    <?php if ($isDraft): ?>
+                        <span class="badge warn"><?= e(__('ui.label.together_draft')) ?></span>
+                    <?php elseif ($invited): ?>
                         <span class="badge warn"><?= e(__('ui.label.together_invitation')) ?></span>
                     <?php elseif ($toAnswer): ?>
                         <span class="badge warn"><?= e(__('ui.label.together_new_time')) ?></span>
                     <?php elseif ($t['proposed_at'] !== null): ?>
                         <span class="badge"><?= e(__('ui.label.together_waiting_others')) ?></span>
                     <?php endif; ?>
-                    <a class="btn small<?= $invited || $toAnswer ? ' primary' : '' ?>" href="<?= e(url(CollabSessions::LINK . (int) $t['id'])) ?>"><?= e(__($invited ? 'ui.action.together_see_invite' : ($toAnswer ? 'ui.action.together_answer' : 'ui.action.together_open'))) ?></a>
+                    <a class="btn small<?= $invited || $toAnswer || $isDraft ? ' primary' : '' ?>" href="<?= e(url(CollabSessions::LINK . (int) $t['id'])) ?>"><?= e(__($isDraft ? 'ui.action.together_finish_draft' : ($invited ? 'ui.action.together_see_invite' : ($toAnswer ? 'ui.action.together_answer' : 'ui.action.together_open')))) ?></a>
                 </li>
             <?php endforeach; ?>
         </ul>
@@ -103,22 +130,9 @@
         <fieldset class="inset">
             <legend><?= e(__('ui.field.streamers')) ?></legend>
             <p class="muted small"><?= e(__('ui.message.collab_cast_hint')) ?></p>
+            <?= $castPicker() ?>
             <?php require __DIR__ . '/_cast_add.php'; ?>
-            <div class="cast-list">
-                <?php foreach ($streamers as $s): ?>
-                    <label class="cast-row">
-                        <input type="checkbox" name="streamers[]" value="<?= (int) $s['id'] ?>">
-                        <span class="cast-name"><?= e($s['name']) ?><?php if (isset($linked[(int) $s['id']])): ?> <span class="badge on-streamorg" title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span><?php endif; ?></span>
-                        <select name="roles[<?= (int) $s['id'] ?>]" class="cast-role">
-                            <?php foreach ($roles as $role): ?>
-                                <option value="<?= e($role) ?>" <?= $role === 'guest' ? 'selected' : '' ?>>
-                                    <?= e(code_label('collab_role', $role)) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                <?php endforeach; ?>
-            </div>
+            <div class="cast-list" data-cast-empty="<?= e(__('ui.label.cast_none_chosen')) ?>"></div>
         </fieldset>
 
         <label>
@@ -129,15 +143,7 @@
     </form>
 
     <template data-cast-template>
-        <label class="cast-row">
-            <input type="checkbox" name="streamers[]" value="__ID__" checked>
-            <span class="cast-name"><span data-cast-name></span> <span class="badge on-streamorg" data-cast-streamorg hidden title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span></span>
-            <select name="roles[__ID__]" class="cast-role">
-                <?php foreach ($roles as $role): ?>
-                    <option value="<?= e($role) ?>" <?= $role === 'guest' ? 'selected' : '' ?>><?= e(code_label('collab_role', $role)) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </label>
+        <?= $castRow(['id' => '__ID__', 'name' => '__NAME__', 'avatar_url' => null], 'guest', $roles, false) ?>
     </template>
 
     <?php if ($collabs === []): ?>
@@ -161,22 +167,22 @@
                 <tr>
                     <td class="rowactions">
                         <?php if (isset($sessions[(int) $row['id']])): ?>
-                            <a class="btn small primary" href="<?= e(url(CollabSessions::LINK . (int) $sessions[(int) $row['id']])) ?>"><?= e(__('ui.action.together_open')) ?></a>
+                            <a class="btn small primary" href="<?= e(url(CollabSessions::LINK . (int) $sessions[(int) $row['id']])) ?>"><?= icon_label('users', __('ui.action.together_open')) ?></a>
                         <?php elseif (($onStreamOrg[(int) $row['id']] ?? 0) > 0): ?>
                             <form method="post" action="<?= e(url('/collabs/together')) ?>">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
                                 <button type="submit" class="btn small primary" title="<?= e(__('ui.action.together_plan_hint')) ?>">
-                                    <?= e(sprintf(__('ui.action.together_plan'), (int) $onStreamOrg[(int) $row['id']])) ?>
+                                    <?= icon_label('users', sprintf(__('ui.action.together_plan'), (int) $onStreamOrg[(int) $row['id']])) ?>
                                 </button>
                             </form>
                         <?php endif; ?>
                         <button type="button" class="btn small<?= isset($sessions[(int) $row['id']]) || ($onStreamOrg[(int) $row['id']] ?? 0) > 0 ? '' : ' primary' ?> collab-plan" data-id="<?= (int) $row['id'] ?>"
                                 title="<?= e(__('ui.action.plan_stream_hint')) ?>">
-                            <?= e(__('ui.action.plan_stream')) ?>
+                            <?= icon_label('calendar', __('ui.action.plan_stream')) ?>
                         </button>
                         <button type="button" class="btn small" data-modal-form="#edit-collab-<?= (int) $row['id'] ?>"
-                                data-modal-title="<?= e($row['title']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                                data-modal-title="<?= e($row['title']) ?>"><?= icon_label('edit', __('ui.action.edit')) ?></button>
                     </td>
                     <td data-card-title data-col="title" data-label="<?= e(__('ui.field.title')) ?>">
                         <?= e($row['title']) ?>
@@ -240,22 +246,13 @@
 
                             <fieldset class="inset">
                                 <legend><?= e(__('ui.field.streamers')) ?></legend>
+                                <p class="muted small"><?= e(__('ui.message.collab_cast_hint')) ?></p>
+                                <?= $castPicker() ?>
                                 <?php require __DIR__ . '/_cast_add.php'; ?>
                                 <input type="hidden" name="streamers[]" value="">
-                                <div class="cast-list">
-                                    <?php foreach ($streamers as $s): ?>
-                                        <label class="cast-row">
-                                            <input type="checkbox" name="streamers[]" value="<?= (int) $s['id'] ?>"
-                                                   <?= in_array((int) $s['id'], $picked, true) ? 'checked' : '' ?>>
-                                            <span class="cast-name"><?= e($s['name']) ?><?php if (isset($linked[(int) $s['id']])): ?> <span class="badge on-streamorg" title="<?= e(__('ui.label.on_streamorg_hint')) ?>"><?= e(__('ui.label.on_streamorg')) ?></span><?php endif; ?></span>
-                                            <select name="roles[<?= (int) $s['id'] ?>]" class="cast-role">
-                                                <?php foreach ($roles as $role): ?>
-                                                    <option value="<?= e($role) ?>" <?= $role === ($castRoles[(int) $row['id']][(int) $s['id']] ?? 'guest') ? 'selected' : '' ?>>
-                                                        <?= e(code_label('collab_role', $role)) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </label>
+                                <div class="cast-list" data-cast-empty="<?= e(__('ui.label.cast_none_chosen')) ?>">
+                                    <?php foreach ($streamers as $s): if (!in_array((int) $s['id'], $picked, true)) { continue; } ?>
+                                        <?= $castRow($s, (string) ($castRoles[(int) $row['id']][(int) $s['id']] ?? 'guest'), $roles, isset($linked[(int) $s['id']])) ?>
                                     <?php endforeach; ?>
                                 </div>
                             </fieldset>
@@ -281,3 +278,10 @@
         </div>
     <?php endif; ?>
 </section>
+
+<script type="application/json" data-globals><?= json_encode(['STREAMORG_CAST_STREAMERS' => array_map(static fn (array $s): array => [
+    'id'        => (int) $s['id'],
+    'name'      => (string) $s['name'],
+    'avatar'    => $s['avatar_url'] ?: null,
+    'streamorg' => isset($linked[(int) $s['id']]),
+], $streamers)], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>

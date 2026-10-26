@@ -21,7 +21,8 @@ private preview. Preview access: streamorg@outlook.com.
   game's artwork, the expected time range, a live countdown and a *Send to
   Twitch* button. On a day off, a picker schedules undated content for today
   at your usual start time.
-- The next seven days at a glance, and the loose ends that need a decision.
+- The next seven days at a glance, and **content without a date**, each with
+  its game art, and a button that puts it in today's first free spot.
 
 ### Key vault
 - **Every key code is encrypted** (AES-256-GCM, a random data key per user).
@@ -42,11 +43,16 @@ private preview. Preview access: streamorg@outlook.com.
 ### Content planner
 - **A calendar of your streams and videos.** Open a day to see its hours,
   drag undated content onto a time, move it through the day or to another
-  day, or drag it back to the backlog to clear its date.
-- **Warnings that matter**: content without a key, streams scheduled before
+  day, or drag it back to the backlog to clear its date. The list of content
+  sits in a second tab; opening any content shows its game art, with an Edit
+  button to change it — game, key and embargo included.
+- **Warnings that matter**: streams scheduled before
   an embargo lifts, keys that expire before the stream, missed deadlines.
 - **Title helper**: choosing a game, sponsor or collab adds the right
-  hashtags and credits to the title, which stays freely editable.
+  hashtags and credits to the title (and the game's own hashtag for sponsors
+  that ask for it), in an order you choose; the title stays freely editable.
+- **Today and length**: "Today" finds the first free spot of the day; the
+  length and end time follow each other.
 - Register a missing game (picked from Twitch) or key without leaving the form.
 - **Any Twitch category**: content can have its own category — Just
   Chatting, Special Events, Marbles On Stream… — used before its games when
@@ -114,7 +120,8 @@ private preview. Preview access: streamorg@outlook.com.
   content, starting today's plan for the new game, and returning plans that
   never happened to the undated backlog. Every step is shown in a recent
   activity list.
-- Look up streamers on Twitch to plan **collabs** and credit guests.
+- Look up streamers on Twitch to plan **collabs** and credit guests; a
+  collab's cast is picked by searching your streamers, with their pictures.
 - **Plan collabs together**: guests who use StreamOrg (matched by their
   connected Twitch account) are invited through notifications. Each joins
   with their own linked content — own title, games, keys and sponsors —

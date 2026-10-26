@@ -34,11 +34,11 @@
                     <tr>
                         <td class="rowactions">
                             <button type="button" class="btn small" data-modal-form="#timer-<?= (int) $timer['id'] ?>"
-                                    data-modal-title="<?= e(__('ui.label.bot_timers')) ?>"><?= e(__('ui.action.edit')) ?></button>
+                                    data-modal-title="<?= e(__('ui.label.bot_timers')) ?>"><?= icon_label('edit', __('ui.action.edit')) ?></button>
                             <form method="post" action="<?= e(url('/bot/timer/delete')) ?>">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="id" value="<?= (int) $timer['id'] ?>">
-                                <button type="submit" class="btn small danger-btn" data-confirm="<?= e(__('ui.message.bot_delete_timer')) ?>"><?= e(__('ui.action.delete')) ?></button>
+                                <button type="submit" class="btn small danger-btn" data-confirm="<?= e(__('ui.message.bot_delete_timer')) ?>"><?= icon_label('trash', __('ui.action.delete')) ?></button>
                             </form>
                         </td>
                         <td data-card-title class="bot-reply" data-label="<?= e(__('ui.field.bot_timer_message')) ?>">

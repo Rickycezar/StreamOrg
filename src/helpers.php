@@ -27,6 +27,55 @@ function url(string $path = '/'): string
     return $base . '/' . ltrim($path, '/');
 }
 
+/**
+ * The values of a list filter in the query string, given once (?status=x)
+ * or several times (?status[]=x&status[]=y); with $allowed, only those.
+ *
+ * @param ?list<string> $allowed
+ * @return list<string>
+ */
+function filter_values(string $name, ?array $allowed = null): array
+{
+    $raw    = $_GET[$name] ?? [];
+    $values = [];
+
+    foreach (is_array($raw) ? $raw : [$raw] as $value) {
+        $value = is_string($value) ? trim($value) : '';
+
+        if ($value !== '' && ($allowed === null || in_array($value, $allowed, true)) && !in_array($value, $values, true)) {
+            $values[] = $value;
+        }
+    }
+
+    return $values;
+}
+
+/** A PostgreSQL text[] literal of $values, for "column = ANY(?::text[])". */
+function pg_text_array(array $values): string
+{
+    return '{' . implode(',', array_map(
+        static fn ($v): string => '"' . strtr((string) $v, ['\\' => '\\\\', '"' => '\\"']) . '"',
+        $values
+    )) . '}';
+}
+
+/** An action button's content: its icon, and its label (shown as a tooltip in tables, beside the icon in menus). */
+function icon_label(string $icon, string $label): string
+{
+    return Icons::svg($icon) . '<span class="btn-label">' . e($label) . '</span>';
+}
+
+/**
+ * The attributes that give a table row its game art, faded in behind the
+ * start of the row; a game without art gets the "no picture" one.
+ */
+function row_art(?string $path, ?string $version): string
+{
+    $src = $path ? GameImages::publicUrl($path, (string) $version) : url('/assets/game-missing.svg');
+
+    return ' data-row-art' . ($path ? '' : '="missing"') . ' style="--row-art: url(&quot;' . e($src) . '&quot;)"';
+}
+
 /** Emits JSON and stops. Used by every AJAX endpoint. */
 function json_response(array $payload, int $status = 200): never
 {

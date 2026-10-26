@@ -71,6 +71,7 @@ final class DashboardController
         $stmt = $pdo->prepare(
             "SELECT s.id, s.title, s.deadline,
                     string_agg(g.title, ', ' ORDER BY sg.play_order) AS games,
+                    (array_agg(sg.game_id ORDER BY sg.play_order))[1] AS game_id,
                     (array_agg(t.path ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_path,
                     (array_agg(t.updated_at ORDER BY sg.play_order) FILTER (WHERE t.path IS NOT NULL))[1] AS thumb_version
                FROM streams s
@@ -83,14 +84,18 @@ final class DashboardController
               LIMIT 30"
         );
         $stmt->execute([$userId]);
+        $backlog = $stmt->fetchAll();
+        $art     = GameImages::artFor($pdo, array_column($backlog, 'game_id'));
 
-        $backlog = array_map(static function (array $row): array {
+        $backlog = array_map(static function (array $row) use ($art): array {
             $row['thumb'] = $row['thumb_path'] !== null
                 ? GameImages::publicUrl($row['thumb_path'], (string) $row['thumb_version'])
                 : null;
+            $row['art_path']    = $art[(int) $row['game_id']]['path'] ?? null;
+            $row['art_version'] = $art[(int) $row['game_id']]['updated_at'] ?? null;
 
             return $row;
-        }, $stmt->fetchAll());
+        }, $backlog);
 
         $stmt = $pdo->prepare(
             "SELECT kind, label, at FROM (
@@ -124,21 +129,10 @@ final class DashboardController
         $upcoming = $stmt->fetchAll();
 
         $attention = [
-            'undated'      => $one(
+            'undated' => $one(
                 "SELECT count(*) FROM streams WHERE user_id = ? AND status = 'planned' AND scheduled_start IS NULL",
                 [$userId]
             ),
-            'unkeyed'      => $one(
-                "SELECT count(*) FROM stream_games sg JOIN streams s ON s.id = sg.stream_id
-                  WHERE s.user_id = ? AND s.status = 'planned' AND sg.game_key_id IS NULL",
-                [$userId]
-            ),
-            'conflicts'    => $one(
-                'SELECT count(DISTINCT stream_id) FROM content_key_warnings
-                  WHERE user_id = ? AND (breaks_embargo OR expires_before_use OR misses_deadline OR overdue OR impossible_window)',
-                [$userId]
-            ),
-            'placeholders' => $one('SELECT count(*) FROM game_keys WHERE user_id = ? AND is_placeholder', [$userId]),
         ];
 
         $hour = (int) (new DateTimeImmutable())->format('G');

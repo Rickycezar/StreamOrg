@@ -67,6 +67,7 @@ Lang::setSwitchable(Lang::fixedFor((string) ($_SERVER['HTTP_HOST'] ?? ''), (arra
 
 if (($user = Auth::user()) !== null) {
     date_default_timezone_set((string) ($user['timezone'] ?: Config::get('app.timezone', 'UTC')));
+    Database::useTimezone(date_default_timezone_get());
 }
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -84,6 +85,8 @@ $routes = [
         '/'                  => [LandingController::class, 'index'],
         '/healthz'           => [HealthController::class, 'index'],
         '/language'          => [LocaleController::class, 'switch'],
+        '/collabs/session/messages' => [CollabController::class, 'messages'],
+        '/content/today-slot' => [ContentController::class, 'todaySlot'],
         '/dashboard'         => [DashboardController::class, 'index'],
         '/login'             => [AuthController::class, 'showLogin'],
         '/keys'              => [KeysController::class, 'index'],
@@ -220,6 +223,9 @@ $routes = [
         '/content'           => [ContentController::class, 'store'],
         '/content/status'    => [ContentController::class, 'updateStatus'],
         '/content/schedule'  => [ContentController::class, 'schedule'],
+        '/content/today'     => [ContentController::class, 'scheduleToday'],
+        '/collabs/session/message' => [CollabController::class, 'message'],
+        '/collabs/session/send' => [CollabController::class, 'sendInvites'],
         '/content/twitch-schedule' => [ContentController::class, 'twitchSchedule'],
         '/content/update'    => [ContentController::class, 'update'],
         '/keys/update'       => [KeysController::class, 'update'],
@@ -308,6 +314,7 @@ $routes = [
         '/collabs/plan'      => [CollabController::class, 'plan'],
         '/admin/games'       => [AdminController::class, 'storeGame'],
         '/admin/games/category' => [AdminController::class, 'gameCategory'],
+        '/admin/games/hashtag' => [AdminController::class, 'gameHashtag'],
         '/admin/games/categories' => [AdminController::class, 'findCategories'],
         '/admin/games/steam' => [AdminController::class, 'attachSteam'],
         '/admin/games/convert' => [AdminController::class, 'convertGames'],

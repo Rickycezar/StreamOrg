@@ -50,15 +50,15 @@ $counts = array_count_values(array_column($rows, 'state'));
                 </thead>
                 <tbody>
                 <?php foreach ($rows as $r): ?>
-                    <tr class="state-<?= e($r['state']) ?><?= $fresh === (int) $r['winner_id'] ? ' just-added' : '' ?>">
+                    <tr class="state-<?= e($r['state']) ?><?= $fresh === (int) $r['winner_id'] ? ' just-added' : '' ?>"<?= $r['key_id'] ? row_art($r['art_path'], $r['art_version']) : '' ?>>
                         <td class="rowactions">
                             <?php if ($r['link'] !== null): ?>
                                 <input type="text" class="visually-hidden" id="given-link-<?= (int) $r['winner_id'] ?>" value="<?= e($r['link']) ?>" readonly tabindex="-1" aria-hidden="true">
-                                <button type="button" class="btn small<?= $fresh === (int) $r['winner_id'] ? ' primary' : '' ?>" data-copy="#given-link-<?= (int) $r['winner_id'] ?>"><?= e(__('ui.action.copy_link')) ?></button>
+                                <button type="button" class="btn small<?= $fresh === (int) $r['winner_id'] ? ' primary' : '' ?>" data-copy="#given-link-<?= (int) $r['winner_id'] ?>"><?= icon_label('link', __('ui.action.copy_link')) ?></button>
                                 <form method="post" action="<?= e(url('/keys/given/cancel')) ?>">
                                     <?= Csrf::field() ?>
                                     <input type="hidden" name="winner_id" value="<?= (int) $r['winner_id'] ?>">
-                                    <button type="submit" class="btn small ghost" data-confirm="<?= e(__($r['is_direct'] ? 'ui.message.gift_cancel_confirm' : 'ui.message.winner_cancel_confirm')) ?>"><?= e(__('ui.action.withdraw')) ?></button>
+                                    <button type="submit" class="btn small ghost" data-confirm="<?= e(__($r['is_direct'] ? 'ui.message.gift_cancel_confirm' : 'ui.message.winner_cancel_confirm')) ?>"><?= icon_label('undo', __('ui.action.withdraw')) ?></button>
                                 </form>
                             <?php endif; ?>
                         </td>

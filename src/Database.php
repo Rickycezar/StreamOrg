@@ -25,7 +25,26 @@ final class Database
             sslmode:  (string) ($db['sslmode'] ?? 'prefer'),
         );
 
+        self::useTimezone(date_default_timezone_get());
+
         return self::$pdo;
+    }
+
+    /**
+     * Makes the database read and write wall-clock times in the given time
+     * zone (the signed-in user's), the same one PHP uses: a form's
+     * "2026-10-26T19:00" is then 19:00 where the user is, and dates come
+     * back in their time, whatever zone the server runs in.
+     */
+    public static function useTimezone(string $zone): void
+    {
+        if (!in_array($zone, DateTimeZone::listIdentifiers(), true) && $zone !== 'UTC') {
+            $zone = 'UTC';
+        }
+
+        if (self::$pdo instanceof PDO) {
+            self::$pdo->exec('SET TIME ZONE ' . self::$pdo->quote($zone));
+        }
     }
 
     /**

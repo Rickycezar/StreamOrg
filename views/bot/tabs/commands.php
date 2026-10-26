@@ -35,11 +35,11 @@
                     <tr class="<?= $command['is_enabled'] ? '' : 'muted' ?>">
                         <td class="rowactions">
                             <button type="button" class="btn small" data-modal-form="#custom-<?= (int) $command['id'] ?>"
-                                    data-modal-title="<?= e($prefix . $command['trigger']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                                    data-modal-title="<?= e($prefix . $command['trigger']) ?>"><?= icon_label('edit', __('ui.action.edit')) ?></button>
                             <form method="post" action="<?= e(url('/bot/custom/delete')) ?>">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="id" value="<?= (int) $command['id'] ?>">
-                                <button type="submit" class="btn small danger-btn" data-confirm="<?= e(sprintf(__('ui.message.bot_delete_command'), $prefix . $command['trigger'])) ?>"><?= e(__('ui.action.delete')) ?></button>
+                                <button type="submit" class="btn small danger-btn" data-confirm="<?= e(sprintf(__('ui.message.bot_delete_command'), $prefix . $command['trigger'])) ?>"><?= icon_label('trash', __('ui.action.delete')) ?></button>
                             </form>
                         </td>
                         <td data-card-title data-label="<?= e(__('ui.field.bot_trigger')) ?>"><code><?= e($prefix . $command['trigger']) ?></code><?php if (!$command['is_enabled']): ?> <span class="badge off"><?= e(__('ui.label.off')) ?></span><?php endif; ?></td>

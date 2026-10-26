@@ -47,7 +47,7 @@
                             <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
                             <button type="submit" class="btn small"
                                     <?= $mine ? 'data-confirm="' . e(__('ui.message.confirm_revoke_current')) . '"' : '' ?>>
-                                <?= e(__('ui.action.sign_out')) ?>
+                                <?= icon_label('log-out', __('ui.action.sign_out')) ?>
                             </button>
                         </form>
                     </td>

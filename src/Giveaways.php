@@ -77,6 +77,18 @@ final class Giveaways
         return $stmt->fetch() ?: null;
     }
 
+    /**
+     * Whether a giveaway already has winners (withdrawn ones aside): its
+     * winner mode can no longer change, as the claims depend on it.
+     */
+    public static function hasWinners(int $giveawayId): bool
+    {
+        $stmt = Database::connection()->prepare('SELECT 1 FROM giveaway_winners WHERE giveaway_id = ? AND cancelled_at IS NULL LIMIT 1');
+        $stmt->execute([$giveawayId]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
     /** Key statuses that can become a prize or a gift; an available key is then marked "for giveaway". */
     public const GIFTABLE = ['for_giveaway', 'available'];
 
@@ -437,7 +449,8 @@ final class Giveaways
             'SELECT w.id AS winner_id, w.twitch_user_id, w.twitch_login, w.display_name, w.method, w.created_at AS sent_at,
                     w.claimed_at, w.expires_at, w.cancelled_at, w.removed_at, w.claim_token, w.claim_token_hash,
                     gw.id AS giveaway_id, gw.title AS giveaway_title, gw.is_direct, gw.winner_mode,
-                    k.id AS key_id, g.title AS game_title, gp.code AS platform_code, kp.code AS key_site
+                    k.id AS key_id, g.title AS game_title, gp.code AS platform_code, kp.code AS key_site,
+                    art.path AS art_path, art.updated_at AS art_version
                FROM giveaway_winners w
                JOIN giveaways gw ON gw.id = w.giveaway_id
           LEFT JOIN giveaway_prizes p ON p.winner_id = w.id
@@ -445,6 +458,7 @@ final class Giveaways
           LEFT JOIN games g ON g.id = k.game_id
           LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
           LEFT JOIN key_platforms kp ON kp.id = k.key_platform_id
+          ' . GameImages::artJoin('k.game_id') . '
               WHERE gw.user_id = ?
            ORDER BY w.created_at DESC, w.id DESC'
         );

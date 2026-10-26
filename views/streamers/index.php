@@ -5,6 +5,13 @@
 <h1><?= e(__('ui.nav.streamers')) ?></h1>
 <p class="muted"><?= e(__('ui.message.streamers_intro')) ?></p>
 
+<?php $tab = ($_GET['tab'] ?? '') === 'add' ? 'add' : 'streamers'; ?>
+<?= View::partial('partials/tabs', ['name' => 'streamers', 'active' => $tab, 'tabs' => [
+    'streamers' => __('ui.nav.streamers'),
+    'add' => __('ui.action.import_twitch'),
+]]) ?>
+
+<div data-tab-panel="add" <?= $tab === 'add' ? '' : 'hidden' ?>>
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.action.import_twitch')) ?></h2>
@@ -24,16 +31,12 @@
         <div id="twitch-results" class="results"></div>
     <?php endif; ?>
 </section>
+</div>
 
-<form class="card filters" method="get" action="<?= e(url('/streamers')) ?>">
-    <label class="grow">
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($filters['q']) ?>">
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/streamers')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+<div data-tab-panel="streamers" <?= $tab === 'streamers' ? '' : 'hidden' ?>>
+<form class="card filters" method="get" action="<?= e(url('/streamers')) ?>" data-filters>
+    <?= View::partial('partials/filter_search', ['value' => $filters['q']]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/streamers', 'active' => $filters['q'] !== '']) ?>
 </form>
 
 <section class="card">
@@ -102,10 +105,10 @@
                     <td class="rowactions">
                         <?php if ($row['source_ref']): ?>
                             <button type="button" class="btn small streamer-refresh" data-ref="<?= e($row['source_ref']) ?>"
-                                    title="<?= e(__('ui.action.refresh_hint')) ?>"><?= e(__('ui.action.refresh')) ?></button>
+                                    title="<?= e(__('ui.action.refresh_hint')) ?>"><?= icon_label('refresh', __('ui.action.refresh')) ?></button>
                         <?php endif; ?>
                         <button type="button" class="btn small" data-modal-form="#edit-streamer-<?= (int) $row['id'] ?>"
-                                data-modal-title="<?= e($row['name']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                                data-modal-title="<?= e($row['name']) ?>"><?= icon_label('edit', __('ui.action.edit')) ?></button>
                     </td>
                     <td data-card-title data-col="name" data-label="<?= e(__('ui.field.name')) ?>">
                         <span class="streamer-name">
@@ -196,3 +199,4 @@
         </div>
     <?php endif; ?>
 </section>
+</div>

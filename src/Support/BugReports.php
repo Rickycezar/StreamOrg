@@ -334,7 +334,7 @@ final class BugReports
      *
      * @return list<array<string, mixed>>
      */
-    public static function adminList(string $show = 'open', string $priority = '', string $impact = '', string $query = ''): array
+    public static function adminList(string $show = 'open', string|array $priority = [], string|array $impact = [], string $query = ''): array
     {
         $where  = [];
         $params = [];
@@ -349,14 +349,17 @@ final class BugReports
             $params['status'] = $show;
         }
 
-        if (in_array($priority, self::PRIORITIES, true)) {
-            $where[] = 'b.priority = :priority';
-            $params['priority'] = $priority;
+        $priority = array_values(array_intersect((array) $priority, self::PRIORITIES));
+        $impact   = array_values(array_intersect((array) $impact, self::IMPACTS));
+
+        if ($priority !== []) {
+            $where[] = 'b.priority = ANY(CAST(:priority AS text[]))';
+            $params['priority'] = pg_text_array($priority);
         }
 
-        if (in_array($impact, self::IMPACTS, true)) {
-            $where[] = 'b.impact = :impact';
-            $params['impact'] = $impact;
+        if ($impact !== []) {
+            $where[] = 'b.impact = ANY(CAST(:impact AS text[]))';
+            $params['impact'] = pg_text_array($impact);
         }
 
         if (trim($query) !== '') {

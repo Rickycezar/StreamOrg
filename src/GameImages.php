@@ -129,6 +129,47 @@ final class GameImages
         return null;
     }
 
+    /**
+     * A LEFT JOIN LATERAL for a list query: the game's wide art (the Steam
+     * header, else the capsule) as <alias>.path and <alias>.updated_at.
+     */
+    public static function artJoin(string $gameId, string $alias = 'art'): string
+    {
+        return "LEFT JOIN LATERAL (
+                     SELECT i.path, i.updated_at FROM game_images i
+                      WHERE i.game_id = {$gameId} AND i.kind IN ('header', 'capsule')
+                   ORDER BY i.kind = 'header' DESC LIMIT 1
+                 ) {$alias} ON true";
+    }
+
+    /**
+     * The wide art of several games at once, for lists that cannot join it.
+     *
+     * @param list<int> $gameIds
+     * @return array<int, array{path:string, updated_at:string}>
+     */
+    public static function artFor(PDO $pdo, array $gameIds): array
+    {
+        $gameIds = array_values(array_unique(array_filter(array_map('intval', $gameIds))));
+        if ($gameIds === []) {
+            return [];
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT DISTINCT ON (game_id) game_id, path, updated_at FROM game_images
+              WHERE game_id = ANY(?::int[]) AND kind IN ('header', 'capsule')
+           ORDER BY game_id, kind = 'header' DESC"
+        );
+        $stmt->execute(['{' . implode(',', $gameIds) . '}']);
+
+        $art = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $art[(int) $row['game_id']] = ['path' => (string) $row['path'], 'updated_at' => (string) $row['updated_at']];
+        }
+
+        return $art;
+    }
+
     public static function publicUrl(string $path, string $version): string
     {
         return url('/' . $path) . '?v=' . substr(md5($version), 0, 8);

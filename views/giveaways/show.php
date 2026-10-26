@@ -204,14 +204,14 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                 </thead>
                 <tbody>
                 <?php foreach ($prizes as $p): ?>
-                    <tr>
+                    <tr<?= row_art($p['art_path'], $p['art_version']) ?>>
                         <td class="rowactions">
                             <?php if (!$p['claimed_at']): ?>
                                 <form method="post" action="<?= e(url('/giveaways/prizes/remove')) ?>">
                                     <?= Csrf::field() ?>
                                     <input type="hidden" name="id" value="<?= $id ?>">
                                     <input type="hidden" name="prize_id" value="<?= (int) $p['id'] ?>">
-                                    <button type="submit" class="btn small"><?= e(__('ui.action.remove')) ?></button>
+                                    <button type="submit" class="btn small"><?= icon_label('x', __('ui.action.remove')) ?></button>
                                 </form>
                             <?php endif; ?>
                         </td>

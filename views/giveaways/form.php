@@ -52,13 +52,16 @@ $local = static fn (?string $at): string => $at ? substr(str_replace(' ', 'T', $
                 <?php endforeach; ?>
             </select>
         </label>
+        <?php $modeLocked = $g !== null && Giveaways::hasWinners((int) $g['id']); ?>
         <label>
             <span><?= e(__('ui.field.winner_mode')) ?></span>
-            <select name="winner_mode">
+            <?php if ($modeLocked): ?><input type="hidden" name="winner_mode" value="<?= e((string) $g['winner_mode']) ?>"><?php endif; ?>
+            <select <?= $modeLocked ? 'disabled' : 'name="winner_mode"' ?>>
                 <?php foreach (Giveaways::WINNER_MODES as $mode): ?>
                     <option value="<?= e($mode) ?>" <?= $v('winner_mode', 'pick') === $mode ? 'selected' : '' ?>><?= e(code_label('winner_mode', $mode)) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php if ($modeLocked): ?><small class="muted"><?= e(__('ui.message.giveaway_mode_locked_hint')) ?></small><?php endif; ?>
         </label>
         <label class="grow">
             <span><?= e(__('ui.field.during_content')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>

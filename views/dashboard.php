@@ -106,9 +106,8 @@ $kindLabel = [
                         <span class="today-body">
                             <strong><?= e($item['title']) ?></strong>
                             <small class="muted"><?= e($item['games'] ?: __('ui.dashboard.no_games')) ?></small>
-                            <?php if ((int) $item['unkeyed'] > 0 || $item['breaks_embargo']): ?>
+                            <?php if ($item['breaks_embargo']): ?>
                                 <span class="today-flags">
-                                    <?php if ((int) $item['unkeyed'] > 0): ?><span class="badge warn"><?= e(__('ui.label.no_key')) ?></span><?php endif; ?>
                                     <?php if ($item['breaks_embargo']): ?><span class="badge danger"><?= e(__('ui.label.before_embargo')) ?></span><?php endif; ?>
                                 </span>
                             <?php endif; ?>
@@ -170,34 +169,29 @@ $kindLabel = [
         <?php endif; ?>
     </section>
 
-    <section class="card">
-        <h2><?= e(__('ui.label.needs_attention')) ?></h2>
-        <ul class="todo">
-            <li class="<?= $attention['undated'] > 0 ? 'on' : '' ?>">
-                <a href="<?= e(url('/content?dated=undated')) ?>">
-                    <strong><?= (int) $attention['undated'] ?></strong>
-                    <?= e(__('ui.label.todo_undated')) ?>
-                </a>
-            </li>
-            <li class="<?= $attention['unkeyed'] > 0 ? 'on' : '' ?>">
-                <a href="<?= e(url('/content?keyed=without')) ?>">
-                    <strong><?= (int) $attention['unkeyed'] ?></strong>
-                    <?= e(__('ui.label.todo_unkeyed')) ?>
-                </a>
-            </li>
-            <li class="<?= $attention['conflicts'] > 0 ? 'on danger' : '' ?>">
-                <a href="<?= e(url('/content')) ?>">
-                    <strong><?= (int) $attention['conflicts'] ?></strong>
-                    <?= e(__('ui.dashboard.todo_conflicts')) ?>
-                </a>
-            </li>
-            <li class="<?= $attention['placeholders'] > 0 ? 'on' : '' ?>">
-                <a href="<?= e(url('/keys')) ?>">
-                    <strong><?= (int) $attention['placeholders'] ?></strong>
-                    <?= e(__('ui.label.todo_placeholders')) ?>
-                </a>
-            </li>
-        </ul>
+    <section class="card undated-card">
+        <div class="card-head">
+            <h2><?= e(__('ui.dashboard.undated_title')) ?><?php if ($attention['undated'] > 0): ?> <span class="muted">(<?= (int) $attention['undated'] ?>)</span><?php endif; ?></h2>
+            <a class="btn small ghost" href="<?= e(url('/content?tab=list&dated=undated')) ?>"><?= e(__('ui.dashboard.undated_all')) ?></a>
+        </div>
+        <?php if ($backlog === []): ?>
+            <p class="empty"><?= e(__('ui.dashboard.undated_empty')) ?></p>
+        <?php else: ?>
+            <ul class="undated-list icon-actions">
+                <?php foreach ($backlog as $item): ?>
+                    <li class="undated-row"<?= $item['game_id'] ? row_art($item['art_path'], $item['art_version']) : '' ?>>
+                        <button type="button" class="undated-open content-detail" data-id="<?= (int) $item['id'] ?>">
+                            <small class="undated-game"><?= e($item['games'] ?: __('ui.dashboard.no_games')) ?></small>
+                            <strong class="undated-title"><?= e($item['title']) ?></strong>
+                        </button>
+                        <?php if ($item['deadline']): ?>
+                            <span class="badge undated-due" title="<?= e(__('ui.field.deadline') . ' ' . fmt_date($item['deadline'])) ?>"><?= e(fmt_datetime($item['deadline'], 'd/m')) ?></span>
+                        <?php endif; ?>
+                        <button type="button" class="btn small" data-today-id="<?= (int) $item['id'] ?>"><?= icon_label('calendar', __('ui.dashboard.add_today')) ?></button>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </section>
 </div>
 

@@ -71,10 +71,10 @@ final class CollabController
             $onStreamOrg[$collabId] = count(array_intersect_key($linked, array_flip($ids)));
         }
 
-        $active = $pdo->prepare("SELECT collab_id, id FROM collab_sessions WHERE host_user_id = ? AND status = 'active' AND collab_id IS NOT NULL");
+        $active = $pdo->prepare("SELECT collab_id, id FROM collab_sessions WHERE host_user_id = ? AND status IN ('draft', 'active') AND collab_id IS NOT NULL");
         $active->execute([$userId]);
 
-        $stmt = $pdo->prepare('SELECT id, name FROM streamers WHERE user_id = ? ORDER BY is_favorite DESC, name');
+        $stmt = $pdo->prepare('SELECT id, name, avatar_url FROM streamers WHERE user_id = ? ORDER BY is_favorite DESC, name');
         $stmt->execute([$userId]);
         $streamers = $stmt->fetchAll();
 
@@ -319,8 +319,28 @@ final class CollabController
             redirect('/collabs');
         }
 
-        flash('success', __('ui.message.together_invites_sent'));
         redirect(CollabSessions::LINK . $sessionId);
+    }
+
+    /** POST /collabs/session/send — the host sends a draft plan's invitations, with its time and a first message. */
+    public static function sendInvites(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify();
+
+        $id    = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0;
+        $raw   = trim((string) ($_POST['start'] ?? ''));
+        $start = $raw === '' ? null : (DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $raw, new DateTimeZone(date_default_timezone_get())) ?: null);
+
+        try {
+            CollabSessions::sendInvites((int) Auth::id(), $id, $start, (int) ($_POST['minutes'] ?? 0), (string) ($_POST['message'] ?? ''));
+        } catch (UserError $e) {
+            flash('error', $e->getMessage());
+            redirect(CollabSessions::LINK . $id);
+        }
+
+        flash('success', __('ui.message.together_invites_sent'));
+        redirect(CollabSessions::LINK . $id);
     }
 
     /** GET /collabs/session?id= — a joint plan, as one of its participants sees it. */
@@ -335,7 +355,63 @@ final class CollabController
             redirect('/collabs');
         }
 
+        Notifications::markReadFor((int) Auth::id(), CollabSessions::LINK . (int) $session['id']);
         View::render('collabs/session', ['session' => $session, 'userId' => (int) Auth::id()], $session['title']);
+    }
+
+    /** GET /collabs/session/messages?id=…&after=… — the plan's chat, newer than a message. */
+    public static function messages(): void
+    {
+        Auth::requireLogin();
+
+        try {
+            $rows = CollabSessions::messages(
+                (int) Auth::id(),
+                filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 0,
+                filter_input(INPUT_GET, 'after', FILTER_VALIDATE_INT) ?: 0
+            );
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 403);
+        }
+
+        json_response(['ok' => true, 'items' => array_map([self::class, 'chatItem'], $rows)]);
+    }
+
+    /** POST /collabs/session/message — write in the plan's chat. */
+    public static function message(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(json: true);
+
+        try {
+            CollabSessions::postMessage((int) Auth::id(), filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0, (string) ($_POST['body'] ?? ''));
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        }
+
+        json_response(['ok' => true]);
+    }
+
+    /**
+     * One chat message for the page: who wrote it (with their picture or
+     * initials), when, and the text.
+     *
+     * @return array<string, mixed>
+     */
+    public static function chatItem(array $row): array
+    {
+        $user = ['id' => $row['uid'], 'username' => $row['username'], 'display_name' => $row['display_name'],
+                 'avatar_path' => $row['avatar_path'], 'avatar_updated_at' => $row['avatar_updated_at']];
+        $at   = (new DateTimeImmutable((string) $row['created_at']))->setTimezone(new DateTimeZone(date_default_timezone_get()));
+
+        return [
+            'id'     => (int) $row['id'],
+            'mine'   => (int) $row['user_id'] === (int) Auth::id(),
+            'name'   => $row['name'],
+            'avatar' => View::partial('partials/avatar', ['avatarUser' => $user, 'avatarSize' => 'sm']),
+            'at'     => $at->format($at->format('Y-m-d') === (new DateTimeImmutable('today'))->format('Y-m-d') ? 'H:i' : 'd/m H:i'),
+            'body'   => $row['body'],
+        ];
     }
 
     /** POST /collabs/session/respond — accept or decline an invitation. */

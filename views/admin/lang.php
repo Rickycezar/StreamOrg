@@ -67,26 +67,14 @@
 </form>
 <?php endif; ?>
 
-<form class="card filters" method="get" action="<?= e(url('/admin/lang')) ?>">
+<form class="card filters" method="get" action="<?= e(url('/admin/lang')) ?>" data-filters>
     <input type="hidden" name="locale" value="<?= e($locale) ?>">
-    <label>
-        <span><?= e(__('ui.field.group')) ?></span>
-        <select name="group" data-autosubmit>
-            <?php foreach ($groups as $g): ?>
-                <option value="<?= e($g) ?>" <?= $g === $group ? 'selected' : '' ?>><?= e($g) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <label class="grow">
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($search) ?>">
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/admin/lang?locale=' . urlencode($locale) . '&group=' . urlencode($group))) ?>">
-            <?= e(__('ui.action.clear')) ?>
-        </a>
-    </div>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'group', 'label' => __('ui.field.group'), 'selected' => $group, 'multiple' => false, 'any' => false,
+        'options' => array_combine($groups, $groups),
+    ]) ?>
+    <?= View::partial('partials/filter_search', ['value' => $search]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/admin/lang?locale=' . urlencode($locale) . '&group=' . urlencode($group), 'active' => $search !== '']) ?>
 </form>
 
 <form class="card" method="post" action="<?= e(url('/admin/lang')) ?>">

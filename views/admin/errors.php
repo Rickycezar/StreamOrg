@@ -6,7 +6,7 @@
  * trace. Problems can be resolved (one, or every one ticked) and opened
  * again; resolved ones can be cleared.
  *
- * @var list<array> $errors @var array<string,int> $counts @var string $show @var string $level @var string $query @var ?int $focus
+ * @var list<array> $errors @var array<string,int> $counts @var string $show @var list<string> $level @var string $query @var ?int $focus
  */
 $keep = static fn (array $change): string => url('/admin/errors?' . http_build_query(array_filter(array_merge(['show' => $show, 'level' => $level, 'q' => $query], $change))));
 $open = array_filter($errors, static fn (array $e): bool => $e['resolved_at'] === null);
@@ -16,45 +16,32 @@ $open = array_filter($errors, static fn (array $e): bool => $e['resolved_at'] ==
 
 <section class="tiles compact error-tiles">
     <?php foreach (ErrorLog::LEVELS as $l): ?>
-        <a class="tile level-<?= e($l) ?><?= $level === $l ? ' active' : '' ?>" href="<?= e($keep(['level' => $level === $l ? '' : $l, 'show' => 'open'])) ?>">
+        <a class="tile level-<?= e($l) ?><?= $level === [$l] ? ' active' : '' ?>" href="<?= e($keep(['level' => $level === [$l] ? '' : $l, 'show' => 'open'])) ?>">
             <span class="tile-value"><?= (int) $counts[$l] ?></span>
             <span class="tile-label"><?= e(code_label('error_level', $l)) ?></span>
         </a>
     <?php endforeach; ?>
 </section>
 
-<form class="card filters" method="get" action="<?= e(url('/admin/errors')) ?>">
-    <label>
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($query) ?>" placeholder="<?= e(__('ui.label.errors_search_hint')) ?>">
-    </label>
-    <label>
-        <span><?= e(__('ui.field.status')) ?></span>
-        <select name="show">
-            <?php foreach (ErrorLogController::SHOWS as $s): ?>
-                <option value="<?= e($s) ?>" <?= $show === $s ? 'selected' : '' ?>><?= e(__('ui.label.errors_show_' . $s)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <label>
-        <span><?= e(__('ui.field.error_level')) ?></span>
-        <select name="level">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach (ErrorLog::LEVELS as $l): ?>
-                <option value="<?= e($l) ?>" <?= $level === $l ? 'selected' : '' ?>><?= e(code_label('error_level', $l)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/admin/errors')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+<form class="card filters" method="get" action="<?= e(url('/admin/errors')) ?>" data-filters>
+    <?= View::partial('partials/filter_search', ['value' => $query, 'placeholder' => __('ui.label.errors_search_hint')]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'show', 'label' => __('ui.field.status'), 'selected' => $show, 'multiple' => false, 'any' => false,
+        'options' => array_combine(ErrorLogController::SHOWS, array_map(static fn ($s) => __('ui.label.errors_show_' . $s), ErrorLogController::SHOWS)),
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'level', 'label' => __('ui.field.error_level'), 'selected' => $level,
+        'options' => array_combine(ErrorLog::LEVELS, array_map(static fn ($l) => code_label('error_level', $l), ErrorLog::LEVELS)),
+    ]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/admin/errors', 'active' => $query !== '' || $level !== [] || $show !== 'open']) ?>
 </form>
 
 <form method="post" action="<?= e(url('/admin/errors/resolve')) ?>" class="card error-log" data-error-log>
     <?= Csrf::field() ?>
     <input type="hidden" name="show" value="<?= e($show) ?>">
-    <input type="hidden" name="level" value="<?= e($level) ?>">
+    <?php foreach ($level as $l): ?>
+        <input type="hidden" name="level[]" value="<?= e($l) ?>">
+    <?php endforeach; ?>
     <input type="hidden" name="q" value="<?= e($query) ?>">
 
     <div class="card-head">

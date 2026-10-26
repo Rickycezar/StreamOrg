@@ -175,11 +175,11 @@ final class KeysController
         $userId = Auth::id();
 
         $filters = [
-            'status'       => (string) ($_GET['status'] ?? ''),
-            'key_type'     => (string) ($_GET['key_type'] ?? ''),
-            'content_type' => (string) ($_GET['content_type'] ?? ''),
-            'platform'     => (string) ($_GET['platform'] ?? ''),
-            'source'       => (string) ($_GET['source'] ?? ''),
+            'status'       => filter_values('status', self::STATUSES),
+            'key_type'     => filter_values('key_type', ['common', 'review']),
+            'content_type' => filter_values('content_type', ['game', 'dlc']),
+            'platform'     => filter_values('platform'),
+            'source'       => filter_values('source'),
             'q'            => trim((string) ($_GET['q'] ?? '')),
         ];
 
@@ -187,29 +187,11 @@ final class KeysController
 
         $params = ['user_id' => $userId];
 
-        if (in_array($filters['status'], self::STATUSES, true)) {
-            $sql .= ' AND k.status = :status';
-            $params['status'] = $filters['status'];
-        }
-
-        if (in_array($filters['key_type'], ['common', 'review'], true)) {
-            $sql .= ' AND k.key_type = :key_type';
-            $params['key_type'] = $filters['key_type'];
-        }
-
-        if (in_array($filters['content_type'], ['game', 'dlc'], true)) {
-            $sql .= ' AND k.content_type = :content_type';
-            $params['content_type'] = $filters['content_type'];
-        }
-
-        if ($filters['platform'] !== '') {
-            $sql .= ' AND gp.code = :platform';
-            $params['platform'] = $filters['platform'];
-        }
-
-        if ($filters['source'] !== '') {
-            $sql .= ' AND kp.code = :source';
-            $params['source'] = $filters['source'];
+        foreach (['status' => 'k.status', 'key_type' => 'k.key_type', 'content_type' => 'k.content_type', 'platform' => 'gp.code', 'source' => 'kp.code'] as $name => $column) {
+            if ($filters[$name] !== []) {
+                $sql .= " AND {$column} = ANY(CAST(:{$name} AS text[]))";
+                $params[$name] = pg_text_array($filters[$name]);
+            }
         }
 
         if ($filters['q'] !== '') {
@@ -465,20 +447,21 @@ final class KeysController
         $insert = $pdo->prepare(
             'INSERT INTO game_keys
                  (user_id, game_id, key_platform_id, game_platform_id, key_code, key_hash,
-                  key_type, content_type, status, notes, expires_at, received_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+                  key_type, content_type, status, notes, region, expires_at, received_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
              ON CONFLICT (user_id, game_platform_id, key_hash) WHERE key_hash IS NOT NULL DO NOTHING'
         );
 
         $added  = 0;
         $notes  = trim((string) ($_POST['notes'] ?? '')) ?: null;
+        $region = mb_substr(trim((string) ($_POST['region'] ?? '')), 0, 50) ?: null;
         $userId = (int) Auth::id();
 
         foreach ($lines as $line) {
             $insert->execute([
                 $userId, $gameId, $sourceId, $platformId,
                 Vault::encryptCode($userId, $line), Vault::hashCode($userId, $line),
-                $keyType, $contentType, $status, $notes, $expires,
+                $keyType, $contentType, $status, $notes, $region, $expires,
             ]);
             $added += $insert->rowCount();
         }

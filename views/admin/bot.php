@@ -166,7 +166,7 @@ $tone  = match ($state) {
                                     <?= Csrf::field() ?>
                                     <input type="hidden" name="user_id" value="<?= (int) $channel['user_id'] ?>">
                                     <input type="hidden" name="enabled" value="<?= $channel['is_enabled'] ? '0' : '1' ?>">
-                                    <button type="submit" class="btn small<?= $channel['is_enabled'] ? '' : ' primary' ?>"<?= $channel['is_blocked'] && !$channel['is_enabled'] ? ' disabled' : '' ?>><?= e(__($channel['is_enabled'] ? 'ui.action.bot_remove_channel' : 'ui.action.bot_add_channel')) ?></button>
+                                    <button type="submit" class="btn small<?= $channel['is_enabled'] ? '' : ' primary' ?>"<?= $channel['is_blocked'] && !$channel['is_enabled'] ? ' disabled' : '' ?>><?= icon_label($channel['is_enabled'] ? 'minus' : 'plus', __($channel['is_enabled'] ? 'ui.action.bot_remove_channel' : 'ui.action.bot_add_channel')) ?></button>
                                 </form>
                             <?php endif; ?>
                             <?php if ($channel['added']): ?>
@@ -174,7 +174,7 @@ $tone  = match ($state) {
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="user_id" value="<?= (int) $channel['user_id'] ?>">
                                 <input type="hidden" name="blocked" value="<?= $channel['is_blocked'] ? '0' : '1' ?>">
-                                <button type="submit" class="btn small<?= $channel['is_blocked'] ? '' : ' danger-btn' ?>"><?= e(__($channel['is_blocked'] ? 'ui.action.unblock' : 'ui.action.block')) ?></button>
+                                <button type="submit" class="btn small<?= $channel['is_blocked'] ? '' : ' danger-btn' ?>"><?= icon_label($channel['is_blocked'] ? 'check' : 'ban', __($channel['is_blocked'] ? 'ui.action.unblock' : 'ui.action.block')) ?></button>
                             </form>
                             <?php endif; ?>
                         </td>

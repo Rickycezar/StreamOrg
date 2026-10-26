@@ -40,6 +40,11 @@
             <span><?= e(__('ui.field.tags_content')) ?>
                   <small class="muted"><?= e(__('ui.label.tags_content_hint')) ?></small></span>
         </label>
+        <label class="inline">
+            <input type="checkbox" name="uses_game_tag" value="1">
+            <span><?= e(__('ui.field.uses_game_tag')) ?>
+                  <small class="muted"><?= e(__('ui.label.uses_game_tag_hint')) ?></small></span>
+        </label>
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
 
@@ -77,15 +82,18 @@
                     <?php else: ?>
                         <span class="badge"><?= e(__('ui.label.no')) ?></span>
                     <?php endif; ?>
+                    <?php if ($row['uses_game_tag']): ?>
+                        <span class="badge" title="<?= e(__('ui.label.uses_game_tag_hint')) ?>"><?= e(__('ui.label.with_game_tag')) ?></span>
+                    <?php endif; ?>
                 </td>
                 <td data-label="<?= e(__('ui.nav.keys')) ?>"><?= (int) $row['key_count'] ?></td>
                 <td class="rowactions">
                     <button type="button" class="btn small" data-modal-form="#edit-site-<?= (int) $row['id'] ?>"
-                            data-modal-title="<?= e($row['code']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                            data-modal-title="<?= e($row['code']) ?>"><?= icon_label('edit', __('ui.action.edit')) ?></button>
                     <button type="button" class="btn small danger-btn row-delete"
                             data-endpoint="/admin/catalogue/delete" data-kind="key_site"
                             data-id="<?= (int) $row['id'] ?>" data-label="<?= e($row['code']) ?>">
-                        <?= e(__('ui.action.delete')) ?>
+                        <?= icon_label('trash', __('ui.action.delete')) ?>
                     </button>
                 </td>
             </tr>
@@ -106,6 +114,11 @@
                             <input type="checkbox" name="tags_content" value="1" <?= $row['tags_content'] ? 'checked' : '' ?>>
                             <span><?= e(__('ui.field.tags_content')) ?>
                                   <small class="muted"><?= e(__('ui.label.tags_content_hint')) ?></small></span>
+                        </label>
+                        <label class="inline">
+                            <input type="checkbox" name="uses_game_tag" value="1" <?= $row['uses_game_tag'] ? 'checked' : '' ?>>
+                            <span><?= e(__('ui.field.uses_game_tag')) ?>
+                                  <small class="muted"><?= e(__('ui.label.uses_game_tag_hint')) ?></small></span>
                         </label>
                         <div class="editrow-actions">
                             <button type="submit" class="btn primary small"><?= e(__('ui.action.save')) ?></button>

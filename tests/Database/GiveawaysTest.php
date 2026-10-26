@@ -428,4 +428,18 @@ final class GiveawaysTest extends DatabaseTestCase
         self::assertNull(ChatBot::joinCommand($this->user, 'xmas'));
     }
 
+
+    public function testTheWinnerModeIsFixedOnceThereAreWinners(): void
+    {
+        $giveawayId = $this->giveaway();
+        Giveaways::addPrizes($this->user, $giveawayId, [$this->key('LOCK-1')]);
+        self::assertFalse(Giveaways::hasWinners($giveawayId));
+
+        $this->winner($giveawayId, 'tw-lock');
+        self::assertTrue(Giveaways::hasWinners($giveawayId));
+
+        $this->pdo->exec("UPDATE giveaway_winners SET cancelled_at = now() WHERE giveaway_id = {$giveawayId}");
+        self::assertFalse(Giveaways::hasWinners($giveawayId), 'Withdrawn winners do not count.');
+    }
+
 }

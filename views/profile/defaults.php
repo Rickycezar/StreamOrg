@@ -2,7 +2,7 @@
 /**
  * @var array $user @var array<int, array{start: string, end: ?string}> $schedule
  * @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool, kind:string}> $prefixes
- * @var list<array{id:int, name:string, value:int}> $counters @var string $collabPrefix
+ * @var list<array{id:int, name:string, value:int}> $counters @var string $collabPrefix @var list<string> $titleOrder
  */
 $remove = '<button type="button" class="btn small" data-row-remove aria-label="' . e(__('ui.action.delete')) . '">×</button>';
 
@@ -99,6 +99,12 @@ $counterRow = static function (string $key, ?array $counter) use ($remove): stri
             </div>
             <template data-row-template="prefix"><?= $prefixRow('__KEY__', '', false) ?></template>
             <button type="button" class="btn small" data-row-add="prefix">+ <?= e(__('ui.action.add_prefix')) ?></button>
+        </fieldset>
+
+        <fieldset class="inset">
+            <legend><?= e(__('ui.field.title_order')) ?></legend>
+            <p class="muted small"><?= e(__('ui.message.title_order_hint')) ?></p>
+            <?= View::partial('content/title_order', ['order' => $titleOrder, 'field' => true]) ?>
         </fieldset>
 
         <label class="collab-prefix">

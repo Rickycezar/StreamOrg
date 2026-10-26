@@ -99,12 +99,13 @@
                 <th><?= e(__('ui.field.release_date')) ?></th>
                 <th><?= e(__('ui.field.source')) ?></th>
                 <th><?= e(__('ui.field.twitch_category')) ?></th>
+                <th><?= e(__('ui.field.game_hashtag')) ?></th>
                 <th></th>
             </tr>
             </thead>
             <tbody>
             <?php foreach ($games as $game): ?>
-                <tr>
+                <tr<?= row_art($game['art_path'], $game['art_version']) ?>>
                     <td data-card-title data-label="<?= e(__('ui.field.title')) ?>">
                         <?php if (safe_url($game['store_url'])): ?>
                             <a href="<?= e(safe_url($game['store_url'])) ?>" target="_blank" rel="noopener noreferrer"><?= e($game['title']) ?></a>
@@ -123,19 +124,35 @@
                             <span class="badge twitch-cat"><?= e($game['twitch_category_name']) ?></span>
                         <?php endif; ?>
                     </td>
+                    <td data-label="<?= e(__('ui.field.game_hashtag')) ?>">
+                        <?php if ($game['hashtag']): ?>
+                            <code><?= e($game['hashtag']) ?></code>
+                        <?php else: ?>
+                            <?php $guess = GameHashtag::suggest((string) $game['title']); ?>
+                            <form method="post" action="<?= e(url('/admin/games/hashtag')) ?>" class="hashtag-confirm">
+                                <?= Csrf::field() ?>
+                                <input type="hidden" name="game_id" value="<?= (int) $game['id'] ?>">
+                                <input type="hidden" name="hashtag" value="<?= e($guess) ?>">
+                                <span class="muted" title="<?= e(__('ui.label.hashtag_guess_hint')) ?>"><?= e($guess) ?> · <?= e(__('ui.label.guess')) ?></span>
+                                <button type="submit" class="btn small" title="<?= e(__('ui.label.hashtag_confirm_hint')) ?>"><?= e(__('ui.action.confirm')) ?></button>
+                            </form>
+                        <?php endif; ?>
+                    </td>
                     <td class="rowactions">
                         <?php if ($steamReady && !$game['source_provider']): ?>
                             <button type="button" class="btn small primary" data-modal-form="#steam-<?= (int) $game['id'] ?>"
-                                    data-modal-title="<?= e($game['title']) ?>"><?= e(__('ui.action.find_on_steam')) ?></button>
+                                    data-modal-title="<?= e($game['title']) ?>"><?= icon_label('search', __('ui.action.find_on_steam')) ?></button>
                         <?php endif; ?>
                         <?php if ($twitchReady): ?>
                             <button type="button" class="btn small" data-modal-form="#cat-<?= (int) $game['id'] ?>"
-                                    data-modal-title="<?= e($game['title']) ?>"><?= e(__('ui.field.twitch_category')) ?></button>
+                                    data-modal-title="<?= e($game['title']) ?>"><?= icon_label('twitch', __('ui.field.twitch_category')) ?></button>
                         <?php endif; ?>
+                        <button type="button" class="btn small" data-modal-form="#tag-<?= (int) $game['id'] ?>"
+                                data-modal-title="<?= e($game['title']) ?>"><?= icon_label('hash', __('ui.field.game_hashtag')) ?></button>
                         <button type="button" class="btn small danger-btn row-delete"
                                 data-endpoint="/admin/catalogue/delete" data-kind="game"
                                 data-id="<?= (int) $game['id'] ?>" data-label="<?= e($game['title']) ?>">
-                            <?= e(__('ui.action.delete')) ?>
+                            <?= icon_label('trash', __('ui.action.delete')) ?>
                         </button>
                     </td>
                 </tr>
@@ -186,3 +203,22 @@
         </div>
     </form>
 <?php endforeach; endif; ?>
+
+<?php foreach ($games as $game): $guess = GameHashtag::suggest((string) $game['title']); ?>
+    <form id="tag-<?= (int) $game['id'] ?>" method="post" action="<?= e(url('/admin/games/hashtag')) ?>" class="subform hidden">
+        <?= Csrf::field() ?>
+        <input type="hidden" name="game_id" value="<?= (int) $game['id'] ?>">
+        <p class="muted small"><?= e(__('ui.message.game_hashtag_explain')) ?></p>
+        <label>
+            <span><?= e(__('ui.field.game_hashtag')) ?></span>
+            <input type="text" name="hashtag" value="<?= e($game['hashtag'] ?? '') ?>" placeholder="<?= e($guess) ?>"
+                   maxlength="81" pattern="#?[A-Za-z0-9_]{1,80}" autocomplete="off" spellcheck="false">
+            <small class="muted"><?= e(sprintf(__('ui.label.hashtag_guess'), $guess)) ?></small>
+        </label>
+        <div class="card-actions">
+            <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
+            <button type="button" class="btn" data-fill-from-placeholder><?= e(__('ui.action.use_guess')) ?></button>
+            <button type="button" class="btn row-cancel"><?= e(__('ui.action.cancel')) ?></button>
+        </div>
+    </form>
+<?php endforeach; ?>

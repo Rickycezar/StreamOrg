@@ -50,12 +50,18 @@ final class CatalogController
 
         $sql = "SELECT g.*, p.name AS publisher_name, d.name AS developer_name,
                        t.path AS thumb_path, t.updated_at AS thumb_version,
+                       cover.path AS cover_path, cover.updated_at AS cover_version,
                        (SELECT count(*) FROM game_keys k WHERE k.game_id = g.id AND k.user_id = :user) AS my_keys,
                        (SELECT count(*) FROM game_embargoes e WHERE e.game_id = g.id AND e.user_id = :user) AS my_embargoes
                   FROM games g
              LEFT JOIN publishers p ON p.id = g.publisher_id
              LEFT JOIN developers d ON d.id = g.developer_id
              LEFT JOIN game_images t ON t.game_id = g.id AND t.kind = 'thumb'
+             LEFT JOIN LATERAL (
+                     SELECT i.path, i.updated_at FROM game_images i
+                      WHERE i.game_id = g.id AND i.kind IN ('header', 'capsule')
+                   ORDER BY i.kind = 'header' DESC LIMIT 1
+                 ) cover ON true
                  WHERE 1 = 1";
 
         $params = ['user' => Auth::id()];

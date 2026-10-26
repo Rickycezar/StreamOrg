@@ -58,7 +58,7 @@ $title  = __($isPublisher ? 'ui.nav.publishers' : 'ui.nav.developers');
                         <button type="button" class="btn small danger-btn row-delete"
                                 data-endpoint="/admin/catalogue/delete" data-kind="<?= e($kind) ?>"
                                 data-id="<?= (int) $row['id'] ?>" data-label="<?= e($row['name']) ?>">
-                            <?= e(__('ui.action.delete')) ?>
+                            <?= icon_label('trash', __('ui.action.delete')) ?>
                         </button>
                     </td>
                 </tr>

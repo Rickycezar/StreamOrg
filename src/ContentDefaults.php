@@ -25,6 +25,60 @@ final class ContentDefaults
         return $minutes === false ? StreamSchedule::DEFAULT_MINUTES : (int) $minutes;
     }
 
+    /**
+     * The parts of a title, in the order they are usually written: the
+     * prefixes, the user's text, the suffixes, the collab credit, the
+     * game's hashtag, the developer/publisher tags and the sponsor tags.
+     */
+    public const TITLE_PARTS = ['prefix', 'text', 'suffix', 'collab', 'game', 'devpub', 'sponsor'];
+
+    /** @return list<string> the user's order of the title parts */
+    public static function titleOrder(int $userId): array
+    {
+        $stmt = Database::connection()->prepare('SELECT title_order FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $raw = $stmt->fetchColumn();
+
+        return self::titleOrderFrom(is_string($raw) ? explode(',', trim($raw, '{}')) : []);
+    }
+
+    /**
+     * A title order from a form (a comma-separated list) or the database:
+     * known parts once each, any missing one where it usually goes.
+     *
+     * @param list<string>|string $value
+     * @return list<string>
+     */
+    public static function titleOrderFrom(array|string $value): array
+    {
+        $given = is_string($value) ? explode(',', $value) : $value;
+        $order = [];
+
+        foreach ($given as $part) {
+            $part = trim((string) $part, " \t\"");
+            if (in_array($part, self::TITLE_PARTS, true) && !in_array($part, $order, true)) {
+                $order[] = $part;
+            }
+        }
+
+        foreach (self::TITLE_PARTS as $i => $part) {
+            if (!in_array($part, $order, true)) {
+                array_splice($order, min($i, count($order)), 0, [$part]);
+            }
+        }
+
+        return $order;
+    }
+
+    /** @param list<string> $order */
+    public static function saveTitleOrder(int $userId, array $order): void
+    {
+        $order = self::titleOrderFrom($order);
+
+        Database::connection()->prepare('UPDATE users SET title_order = CAST(? AS text[]) WHERE id = ?')
+            ->execute([$order === self::TITLE_PARTS ? null : '{' . implode(',', $order) . '}', $userId]);
+    }
+
     /** The word before collab guests in a title ("ft." unless the user chose another, or none). */
     public static function collabPrefix(int $userId): string
     {

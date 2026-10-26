@@ -55,12 +55,14 @@ final class GiveawayController
 
         $stmt = $pdo->prepare(
             'SELECT p.id, p.claimed_at, p.winner_id, k.id AS key_id, g.title AS game_title, gp.code AS platform_code,
-                    k.expires_at, w.twitch_login AS winner_login, (p.sealed_code IS NOT NULL) AS ready
+                    k.expires_at, w.twitch_login AS winner_login, (p.sealed_code IS NOT NULL) AS ready,
+                    art.path AS art_path, art.updated_at AS art_version
                FROM giveaway_prizes p
                JOIN game_keys k ON k.id = p.game_key_id
                JOIN games g ON g.id = k.game_id
           LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
           LEFT JOIN giveaway_winners w ON w.id = p.winner_id
+          ' . GameImages::artJoin('k.game_id') . '
               WHERE p.giveaway_id = ?
            ORDER BY p.claimed_at NULLS FIRST, g.title, p.id'
         );
@@ -146,6 +148,11 @@ final class GiveawayController
         $giveaway = self::posted();
         $back     = '/giveaways/show?id=' . (int) $giveaway['id'];
         $input    = self::input($back, (int) $giveaway['id']);
+
+        if ($input['mode'] !== $giveaway['winner_mode'] && Giveaways::hasWinners((int) $giveaway['id'])) {
+            flash('error', __('ui.message.giveaway_mode_locked'));
+            redirect($back);
+        }
 
         Database::connection()->prepare(
             'UPDATE giveaways SET title = :title, keyword = :keyword, rules_note = :rules, starts_at = :starts,

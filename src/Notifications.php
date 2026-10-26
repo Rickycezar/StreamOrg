@@ -158,6 +158,65 @@ final class Notifications
         return self::send(['texts' => $texts, 'level' => $level, 'link' => $link, 'users' => $userIds], null);
     }
 
+    /**
+     * Like system(), keeping at most one unread notification per link for
+     * each person: whoever still has an unread one for $link gets it
+     * replaced by the $foldKey one ("news in …"), so a busy plan never
+     * piles up notifications until it is opened.
+     *
+     * @param list<int> $userIds
+     */
+    public static function systemOnce(array $userIds, string $link, string $key, array $params, string $level, string $foldKey, array $foldParams): void
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+
+        if ($userIds === []) {
+            return;
+        }
+
+        $waiting = Database::transaction(static function (PDO $pdo) use ($userIds, $link): array {
+            $stmt = $pdo->prepare(
+                'SELECT p.user_id, p.notification_id
+                   FROM notification_recipients p
+                   JOIN notifications n ON n.id = p.notification_id
+                  WHERE n.link_url = ? AND p.user_id = ANY(CAST(? AS bigint[]))
+                    AND NOT EXISTS (SELECT 1 FROM notification_reads r WHERE r.notification_id = n.id AND r.user_id = p.user_id)'
+            );
+            $stmt->execute([$link, '{' . implode(',', $userIds) . '}']);
+            $rows = $stmt->fetchAll();
+
+            $drop = $pdo->prepare('DELETE FROM notification_recipients WHERE notification_id = ? AND user_id = ?');
+            foreach ($rows as $row) {
+                $drop->execute([$row['notification_id'], $row['user_id']]);
+            }
+
+            if ($rows !== []) {
+                $pdo->prepare(
+                    "DELETE FROM notifications n
+                      WHERE n.id = ANY(CAST(? AS bigint[])) AND n.audience = 'users'
+                        AND NOT EXISTS (SELECT 1 FROM notification_recipients p WHERE p.notification_id = n.id)"
+                )->execute(['{' . implode(',', array_unique(array_column($rows, 'notification_id'))) . '}']);
+            }
+
+            return array_values(array_unique(array_map('intval', array_column($rows, 'user_id'))));
+        });
+
+        self::system(array_values(array_diff($userIds, $waiting)), $key, $params, $link, $level);
+        self::system($waiting, $foldKey, $foldParams, $link, 'info');
+    }
+
+    /** Marks read everything the user has for this link (they opened the page it points to). */
+    public static function markReadFor(int $userId, string $link): void
+    {
+        Database::connection()->prepare(
+            'INSERT INTO notification_reads (notification_id, user_id)
+             SELECT n.id, :user FROM notifications n
+              WHERE n.link_url = :link
+                AND EXISTS (SELECT 1 FROM notification_recipients p WHERE p.notification_id = n.id AND p.user_id = :user)
+             ON CONFLICT DO NOTHING'
+        )->execute(['user' => $userId, 'link' => $link]);
+    }
+
     /** The SQL that picks a user's notifications, with the text in their language. */
     private static function visibleSql(): string
     {

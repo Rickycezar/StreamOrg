@@ -60,6 +60,7 @@
         window.STREAMORG_GAMES[String(item.id)] = {
             developer: item.developer || null,
             publisher: item.publisher || null,
+            hashtag: item.hashtag || null,
         };
     }
 
@@ -181,6 +182,7 @@
         if (item && ts.options[value]) {
             rememberGame(item);
             ts.updateOption(value, item);
+            select.dispatchEvent(new CustomEvent('game-details'));
         }
     }
 
@@ -213,9 +215,132 @@
 
     onPage(function () { initPickers(document); });
 
+    const FILTER_STATE = 'streamorg.filters';
+
+    /**
+     * Applies a list's filter bar: empty choices stay out of the address,
+     * and the box being typed in (with the caret) and the scroll position
+     * come back once the filtered page shows.
+     */
+    function applyFilters(form) {
+        clearTimeout(form._filterTimer);
+
+        const active = document.activeElement;
+        const typing = active && active.form === form && active.matches('[data-filter-search]') ? active : null;
+
+        rememberFor(FILTER_STATE, JSON.stringify({
+            path: new URL(form.action, location.href).pathname,
+            scroll: window.scrollY,
+            field: typing ? typing.name : null,
+            caret: typing ? typing.selectionStart : null,
+        }));
+
+        const blanks = Array.prototype.filter.call(form.elements, function (field) {
+            return field.name && !field.disabled && field.type !== 'submit' && (field.multiple ? field.selectedOptions.length === 0 : field.value === '');
+        });
+        blanks.forEach(function (field) { field.disabled = true; });
+        form.requestSubmit();
+        setTimeout(function () { blanks.forEach(function (field) { field.disabled = false; }); }, 0);
+    }
+
+    /** Keeps a value for this tab's next page; false when the browser keeps nothing. */
+    function rememberFor(key, value) {
+        try {
+            sessionStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function filterLater(form, wait) {
+        clearTimeout(form._filterTimer);
+        form._filterTimer = setTimeout(function () { applyFilters(form); }, wait);
+    }
+
+    function initFilterSelect(select) {
+        if (select.tomselect || !window.TomSelect) return;
+
+        const L = window.STREAMORG_L || {};
+        const form = select.form;
+        const multiple = select.multiple;
+        let changed = false;
+
+        new window.TomSelect(select, {
+            plugins: multiple ? { remove_button: { title: L.picker_clear || '' }, checkbox_options: {} } : {},
+            placeholder: select.dataset.placeholder || '',
+            hidePlaceholder: true,
+            allowEmptyOption: true,
+            closeAfterSelect: !multiple,
+            maxOptions: null,
+            onChange: function () {
+                if (!multiple || !this.isOpen) {
+                    filterLater(form, multiple ? 350 : 0);
+                } else {
+                    changed = true;
+                }
+            },
+            onDropdownClose: function () {
+                if (changed) filterLater(form, 0);
+                changed = false;
+            },
+            render: {
+                no_results: function () { return '<div class="no-results">' + (L.picker_none || '—') + '</div>'; },
+            },
+        });
+    }
+
+    /** List filter bars: choices take several values, and the list follows every change and the words as they are typed. */
+    onPage(function () {
+        document.querySelectorAll('form[data-filters]').forEach(function (form) {
+            form.classList.add('auto');
+            form.dataset.turboAction = 'replace';
+            form.querySelectorAll('select[data-filter-select]').forEach(initFilterSelect);
+        });
+
+        let state = null;
+        try {
+            state = JSON.parse(sessionStorage.getItem(FILTER_STATE) || 'null');
+            sessionStorage.removeItem(FILTER_STATE);
+        } catch (e) { state = null; }
+
+        if (!state || state.path !== location.pathname) return;
+
+        window.scrollTo(0, state.scroll || 0);
+
+        if (state.field) {
+            const field = document.querySelector('form[data-filters] [name="' + state.field + '"]');
+
+            if (field) {
+                field.focus({ preventScroll: true });
+                const at = state.caret === null ? field.value.length : Math.min(state.caret, field.value.length);
+                if (typeof field.setSelectionRange === 'function' && field.type !== 'email') field.setSelectionRange(at, at);
+            }
+        }
+    });
+
+    document.addEventListener('input', function (event) {
+        const field = event.target.closest('form[data-filters] [data-filter-search]');
+        if (field) filterLater(field.form, 450);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        const field = event.target.closest && event.target.closest('form[data-filters] [data-filter-search]');
+        if (field && event.key === 'Enter') {
+            event.preventDefault();
+            applyFilters(field.form);
+        }
+    });
+
     document.addEventListener('click', function (event) {
         const field = event.target.closest('[data-select-on-click]');
         if (field && typeof field.select === 'function') field.select();
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-fill-from-placeholder]');
+        const field = button && button.form ? button.form.querySelector('input[placeholder]:not([type="hidden"])') : null;
+        if (field) field.value = field.placeholder;
     });
 
     document.addEventListener('change', function (event) {
@@ -404,46 +529,61 @@
         }
     });
 
+    /**
+     * A content form's game changed (or the form just appeared): the key
+     * list shows that game's keys, and the embargo field its most recent
+     * embargo; with no game both are hidden. On first sight the form keeps
+     * what the page rendered (an edit form's current key and embargo).
+     */
+    function contentGameChanged(select, firstSight) {
+        const form = select.closest('form');
+        if (!form) return;
+
+        const keySelect = form.querySelector('[data-content-key]');
+        const embargo = form.querySelector('[data-content-embargo]');
+        const gameId = parseInt(select.value, 10) || 0;
+
+        if (keySelect && !firstSight) {
+            const keep = keySelect.value;
+            const none = keySelect.options[0];
+            const matching = (window.STREAMORG_KEYS || []).filter(function (k) { return k.game_id === gameId; });
+
+            keySelect.replaceChildren(none);
+            matching.forEach(function (k) {
+                const option = new Option(k.label, k.id);
+                option.selected = String(k.id) === keep;
+                keySelect.append(option);
+            });
+        }
+
+        if (keySelect) {
+            keySelect.disabled = !gameId;
+            keySelect.closest('label').hidden = !gameId;
+        }
+
+        if (embargo) {
+            if (!firstSight || embargo.value === '') {
+                embargo.value = (window.STREAMORG_EMBARGOES || {})[gameId] || embargo.dataset.default || '';
+            }
+            embargo.disabled = !gameId;
+            const field = embargo.closest('[data-content-embargo-field]');
+            if (field) field.hidden = !gameId;
+        }
+    }
+
+    document.addEventListener('change', function (event) {
+        const select = event.target.closest('[data-content-game]');
+        if (select) contentGameChanged(select, false);
+    });
+
     onPage(function () {
         const contentGame = document.getElementById('content-game');
 
+        document.querySelectorAll('[data-content-game]').forEach(function (select) {
+            contentGameChanged(select, true);
+        });
+
         if (contentGame) {
-            const keySelect = document.getElementById('content-key');
-            const keys = window.STREAMORG_KEYS || [];
-
-            function refreshKeys() {
-                const gameId = parseInt(contentGame.value, 10);
-                const matching = keys.filter(function (k) { return k.game_id === gameId; });
-
-                keySelect.innerHTML = '';
-
-                const none = document.createElement('option');
-                none.value = '';
-                none.textContent = matching.length
-                    ? keySelect.dataset.noneLabel || '—'
-                    : (gameId ? (keySelect.dataset.emptyLabel || '—') : '—');
-                keySelect.append(none);
-
-                matching.forEach(function (k) {
-                    const option = document.createElement('option');
-                    option.value = k.id;
-                    option.textContent = k.label;
-                    keySelect.append(option);
-                });
-
-                keySelect.disabled = !gameId;
-
-                const embargoField = document.getElementById('content-embargo');
-
-                if (embargoField) {
-                    const stored = (window.STREAMORG_EMBARGOES || {})[gameId];
-                    embargoField.value = stored || embargoField.dataset.default || '';
-                    embargoField.disabled = !gameId;
-                }
-            }
-
-            contentGame.addEventListener('change', refreshKeys);
-            refreshKeys();
 
             const keySave = document.getElementById('inline-key-save');
 
@@ -479,15 +619,253 @@
                         return;
                     }
 
-                    keys.push({ id: result.id, game_id: result.game_id, label: result.label });
-                    refreshKeys();
-                    keySelect.value = String(result.id);
+                    const source = document.getElementById('inline-key-source').value;
+                    window.STREAMORG_KEYS = window.STREAMORG_KEYS || [];
+                    window.STREAMORG_KEYS.push({ id: result.id, game_id: result.game_id, label: result.label, source: source });
+                    contentGameChanged(contentGame, false);
+                    document.getElementById('content-key').value = String(result.id);
+                    sponsorFromKey(contentGame.form, source);
 
                     document.getElementById('inline-key-code').value = '';
                     output.textContent = '✔';
                 });
             }
         }
+    });
+
+    /** A key's site becomes the content's sponsor when it is one (it tags titles): picking either fills the other. */
+    function sponsorFromKey(form, source) {
+        const select = form && form.querySelector('[data-content-sponsor]');
+        if (!select || !source || select.value === source || !select.querySelector('option[value="' + source + '"]')) return;
+
+        select.value = source;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    /** A new key starts from the content's sponsor. */
+    function keySourceFromSponsor(form) {
+        const sponsor = form && form.querySelector('[data-content-sponsor]');
+        const source = form && form.querySelector('#inline-key-source');
+        if (sponsor && source && sponsor.value && source.querySelector('option[value="' + sponsor.value + '"]')) source.value = sponsor.value;
+    }
+
+    document.addEventListener('click', function (event) {
+        const opener = event.target.closest('[data-inline-key-open]');
+        if (opener) keySourceFromSponsor(opener.closest('form'));
+    });
+
+    document.addEventListener('change', function (event) {
+        const target = event.target;
+
+        if (target.matches && target.matches('[data-content-sponsor]')) {
+            keySourceFromSponsor(target.form);
+        } else if (target.matches && target.matches('[data-content-key]') && target.value) {
+            const key = (window.STREAMORG_KEYS || []).find(function (k) { return String(k.id) === target.value; });
+            if (key) sponsorFromKey(target.form, key.source);
+        }
+    });
+
+    const WHEN_STEP_MIN = 15;
+    const WHEN_STEP_MAX = 1440;
+
+    /** A form's "2026-10-26T19:00" as minutes, and back: wall-clock arithmetic, free of time zones. */
+    function wallMinutes(value) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value || '');
+        return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 60000 : null;
+    }
+
+    function wallFromMinutes(minutes) {
+        const date = new Date(minutes * 60000);
+        const pad = function (n) { return String(n).padStart(2, '0'); };
+        return date.getUTCFullYear() + '-' + pad(date.getUTCMonth() + 1) + '-' + pad(date.getUTCDate()) + 'T' + pad(date.getUTCHours()) + ':' + pad(date.getUTCMinutes());
+    }
+
+    /**
+     * A content form's start, length and end kept in step: the end follows
+     * the start and the length; typing an end changes the length.
+     */
+    function syncWhen(box, from) {
+        const start = box.querySelector('[data-when-start]');
+        const minutes = box.querySelector('[data-when-minutes]');
+        const end = box.querySelector('[data-when-end]');
+        let length = parseInt(minutes.value, 10);
+
+        if (from === 'end' && start.value && end.value) {
+            const span = wallMinutes(end.value) - wallMinutes(start.value);
+            if (span >= WHEN_STEP_MIN && span <= WHEN_STEP_MAX) {
+                length = span;
+                minutes.value = String(span);
+            }
+        }
+
+        if (from === 'minutes' && !(length >= WHEN_STEP_MIN && length <= WHEN_STEP_MAX)) return;
+
+        if (!(length >= WHEN_STEP_MIN)) length = parseInt(minutes.defaultValue, 10) || 120;
+        length = Math.min(WHEN_STEP_MAX, Math.max(WHEN_STEP_MIN, length));
+        if (from !== 'minutes') minutes.value = String(length);
+
+        end.disabled = !start.value;
+        end.value = start.value ? wallFromMinutes(wallMinutes(start.value) + length) : '';
+    }
+
+    onPage(function () {
+        document.querySelectorAll('[data-when]').forEach(function (box) { syncWhen(box, 'init'); });
+    });
+
+    document.addEventListener('input', function (event) {
+        const box = event.target.closest && event.target.closest('[data-when]');
+        if (!box) return;
+        if (event.target.matches('[data-when-minutes]')) syncWhen(box, 'minutes');
+        if (event.target.matches('[data-when-start]')) syncWhen(box, 'start');
+    });
+
+    document.addEventListener('change', function (event) {
+        const box = event.target.closest && event.target.closest('[data-when]');
+        if (!box) return;
+        if (event.target.matches('[data-when-end]')) syncWhen(box, 'end');
+        if (event.target.matches('[data-when-start]')) syncWhen(box, 'start');
+        if (event.target.matches('[data-when-minutes]')) syncWhen(box, 'change');
+    });
+
+    document.addEventListener('click', async function (event) {
+        const step = event.target.closest('[data-when-step]');
+        const today = event.target.closest('[data-when-today]');
+        const box = (step || today) && (step || today).closest('[data-when]');
+        if (!box) return;
+
+        const minutes = box.querySelector('[data-when-minutes]');
+
+        if (step) {
+            const now = parseInt(minutes.value, 10) || parseInt(minutes.defaultValue, 10) || 120;
+            minutes.value = String(Math.min(WHEN_STEP_MAX, Math.max(WHEN_STEP_MIN, now + parseInt(step.dataset.whenStep, 10))));
+            syncWhen(box, 'change');
+            minutes.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
+
+        setBusy(today, true);
+        const query = new URLSearchParams({ minutes: minutes.value || '', id: box.dataset.streamId || '' });
+        const response = await fetch(url('/content/today-slot') + '?' + query, { headers: { 'Accept': 'application/json' } }).catch(function () { return null; });
+        const result = response ? await response.json().catch(function () { return { ok: false }; }) : { ok: false };
+        setBusy(today, false);
+
+        if (!result.ok) {
+            alert(result.error || 'Error');
+            return;
+        }
+
+        const start = box.querySelector('[data-when-start]');
+        start.value = result.start;
+        start.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    let chatTimer = null;
+
+    /**
+     * The plan-together chat: loads the latest messages, then asks for new
+     * ones every few seconds while the page is visible; Enter sends,
+     * Shift+Enter breaks the line.
+     */
+    onPage(function () {
+        clearInterval(chatTimer);
+
+        const box = document.querySelector('[data-together-chat]');
+        if (!box) return;
+
+        const log = box.querySelector('[data-chat-log]');
+        const empty = box.querySelector('[data-chat-empty]');
+        const form = box.querySelector('[data-chat-form]');
+        let last = 0;
+        let lastAuthor = null;
+        let busy = false;
+
+        function add(item) {
+            const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+            const row = document.createElement('div');
+            row.className = 'chat-msg' + (item.mine ? ' mine' : '') + (lastAuthor === item.name ? ' cont' : '');
+            row.dataset.id = item.id;
+
+            const face = document.createElement('span');
+            face.className = 'chat-face';
+            face.innerHTML = item.avatar;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            const head = document.createElement('span');
+            head.className = 'chat-head';
+            const who = document.createElement('strong');
+            who.textContent = item.name;
+            const at = document.createElement('small');
+            at.textContent = item.at;
+            head.append(who, ' ', at);
+            const text = document.createElement('p');
+            text.className = 'chat-text';
+            text.textContent = item.body;
+            bubble.append(head, text);
+
+            row.append(face, bubble);
+            log.append(row);
+            lastAuthor = item.name;
+            last = Math.max(last, item.id);
+            if (empty) empty.hidden = true;
+            if (nearBottom || item.mine) log.scrollTop = log.scrollHeight;
+        }
+
+        async function load() {
+            if (busy || !box.isConnected) return;
+            busy = true;
+
+            const query = new URLSearchParams({ id: box.dataset.id, after: String(last) });
+            const response = await fetch(url('/collabs/session/messages') + '?' + query, { headers: { 'Accept': 'application/json' } }).catch(function () { return null; });
+            const data = response ? await response.json().catch(function () { return { ok: false }; }) : { ok: false };
+            busy = false;
+
+            if (data.ok) data.items.forEach(add);
+        }
+
+        load().then(function () { log.scrollTop = log.scrollHeight; });
+        chatTimer = setInterval(function () {
+            if (!box.isConnected) { clearInterval(chatTimer); return; }
+            if (document.visibilityState === 'visible') load();
+        }, 6000);
+
+        if (!form) return;
+
+        const field = form.querySelector('textarea');
+        const fit = function () {
+            field.style.height = 'auto';
+            field.style.height = Math.min(field.scrollHeight, 160) + 'px';
+            field.style.overflowY = field.scrollHeight > 160 ? 'auto' : 'hidden';
+        };
+        field.addEventListener('input', fit);
+
+        field.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+                event.preventDefault();
+                form.requestSubmit();
+            }
+        });
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const body = field.value.trim();
+            if (!body) return;
+
+            const button = form.querySelector('button[type="submit"]');
+            setBusy(button, true);
+            const result = await postJson('/collabs/session/message', { id: box.dataset.id, body: body });
+            setBusy(button, false);
+
+            if (!result.ok) {
+                alert(result.error || 'Error');
+                return;
+            }
+
+            field.value = '';
+            fit();
+            field.focus();
+            await load();
+        });
     });
 
     /** Marks a Twitch search result whose game the catalogue already has. */
@@ -775,38 +1153,41 @@
         return date.toISOString().slice(0, 19);
     }
 
+    /**
+     * A planner event: a dot in the colour of its status, the time and the
+     * title (and the games, in the week and day views).
+     */
     function plannerEventContent(arg) {
         const props = arg.event.extendedProps;
+        const month = arg.view.type === 'dayGridMonth';
         const wrap = document.createElement('div');
-        wrap.className = 'planner-event';
-
-        if (props.thumb && arg.view.type !== 'dayGridMonth') {
-            const img = document.createElement('img');
-            img.className = 'picker-cover';
-            img.src = props.thumb;
-            img.alt = '';
-            wrap.append(img);
-        }
+        wrap.className = 'planner-event' + (month ? ' is-compact' : '');
 
         const text = document.createElement('span');
         text.className = 'planner-event-text';
 
+        if (arg.timeText) {
+            const time = document.createElement('span');
+            time.className = 'planner-event-time';
+            time.textContent = (props.together ? '👥 ' : '') + arg.timeText;
+            text.append(time);
+        }
+
         const title = document.createElement('span');
         title.className = 'planner-event-title';
-        title.textContent = (props.together ? '👥 ' : '') + (arg.timeText ? arg.timeText + ' ' : '') + arg.event.title;
+        title.textContent = (!arg.timeText && props.together ? '👥 ' : '') + (month && props.games ? props.games : arg.event.title);
         text.append(title);
 
-        if (arg.view.type !== 'dayGridMonth' && props.games) {
+        if (!month && props.games) {
             const games = document.createElement('small');
+            games.className = 'planner-event-games';
             games.textContent = props.games;
             text.append(games);
         }
 
         wrap.append(text);
 
-        if (props.warnings && props.warnings.length) {
-            wrap.title = props.warnings.join(' · ');
-        }
+        wrap.title = [arg.event.title].concat(props.warnings || []).join(' · ');
 
         return { domNodes: [wrap] };
     }
@@ -887,26 +1268,36 @@
         }
 
         function backlogItem(item) {
+            const props = item.extendedProps || {};
             const el = document.createElement('div');
-            el.className = 'backlog-item';
+            el.className = 'backlog-item undated-row';
             el.dataset.id = item.id;
             el.dataset.event = JSON.stringify(item);
 
-            const cover = document.createElement(item.extendedProps.thumb ? 'img' : 'span');
-            cover.className = 'picker-cover';
-            if (item.extendedProps.thumb) { cover.src = item.extendedProps.thumb; cover.alt = ''; }
+            if (props.art) {
+                el.setAttribute('data-row-art', '');
+                el.style.setProperty('--row-art', 'url("' + props.art + '")');
+            }
 
             const text = document.createElement('span');
-            text.className = 'backlog-text';
-            const title = document.createElement('span');
-            title.className = 'backlog-title';
+            text.className = 'undated-open';
+            const game = document.createElement('small');
+            game.className = 'undated-game';
+            game.textContent = props.games || (window.STREAMORG_L || {}).no_games || '—';
+            const title = document.createElement('strong');
+            title.className = 'undated-title';
             title.textContent = item.title;
-            const sub = document.createElement('small');
-            sub.className = 'muted';
-            sub.textContent = item.extendedProps.games || '—';
-            text.append(title, sub);
+            text.append(game, title);
+            el.append(text);
 
-            el.append(cover, text);
+            if (props.deadlineShort) {
+                const due = document.createElement('span');
+                due.className = 'badge undated-due';
+                due.title = props.deadline || '';
+                due.textContent = props.deadlineShort;
+                el.append(due);
+            }
+
             return el;
         }
 
@@ -966,6 +1357,11 @@
             defaultTimedEventDuration: { minutes: contentMinutes },
             droppable: true,
             dayMaxEvents: 3,
+            eventDisplay: 'block',
+            views: {
+                dayGridMonth: { dayHeaderFormat: { weekday: 'short' } },
+                timeGridWeek: { dayHeaderFormat: { weekday: 'short', day: 'numeric' } },
+            },
             navLinks: true,
             nowIndicator: true,
             businessHours: businessHours(),
@@ -1147,14 +1543,9 @@
         const button = event.target.closest('.game-refresh');
         if (!button) return;
 
-        const label = button.textContent;
-        button.disabled = true;
-        button.textContent = '…';
-
+        setBusy(button, true);
         const result = await postJson('/catalog/refresh', { game_id: button.dataset.id });
-
-        button.disabled = false;
-        button.textContent = label;
+        setBusy(button, false);
 
         if (!result.ok) {
             alert(result.error || 'Error');
@@ -1421,9 +1812,16 @@
         if (!field) return;
 
         const done = function () {
+            clearTimeout(button._restore);
+
+            if (button.querySelector('.btn-label')) {
+                button.classList.add('is-done');
+                button._restore = setTimeout(function () { button.classList.remove('is-done'); }, 1400);
+                return;
+            }
+
             if (!button.dataset.label) button.dataset.label = button.textContent;
             button.textContent = '✓';
-            clearTimeout(button._restore);
             button._restore = setTimeout(function () { button.textContent = button.dataset.label; }, 1400);
         };
 
@@ -1501,22 +1899,27 @@
         return (word ? escapeRegExp(word) + ' ' : '') + '@[^\\s,#]+(?:,\\s*@[^\\s,#]+)*';
     }
 
+    const TITLE_PARTS = ['prefix', 'text', 'suffix', 'collab', 'game', 'devpub', 'sponsor'];
+
     /**
-     * The title split into coloured pieces: the user's prefixes and
-     * suffixes wherever they are (and bracketed text at the start),
-     * counters, the collab credit, sponsor tags and developer/publisher
-     * tags; the rest is plain text.
+     * The title split into pieces, each with its colour (kind) and the part
+     * of the title it belongs to: the user's prefixes and suffixes wherever
+     * they are (and bracketed text at the start), counters, the collab
+     * credit, the game's hashtag, sponsor tags and developer/publisher
+     * tags; the rest is the user's own text.
      */
-    function titleTokens(text, prefixes, sponsors) {
+    function titleTokens(text, ctx) {
         const tokens = [];
         const lead = /^(\s*\[[^\]]*\])+/.exec(text);
-        const affixes = prefixes.filter(Boolean).slice().sort(function (a, b) { return b.length - a.length; }).map(escapeRegExp);
+        const affixes = ctx.prefixes.concat(ctx.suffixes).filter(Boolean)
+            .sort(function (a, b) { return b.length - a.length; }).map(escapeRegExp);
         const pattern = new RegExp('(' + (affixes.length ? affixes.join('|') : '(?!)') + ')|(\\[[^\\]]*\\])|(\\{[a-z][a-z0-9_]{0,19}\\})|(' + creditPattern() + ')|(#[^\\s#]+)', 'g');
+        const gameTags = ctx.gameTags.map(tagKey);
         let last = 0;
         let match;
 
-        function push(kind, value) {
-            if (value) tokens.push({ kind: kind, text: value });
+        function push(kind, value, part) {
+            if (value) tokens.push({ kind: kind, text: value, part: part || (kind === 'counter' ? 'text' : kind) });
         }
 
         while ((match = pattern.exec(text)) !== null) {
@@ -1524,16 +1927,20 @@
             const value = match[0];
 
             if (match[1] || match[2]) {
-                const isPrefix = !!match[1] || (lead && match.index < lead[0].length);
-                value.split(/(\{[a-z][a-z0-9_]{0,19}\})/).forEach(function (part) {
-                    if (part) push(/^\{/.test(part) ? 'counter' : (isPrefix ? 'prefix' : 'text'), part);
+                const isAffix = !!match[1] || (lead && match.index < lead[0].length);
+                const part = !isAffix ? 'text'
+                    : (match[1] && ctx.suffixes.indexOf(value) !== -1 && ctx.prefixes.indexOf(value) === -1 ? 'suffix' : 'prefix');
+
+                value.split(/(\{[a-z][a-z0-9_]{0,19}\})/).forEach(function (piece) {
+                    if (piece) push(/^\{/.test(piece) ? 'counter' : (part === 'text' ? 'text' : part), piece, part);
                 });
             } else if (match[3]) {
                 push('counter', value);
             } else if (match[4]) {
                 push('collab', value);
             } else {
-                push(sponsors.indexOf(tagKey(value)) !== -1 ? 'sponsor' : 'devpub', value);
+                const key = tagKey(value);
+                push(gameTags.indexOf(key) !== -1 ? 'game' : (ctx.sponsors.indexOf(key) !== -1 ? 'sponsor' : 'devpub'), value);
             }
 
             last = match.index + value.length;
@@ -1543,24 +1950,99 @@
         return tokens;
     }
 
+    /** Consecutive pieces of the same part, as trimmed runs: [{part, text}]. */
+    function titleRuns(text, ctx) {
+        const runs = [];
+
+        titleTokens(text, ctx).forEach(function (token) {
+            const blank = token.part === 'text' && !token.text.trim();
+            const lastRun = runs[runs.length - 1];
+
+            if (blank) {
+                if (lastRun) lastRun.text += token.text;
+                return;
+            }
+
+            if (lastRun && lastRun.part === token.part) {
+                lastRun.text += token.text;
+            } else {
+                runs.push({ part: token.part, text: token.text });
+            }
+        });
+
+        return runs.map(function (run) { return { part: run.part, text: run.text.trim() }; }).filter(function (run) { return run.text; });
+    }
+
+    function tidyTitle(text) {
+        return text.replace(/[ \t]{2,}/g, ' ').trim();
+    }
+
+    /**
+     * Puts a piece of the given part where the order says: after the parts
+     * that come before it, before the ones that come after it, leaving the
+     * rest of the title as it is.
+     */
+    function placeInTitle(text, part, piece, ctx) {
+        const order = ctx.order;
+        const rank = function (p) { const i = order.indexOf(p); return i === -1 ? order.indexOf('text') : i; };
+        const own = rank(part);
+        const runs = titleRuns(text, ctx);
+        let at;
+
+        if (own < rank('text')) {
+            at = 0;
+            while (at < runs.length && rank(runs[at].part) <= own) at++;
+        } else {
+            at = runs.length;
+            while (at > 0 && rank(runs[at - 1].part) > own) at--;
+        }
+
+        runs.splice(at, 0, { part: part, text: piece });
+        return tidyTitle(runs.map(function (run) { return run.text; }).join(' '));
+    }
+
+    /** The whole title rewritten in the given order, each part keeping its own pieces in their order. */
+    function orderTitle(text, ctx) {
+        const groups = {};
+        titleRuns(text, ctx).forEach(function (run) {
+            (groups[run.part] = groups[run.part] || []).push(run.text);
+        });
+
+        return tidyTitle(ctx.order.map(function (part) { return (groups[part] || []).join(' '); }).filter(Boolean).join(' '));
+    }
+
+    /** Takes the given whole words (tags, credits) out of a title. */
+    function removeFromTitle(text, pieces) {
+        pieces.filter(Boolean).forEach(function (piece) {
+            text = text.replace(new RegExp('(^|\\s)' + escapeRegExp(piece) + '(?=\\s|$)', 'i'), ' ');
+        });
+
+        return tidyTitle(text);
+    }
+
     function titleEditor(wrap) {
         const input = wrap.querySelector('[data-title-input]');
         const layer = wrap.querySelector('[data-title-highlight]');
         const hint = wrap.querySelector('[data-title-hint]');
         const form = wrap.closest('form');
-        const prefixes = Array.from(wrap.querySelectorAll('.prefix-option')).map(function (b) { return b.dataset.prefixText; });
-        const sponsors = (window.STREAMORG_SPONSOR_NAMES || []).map(tagKey);
-        const labels = {};
+        const buttons = Array.from(wrap.querySelectorAll('.prefix-option'));
+        const chips = wrap.querySelector('[data-title-order] ol');
 
-        wrap.querySelectorAll('.title-legend span').forEach(function (span) {
-            labels[span.className.replace('tok-', '')] = span.textContent;
-        });
+        const ctx = {
+            prefixes: buttons.filter(function (b) { return b.dataset.kind !== 'suffix'; }).map(function (b) { return b.dataset.prefixText; }),
+            suffixes: buttons.filter(function (b) { return b.dataset.kind === 'suffix'; }).map(function (b) { return b.dataset.prefixText; }),
+            sponsors: (window.STREAMORG_SPONSORS || []).map(function (s) { return tagKey(camelTag(s.label)); }),
+            gameTags: [],
+            order: chips ? Array.from(chips.children).map(function (li) { return li.dataset.part; }) : TITLE_PARTS.slice(),
+        };
+
+        wrap._titleCtx = ctx;
 
         function update() {
             const text = input.value;
             layer.innerHTML = '';
 
-            titleTokens(text, prefixes, sponsors).forEach(function (token) {
+            titleTokens(text, ctx).forEach(function (token) {
                 const span = document.createElement('span');
                 span.className = 'tok-' + token.kind;
                 span.textContent = token.text;
@@ -1601,6 +2083,8 @@
             fit();
         }
 
+        wrap._titleUpdate = update;
+
         /** Grows the box to its text (only while visible: hidden forms measure nothing). */
         function fit() {
             if (!input.offsetParent) return;
@@ -1620,22 +2104,18 @@
             const button = event.target.closest('.prefix-option');
             if (!button) return;
 
-            const piece = button.dataset.prefixText;
-
-            if (button.dataset.kind === 'suffix') {
-                const tail = new RegExp('(\\s+(' + creditPattern() + '|#[^\\s#]+))+\\s*$').exec(input.value);
-                const cut = tail ? tail.index : input.value.length;
-                const body = input.value.slice(0, cut).replace(/\s+$/, '');
-                input.value = (body ? body + ' ' : '') + piece + (tail ? tail[0].replace(/\s+$/, '') : '');
-            } else {
-                const lead = /^(\s*\[[^\]]*\])*/.exec(input.value)[0];
-                const rest = input.value.slice(lead.length).replace(/^\s+/, '');
-                input.value = (lead.trim() ? lead.trim() + ' ' : '') + piece + ' ' + rest;
-            }
-
+            input.value = placeInTitle(input.value, button.dataset.kind === 'suffix' ? 'suffix' : 'prefix', button.dataset.prefixText, ctx);
             input.focus();
             update();
         });
+
+        if (chips) {
+            orderChips(chips, function (order) {
+                ctx.order = order;
+                input.value = orderTitle(input.value, ctx);
+                update();
+            });
+        }
 
         if (wrap.dataset.caret !== undefined) {
             input.addEventListener('focus', function place() {
@@ -1653,6 +2133,64 @@
 
         update();
     }
+
+    /**
+     * Chips that can be put in another order by dragging, or with the
+     * arrow keys once focused; onChange gets the new order.
+     */
+    function orderChips(list, onChange) {
+        let dragged = null;
+        const order = function () { return Array.from(list.children).map(function (li) { return li.dataset.part; }); };
+        const changed = function () {
+            const input = list.parentNode.querySelector('[data-title-order-input]');
+            if (input) input.value = order().join(',');
+            if (onChange) onChange(order());
+        };
+
+        list.addEventListener('dragstart', function (event) {
+            dragged = event.target.closest('li');
+            if (!dragged) return;
+            dragged.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', dragged.dataset.part);
+        });
+
+        list.addEventListener('dragover', function (event) {
+            if (!dragged) return;
+            event.preventDefault();
+            const over = event.target.closest('li');
+            if (!over || over === dragged) return;
+            const box = over.getBoundingClientRect();
+            const after = (event.clientX - box.left) > box.width / 2;
+            list.insertBefore(dragged, after ? over.nextSibling : over);
+        });
+
+        list.addEventListener('drop', function (event) { event.preventDefault(); });
+
+        list.addEventListener('dragend', function () {
+            if (!dragged) return;
+            dragged.classList.remove('dragging');
+            dragged = null;
+            changed();
+        });
+
+        list.addEventListener('keydown', function (event) {
+            const li = event.target.closest('li');
+            if (!li || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+            event.preventDefault();
+
+            if (event.key === 'ArrowLeft' && li.previousElementSibling) list.insertBefore(li, li.previousElementSibling);
+            if (event.key === 'ArrowRight' && li.nextElementSibling) list.insertBefore(li.nextElementSibling, li);
+            li.focus();
+            changed();
+        });
+    }
+
+    onPage(function () {
+        document.querySelectorAll('[data-title-order]').forEach(function (box) {
+            if (!box.closest('[data-title-editor]')) orderChips(box.querySelector('ol'));
+        });
+    });
 
     onPage(function () {
         document.querySelectorAll('[data-title-editor]').forEach(titleEditor);
@@ -1743,6 +2281,33 @@
         } else {
             location.reload();
         }
+    });
+
+    /** Dashboard: puts an undated item in today's first free spot. */
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('[data-today-id]');
+        if (!button) return;
+
+        hideTip();
+        setBusy(button, true);
+        const result = await postJson('/content/today', { id: button.dataset.todayId });
+
+        if (!result.ok) {
+            setBusy(button, false);
+            alert(result.error || 'Error');
+            return;
+        }
+
+        const row = button.closest('.undated-row');
+        if (row) row.classList.add('leaving');
+
+        setTimeout(function () {
+            if (window.Turbo) {
+                window.Turbo.visit(location.href, { action: 'replace' });
+            } else {
+                location.reload();
+            }
+        }, 220);
     });
 
     let relativeTimer = null;
@@ -2027,12 +2592,28 @@
                         [L.source, g.key.source],
                         [L.redeem_by, g.key.expires]
                     );
-                } else {
-                    pairs.push([L.key, L.no_key]);
                 }
 
-                card.append(definitionList(pairs));
-                body.append(withBoxArt(card, g.images, true));
+                const info = document.createElement('div');
+                info.className = 'detail-game-info';
+                info.append(h, definitionList(pairs));
+                card.replaceChildren(info);
+
+                const images = g.images || {};
+                const art = images.portrait || images.header;
+
+                if (art) {
+                    const img = document.createElement('img');
+                    img.className = 'detail-game-art' + (images.portrait ? '' : ' is-header');
+                    img.src = art;
+                    img.alt = '';
+                    img.loading = 'lazy';
+                    card.classList.add('has-art');
+                    if (!images.portrait) card.classList.add('wide-art');
+                    card.prepend(img);
+                }
+
+                body.append(card);
             });
         }
 
@@ -2042,7 +2623,52 @@
                 return [p.name, p.role + ' · ' + p.confirmation];
             })));
         }
+
+        const actions = document.createElement('div');
+        actions.className = 'card-actions detail-actions';
+
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'btn primary';
+        edit.textContent = L.edit || 'Edit';
+        edit.addEventListener('click', function () { editContent(c.id, c.title); });
+        actions.append(edit);
+        body.append(actions);
     }
+
+    /**
+     * Opens a content's edit form: in place on the content page, which
+     * holds every edit form, or on the content page from anywhere else
+     * (the dashboard).
+     */
+    function editContent(id, title) {
+        const form = document.getElementById('edit-content-' + id);
+
+        if (!form) {
+            window.location.href = url('/content') + '?edit=' + encodeURIComponent(id);
+            return;
+        }
+
+        closeModal(true);
+
+        const opener = document.createElement('button');
+        opener.type = 'button';
+        opener.hidden = true;
+        opener.dataset.modalForm = '#edit-content-' + id;
+        opener.dataset.modalTitle = title || '';
+        document.body.append(opener);
+        opener.click();
+        opener.remove();
+    }
+
+    onPage(function () {
+        const id = new URLSearchParams(window.location.search).get('edit');
+        if (!id || !/^\d+$/.test(id) || !document.getElementById('edit-content-' + id)) return;
+
+        history.replaceState(null, '', window.location.pathname + window.location.search.replace(/([?&])edit=\d+&?/, '$1').replace(/[?&]$/, ''));
+        const row = document.querySelector('[data-modal-form="#edit-content-' + id + '"]');
+        editContent(id, row ? row.dataset.modalTitle : '');
+    });
 
     document.addEventListener('submit', async function (event) {
         const form = event.target.closest('.inline-edit');
@@ -2299,6 +2925,44 @@
         table.querySelectorAll('[data-col]').forEach(function (cell) {
             cell.style.display = hidden.indexOf(cell.dataset.col) === -1 ? '' : 'none';
         });
+        layoutRows(table);
+    }
+
+    /**
+     * Rounds the last shown cell of each row, and lines up the game art of
+     * rows that have it: the art starts at the first column after the
+     * buttons and each cell shows its own slice of it.
+     */
+    function layoutRows(table) {
+        if (!table.tBodies[0]) return;
+
+        const rows = Array.prototype.filter.call(table.tBodies[0].rows, function (row) { return !row.classList.contains('editrow'); });
+        if (!rows.length) return;
+
+        const sample = rows[0];
+        const xs = [];
+        let artX = null;
+        let lastShown = -1;
+
+        Array.prototype.forEach.call(sample.cells, function (cell, i) {
+            const visible = cell.style.display !== 'none' && cell.offsetWidth > 0;
+            xs.push(cell.offsetLeft);
+            if (!visible) return;
+            lastShown = i;
+            if (artX === null && !cell.classList.contains('rowactions')) artX = cell.offsetLeft;
+        });
+
+        table.style.setProperty('--art-x', (artX || 0) + 'px');
+
+        rows.forEach(function (row) {
+            if (row.cells.length !== xs.length) return;
+            const art = row.hasAttribute('data-row-art');
+
+            Array.prototype.forEach.call(row.cells, function (cell, i) {
+                cell.classList.toggle('cell-last', i === lastShown);
+                if (art) cell.style.setProperty('--cell-x', xs[i] + 'px');
+            });
+        });
     }
 
     /**
@@ -2323,6 +2987,7 @@
                 .sort(function (a, b) { return rank(a.cell.dataset.col) - rank(b.cell.dataset.col) || a.i - b.i; })
                 .forEach(function (item) { row.appendChild(item.cell); });
         });
+        layoutRows(table);
     }
 
     /**
@@ -2566,6 +3231,61 @@
         keyed.forEach(function (item) {
             item.group.forEach(function (row) { body.appendChild(row); });
         });
+
+        pageRows(table);
+    }
+
+    const PAGE_SIZE = 50;
+
+    /**
+     * Long lists show their rows a page at a time: the first ones, then
+     * more as the end of the list comes into view (or "Show more" is
+     * pressed). Sorting still covers every row; a row the page points at
+     * (just added) is always shown.
+     */
+    function pageRows(table, more) {
+        const body = table.tBodies[0];
+        if (!body) return;
+
+        const rows = Array.prototype.filter.call(body.rows, function (row) { return !row.classList.contains('editrow'); });
+        const wrap = table.closest('.table-wrap') || table;
+        let bar = wrap.nextElementSibling && wrap.nextElementSibling.classList.contains('list-more') ? wrap.nextElementSibling : null;
+
+        if (rows.length <= PAGE_SIZE) {
+            if (bar) bar.remove();
+            return;
+        }
+
+        const pinned = rows.findIndex(function (row) { return row.classList.contains('just-added') || row.matches(':target'); });
+        let shown = Math.max(Number(table.dataset.shown || PAGE_SIZE) + (more ? PAGE_SIZE : 0), pinned + 1);
+        shown = Math.min(shown, rows.length);
+        table.dataset.shown = String(shown);
+
+        rows.forEach(function (row, i) { row.classList.toggle('page-hidden', i >= shown); });
+
+        const L = window.STREAMORG_L || {};
+
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'list-more';
+            bar.innerHTML = '<span class="list-more-count"></span><button type="button" class="btn small"></button>';
+            bar.querySelector('button').addEventListener('click', function () { pageRows(table, true); });
+            wrap.after(bar);
+
+            if (window.IntersectionObserver) {
+                const watch = new IntersectionObserver(function (entries) {
+                    if (entries.some(function (entry) { return entry.isIntersecting; }) && Number(table.dataset.shown) < table.tBodies[0].rows.length) {
+                        pageRows(table, true);
+                    }
+                }, { rootMargin: '0px 0px 400px 0px' });
+                watch.observe(bar);
+                bar._watch = watch;
+            }
+        }
+
+        bar.querySelector('.list-more-count').textContent = (L.list_showing || '%1$s / %2$s').replace('%1$s', shown).replace('%2$s', rows.length);
+        bar.querySelector('button').textContent = L.list_more || '+';
+        bar.classList.toggle('done', shown >= rows.length);
     }
 
     function storedSort(key) {
@@ -2629,19 +3349,41 @@
         });
 
         document.querySelectorAll('.table-wrap').forEach(function (wrap) {
-            if (wrap.dataset.edgeReady || !wrap.querySelector('td.rowactions')) return;
+            if (wrap.dataset.edgeReady) return;
             wrap.dataset.edgeReady = '1';
 
-            const edge = function () { wrap.classList.toggle('scrolled', wrap.scrollLeft > 2); };
+            const edge = function () {
+                const room = wrap.scrollWidth - wrap.clientWidth;
+                wrap.classList.toggle('scrolled', wrap.scrollLeft > 2);
+                wrap.classList.toggle('fade-left', room > 2 && wrap.scrollLeft > 2);
+                wrap.classList.toggle('fade-right', room > 2 && wrap.scrollLeft < room - 2);
+            };
             wrap.addEventListener('scroll', function () { edge(); closeRowMenus(); }, { passive: true });
             edge();
+
+            const table = wrap.querySelector(':scope > table');
+            if (table) {
+                pageRows(table);
+                layoutRows(table);
+            }
+
+            if (window.ResizeObserver) {
+                const watch = new ResizeObserver(function () {
+                    edge();
+                    if (table) layoutRows(table);
+                });
+                watch.observe(wrap);
+                if (table) watch.observe(table);
+            }
         });
 
         document.querySelectorAll('table[data-sortable] td.rowactions').forEach(function (cell) {
             if (cell.dataset.menuReady) return;
             cell.dataset.menuReady = '1';
 
-            if (cell.querySelectorAll('.btn').length < 2) return;
+            const buttons = cell.querySelectorAll('.btn');
+            if (buttons.length < 2) return;
+            if (buttons.length <= 3 && Array.prototype.every.call(buttons, function (button) { return button.querySelector(':scope > .btn-label'); })) return;
 
             const menu = document.createElement('div');
             menu.className = 'rowactions-menu';
@@ -2684,12 +3426,120 @@
             cell.classList.remove('has-menu');
         });
 
+        document.querySelectorAll('.list-more').forEach(function (bar) {
+            if (bar._watch) bar._watch.disconnect();
+            bar.remove();
+        });
+
+        document.querySelectorAll('table[data-shown]').forEach(function (table) {
+            delete table.dataset.shown;
+            table.querySelectorAll('tr.page-hidden').forEach(function (row) { row.classList.remove('page-hidden'); });
+        });
+
         document.querySelectorAll('[data-sort-ready], [data-menu-ready], [data-edge-ready]').forEach(function (node) {
             delete node.dataset.sortReady;
             delete node.dataset.menuReady;
             delete node.dataset.edgeReady;
         });
     }
+
+    /** Marks a button as working: an icon button spins its icon, a text button shows "…" meanwhile. */
+    function setBusy(button, on) {
+        button.disabled = on;
+
+        if (button.querySelector('.btn-label')) {
+            button.classList.toggle('is-busy', on);
+            return;
+        }
+
+        if (on) {
+            button.dataset.busyLabel = button.textContent;
+            button.textContent = '…';
+        } else if (button.dataset.busyLabel !== undefined) {
+            button.textContent = button.dataset.busyLabel;
+            delete button.dataset.busyLabel;
+        }
+    }
+
+    /** Tooltips of the icon buttons: the button's label, with its hint (its title) underneath. */
+    const tooltip = { box: null, owner: null };
+
+    function hideTip() {
+        if (tooltip.box) tooltip.box.classList.remove('show');
+        tooltip.owner = null;
+    }
+
+    function showTip(button) {
+        const label = button.querySelector(':scope > .btn-label');
+        if (!label || button.closest('td.menu-open')) return;
+
+        if (button.hasAttribute('title')) {
+            button.dataset.tipHint = button.getAttribute('title');
+            button.removeAttribute('title');
+        }
+
+        if (!tooltip.box || !tooltip.box.isConnected) {
+            tooltip.box = document.createElement('div');
+            tooltip.box.className = 'tip';
+            tooltip.box.setAttribute('aria-hidden', 'true');
+            document.body.append(tooltip.box);
+        }
+
+        const box = tooltip.box;
+        box.textContent = label.textContent.trim();
+
+        if (button.dataset.tipHint) {
+            const hint = document.createElement('small');
+            hint.textContent = button.dataset.tipHint;
+            box.append(hint);
+        }
+
+        tooltip.owner = button;
+        box.classList.remove('below', 'show');
+        box.style.left = '0px';
+        box.style.top = '0px';
+
+        const at = button.getBoundingClientRect();
+        const width = box.offsetWidth;
+        const height = box.offsetHeight;
+        const left = Math.max(8, Math.min(at.left + at.width / 2 - width / 2, window.innerWidth - width - 8));
+        let top = at.top - height - 9;
+
+        if (top < 8) {
+            top = at.bottom + 9;
+            box.classList.add('below');
+        }
+
+        box.style.left = left + 'px';
+        box.style.top = top + 'px';
+        box.style.setProperty('--tip-arrow', Math.round(at.left + at.width / 2 - left) + 'px');
+        requestAnimationFrame(function () { if (tooltip.owner === button) box.classList.add('show'); });
+    }
+
+    document.addEventListener('pointerover', function (event) {
+        if (event.pointerType === 'touch') return;
+        const button = event.target.closest('.btn');
+
+        if (button && button !== tooltip.owner && button.querySelector(':scope > .btn-label')) {
+            showTip(button);
+        } else if (!button && tooltip.owner) {
+            hideTip();
+        }
+    });
+
+    document.addEventListener('pointerout', function (event) {
+        if (tooltip.owner && !tooltip.owner.contains(event.relatedTarget)) hideTip();
+    });
+
+    document.addEventListener('focusin', function (event) {
+        const button = event.target.closest && event.target.closest('.btn');
+        if (button && button.matches(':focus-visible')) showTip(button);
+    });
+
+    document.addEventListener('focusout', hideTip);
+    document.addEventListener('pointerdown', hideTip);
+    document.addEventListener('scroll', hideTip, true);
+    document.addEventListener('keydown', function (event) { if (event.key === 'Escape') hideTip(); });
 
     /** The "⋮" of a row on small screens: opens that row's buttons in a small menu beside it. */
     function closeRowMenus() {
@@ -2961,10 +3811,9 @@
         const button = event.target.closest('.streamer-refresh');
         if (!button) return;
 
-        const previous = button.textContent;
-        button.disabled = true; button.textContent = '…';
+        setBusy(button, true);
         const result = await postJson('/streamers/import', { ref: button.dataset.ref });
-        button.disabled = false; button.textContent = previous;
+        setBusy(button, false);
 
         if (!result.ok) { alert(result.error || 'Error'); return; }
         window.location.reload();
@@ -3025,176 +3874,171 @@
         }
     });
 
-    onPage(function () {
-        const titleField = document.querySelector('#add-content textarea[name="title"]');
+    const CONFUSABLES = {
+        'А':'A','В':'B','С':'C','Е':'E','Н':'H','К':'K','М':'M','О':'O','Р':'P','Т':'T','Х':'X',
+        'а':'a','е':'e','о':'o','р':'p','с':'c','у':'y','х':'x',
+        'Α':'A','Β':'B','Ε':'E','Η':'H','Ι':'I','Κ':'K','Μ':'M','Ν':'N','Ο':'O','Ρ':'P','Τ':'T','Υ':'Y','Χ':'X',
+    };
 
-        if (titleField) {
-            /** "Super Rare Originals" -> "SuperRareOriginals" */
-            const CONFUSABLES = {
-                'А':'A','В':'B','С':'C','Е':'E','Н':'H','К':'K','М':'M','О':'O','Р':'P','Т':'T','Х':'X',
-                'а':'a','е':'e','о':'o','р':'p','с':'c','у':'y','х':'x',
-                'Α':'A','Β':'B','Ε':'E','Η':'H','Ι':'I','Κ':'K','Μ':'M','Ν':'N','Ο':'O','Ρ':'P','Τ':'T','Υ':'Y','Χ':'X',
-            };
+    /** "Super Rare Originals" -> "#SuperRareOriginals" */
+    function camelTag(name) {
+        const words = String(name || '')
+            .replace(/[^\x00-\x7F]/g, function (ch) { return CONFUSABLES[ch] || ch; })
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^A-Za-z0-9 ]+/g, ' ')
+            .trim().split(/\s+/).filter(Boolean);
 
-            function camelTag(name) {
-                const words = String(name || '')
-                    .replace(/[^\x00-\x7F]/g, function (ch) { return CONFUSABLES[ch] || ch; })
-                    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-                    .replace(/[^A-Za-z0-9 ]+/g, ' ')
-                    .trim().split(/\s+/).filter(Boolean);
+        if (!words.length) return '';
 
-                if (!words.length) return '';
+        return '#' + words.map(function (w) {
+            return /^[A-Z0-9]+$/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1);
+        }).join('');
+    }
 
-                return '#' + words.map(function (w) {
-                    return /^[A-Z0-9]+$/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1);
-                }).join('');
-            }
+    /** "ft. @A, @B", with the user's own word for "ft.". */
+    function featureText(names) {
+        if (!names.length) return '';
 
-            function escapeRe(v) {
-                return String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            }
+        const word = typeof window.STREAMORG_COLLAB_PREFIX === 'string' ? window.STREAMORG_COLLAB_PREFIX : 'ft.';
 
-            function hasTag(text, tag) {
-                if (!tag) return true;
-                return new RegExp('(^|\\s)' + escapeRe(tag) + '(\\s|$)', 'i').test(text);
-            }
+        return (word ? word + ' ' : '') + names.map(function (n) {
+            return '@' + String(n).replace(/\s+/g, '');
+        }).join(', ');
+    }
 
-            const applied = { game: [], sponsor: [], collab: [] };
+    function sponsorOf(code) {
+        return (window.STREAMORG_SPONSORS || []).find(function (s) { return s.code === code; }) || null;
+    }
 
-            function removeTokens(tokens) {
-                if (!tokens.length) return;
+    /**
+     * A content form's title helper: choosing a game adds its
+     * developer/publisher tags (and its own hashtag when the sponsor asks
+     * for one), choosing a sponsor adds its tag and choosing a collab its
+     * credit, each where the title order puts it. Changing a choice swaps
+     * what the old one added. Works in the new form and in edit forms,
+     * whose title already carries its tags.
+     */
+    function titleComposer(form) {
+        const wrap = form.querySelector('[data-title-editor]');
+        if (!wrap || !wrap._titleCtx) return;
 
-                let text = titleField.value;
+        const input = wrap.querySelector('[data-title-input]');
+        const ctx = wrap._titleCtx;
+        const gameSelect = form.querySelector('[data-content-game]');
+        const sponsorSelect = form.querySelector('[data-content-sponsor]');
+        const collabSelect = form.querySelector('[data-content-collab]');
+        const applied = { devpub: [], game: [], sponsor: [], collab: [] };
+        let lastGame = gameSelect ? gameSelect.value : '';
 
-                tokens.forEach(function (token) {
-                    text = text.replace(
-                        new RegExp('(^|\\s)' + escapeRe(token) + '(?=\\s|$)', 'i'),
-                        ' '
-                    );
-                });
+        const has = function (text, piece) {
+            return new RegExp('(^|\\s)' + escapeRegExp(piece) + '(\\s|$)', 'i').test(text);
+        };
+        const game = function (id) { return id ? (window.STREAMORG_GAMES || {})[id] || null : null; };
+        const studioTags = function (g) {
+            return g ? [camelTag(g.developer), camelTag(g.publisher)].filter(function (t, i, all) { return t && all.indexOf(t) === i; }) : [];
+        };
+        const sponsor = function () { return sponsorSelect && sponsorSelect.value ? sponsorOf(sponsorSelect.value) : null; };
 
-                titleField.value = text.replace(/[ \t]{2,}/g, ' ').trim();
-            }
+        function set(part, pieces) {
+            pieces = pieces.filter(Boolean);
+            let text = removeFromTitle(input.value, applied[part].filter(function (p) { return pieces.indexOf(p) === -1; }));
 
-            /** Appends tags that are not already somewhere in the title. */
-            function appendTags(tags) {
-                let text = titleField.value.replace(/\s+$/, '');
-                const added = [];
+            pieces.forEach(function (piece) {
+                if (!has(text, piece)) text = placeInTitle(text, part, piece, ctx);
+            });
 
-                tags.filter(Boolean).forEach(function (tag) {
-                    if (!hasTag(text, tag)) {
-                        text += (text ? ' ' : '') + tag;
-                        added.push(tag);
-                    }
-                });
+            input.value = text;
+            applied[part] = pieces;
+            if (wrap._titleUpdate) wrap._titleUpdate();
+        }
 
-                titleField.value = text;
+        /** In an edit form, what the saved game put in the title is only known once its details arrive. */
+        function adopt(id) {
+            const g = game(id);
+            if (!g) return;
+            if (!applied.devpub.length) applied.devpub = studioTags(g).filter(function (t) { return has(input.value, t); });
+            if (!applied.game.length && g.hashtag && has(input.value, g.hashtag)) applied.game = [g.hashtag];
+        }
 
-                return added;
-            }
+        function applyGameTag() {
+            const g = game(gameSelect && gameSelect.value);
+            const s = sponsor();
+            ctx.gameTags = g && g.hashtag ? [g.hashtag] : [];
+            set('game', g && s && s.game_tag && g.hashtag ? [g.hashtag] : []);
+        }
 
-            /** Swaps one slot's contribution for a new set of tags. */
-            function setSlot(slot, tags) {
-                removeTokens(applied[slot]);
-                appendTags(tags);
-                applied[slot] = tags.filter(Boolean);
-                titleField.dispatchEvent(new Event('input'));
-            }
+        function applyGame() {
+            adopt(lastGame);
+            lastGame = gameSelect.value;
+            set('devpub', studioTags(game(gameSelect.value)));
+            applyGameTag();
+        }
 
-            /** "ft. @A, @B" (with the user's own word for "ft.") sits before the hashtags, where it reads naturally. */
-            function featureText(names) {
-                if (!names.length) return '';
+        function applySponsor() {
+            const s = sponsor();
+            set('sponsor', s ? [camelTag(s.label)] : []);
+            applyGameTag();
+        }
 
-                const word = typeof window.STREAMORG_COLLAB_PREFIX === 'string' ? window.STREAMORG_COLLAB_PREFIX : 'ft.';
+        if (sponsorSelect && !sponsorSelect.value) {
+            const found = (window.STREAMORG_SPONSORS || []).find(function (s) { return has(input.value, camelTag(s.label)); });
+            if (found) sponsorSelect.value = found.code;
+        }
 
-                return (word ? word + ' ' : '') + names.map(function (n) {
-                    return '@' + String(n).replace(/\s+/g, '');
-                }).join(', ');
-            }
+        if (sponsor()) applied.sponsor = [camelTag(sponsor().label)].filter(function (t) { return has(input.value, t); });
 
-            /** Same slot idea as the tags: swap the credit, never stack it. */
-            function setFeature(names) {
-                if (applied.collab.length) {
-                    titleField.value = titleField.value
-                        .replace(applied.collab[0], '')
-                        .replace(/[ \t]{2,}/g, ' ')
-                        .trim();
-                }
+        if (gameSelect) {
+            gameSelect.addEventListener('change', applyGame);
+            gameSelect.addEventListener('game-details', function () {
+                adopt(gameSelect.value);
+                const g = game(gameSelect.value);
+                ctx.gameTags = g && g.hashtag ? [g.hashtag] : [];
+                if (wrap._titleUpdate) wrap._titleUpdate();
+            });
+        }
 
-                applied.collab = [];
+        if (sponsorSelect) sponsorSelect.addEventListener('change', applySponsor);
 
-                const feature = featureText(names);
+        if (collabSelect) {
+            const applyCollab = function () {
+                const c = (window.STREAMORG_COLLABS || {})[collabSelect.value];
 
-                if (!feature) return;
-
-                if (titleField.value.indexOf(feature) !== -1) {
-                    applied.collab = [feature];
+                if (!c) {
+                    set('collab', []);
                     return;
                 }
 
-                const text = titleField.value;
-                const m = text.match(/^(.*?)(\s*(?:#\S+\s*)+)$/);
+                if (!input.value.trim() && c.title) input.value = c.title;
+                set('collab', [featureText(c.cast || [])]);
 
-                titleField.value = m
-                    ? (m[1].replace(/\s+$/, '') + ' ' + feature + ' ' + m[2].trim()).trim()
-                    : (text.replace(/\s+$/, '') + (text ? ' ' : '') + feature);
-
-                applied.collab = [feature];
-                titleField.dispatchEvent(new Event('input'));
-            }
-
-            const gameSelect    = document.getElementById('content-game');
-            const sponsorSelect = document.getElementById('content-sponsor');
-            const collabSelect  = document.getElementById('content-collab');
-
-            if (gameSelect) {
-                gameSelect.addEventListener('change', function () {
-                    const g = (window.STREAMORG_GAMES || {})[gameSelect.value];
-                    setSlot('game', g ? [camelTag(g.developer), camelTag(g.publisher)] : []);
-                });
-            }
-
-            if (sponsorSelect) {
-                sponsorSelect.addEventListener('change', function () {
-                    setSlot('sponsor', sponsorSelect.value ? [camelTag(sponsorSelect.value)] : []);
-                });
-            }
-
-            if (collabSelect) {
-                const applyCollab = function () {
-                    const c = (window.STREAMORG_COLLABS || {})[collabSelect.value];
-
-                    if (!c) {
-                        setFeature([]);
-                        return;
-                    }
-
-                    if (!titleField.value.trim() && c.title) {
-                        titleField.value = c.title;
-                    }
-
-                    setFeature(c.cast || []);
-
-                    const when = document.querySelector('#add-content input[name="scheduled_start"]');
-                    if (when && !when.value && c.at) when.value = c.at;
-
-                    const plat = document.querySelector('#add-content select[name="platform"]');
-                    if (plat && c.platform) plat.value = c.platform;
-                };
-
-                collabSelect.addEventListener('change', applyCollab);
-
-                const pre = window.STREAMORG_PRESELECT_COLLAB;
-
-                if (pre) {
-                    collabSelect.value = String(pre);
-                    applyCollab();
-
-                    const opener = document.querySelector('[data-modal-form="#add-content"]');
-                    if (opener) opener.click();
+                const when = form.querySelector('input[name="scheduled_start"]');
+                if (when && !when.value && c.at) {
+                    when.value = c.at;
+                    when.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+
+                const plat = form.querySelector('select[name="platform"]');
+                if (plat && c.platform) plat.value = c.platform;
+            };
+
+            collabSelect.addEventListener('change', applyCollab);
+
+            const pre = window.STREAMORG_PRESELECT_COLLAB;
+
+            if (pre && form.id === 'add-content') {
+                collabSelect.value = String(pre);
+                applyCollab();
+
+                const opener = document.querySelector('[data-modal-form="#add-content"]');
+                if (opener) opener.click();
             }
         }
+    }
+
+    onPage(function () {
+        document.querySelectorAll('form').forEach(function (form) {
+            if (form.querySelector('[data-title-editor] [data-title-input]') && form.querySelector('[data-content-game]')) titleComposer(form);
+        });
     });
 
     function navToggleEl() {
@@ -4198,15 +5042,20 @@
         if (event.key === 'Enter' && event.target.matches('[data-cast-add-search]')) event.preventDefault();
     });
 
+    /**
+     * Puts a streamer in a collab form's cast (once): a row with their
+     * picture, name, role and a remove button, from the page's template.
+     */
     function castAddRow(box, item, id) {
         const fieldset = box.closest('fieldset') || box.parentNode;
         const list = fieldset.querySelector('.cast-list');
-        const existing = list.querySelector('input[name="streamers[]"][value="' + id + '"]');
+        const existing = list.querySelector('.cast-row[data-cast-id="' + id + '"]');
 
         if (existing) {
-            existing.checked = true;
-            existing.dispatchEvent(new Event('change', { bubbles: true }));
-            existing.closest('.cast-row').scrollIntoView({ block: 'nearest' });
+            existing.scrollIntoView({ block: 'nearest' });
+            existing.classList.remove('just-added');
+            void existing.offsetWidth;
+            existing.classList.add('just-added');
             return;
         }
 
@@ -4215,11 +5064,147 @@
         holder.innerHTML = template.innerHTML.replace(/__ID__/g, String(id));
         const row = holder.firstElementChild;
         row.querySelector('[data-cast-name]').textContent = item.name;
-        row.querySelector('[data-cast-streamorg]').hidden = !item.on_streamorg;
+
+        if (item.avatar) {
+            const img = document.createElement('img');
+            img.className = 'cast-avatar';
+            img.alt = '';
+            img.referrerPolicy = 'no-referrer';
+            img.src = item.avatar;
+            row.querySelector('.cast-avatar').replaceWith(img);
+        } else {
+            row.querySelector('.cast-avatar').textContent = String(item.name || '?').charAt(0).toUpperCase();
+        }
+
+        if (item.on_streamorg || item.streamorg) {
+            const badge = document.createElement('span');
+            badge.className = 'badge on-streamorg';
+            badge.textContent = (window.STREAMORG_L || {}).on_streamorg || 'StreamOrg';
+            row.querySelector('.cast-name').append(' ', badge);
+        }
+
         row.classList.add('just-added');
-        list.prepend(row);
-        row.querySelector('input').dispatchEvent(new Event('change', { bubbles: true }));
+        list.append(row);
+
+        const known = window.STREAMORG_CAST_STREAMERS || [];
+        if (!known.some(function (s) { return String(s.id) === String(id); })) {
+            known.push({ id: Number(id), name: item.name, avatar: item.avatar || null, streamorg: Boolean(item.on_streamorg) });
+            window.STREAMORG_CAST_STREAMERS = known;
+        }
     }
+
+    document.addEventListener('click', function (event) {
+        const remove = event.target.closest('[data-cast-remove]');
+        if (remove) remove.closest('.cast-row').remove();
+    });
+
+    /** The collab form's own streamer search: the user's streamers by name, the ones not chosen yet. */
+    function castPickResults(search) {
+        const picker = search.closest('[data-cast-picker]');
+        const results = picker.querySelector('[data-cast-pick-results]');
+        const fieldset = picker.closest('fieldset');
+        const chosen = new Set(Array.from(fieldset.querySelectorAll('.cast-row[data-cast-id]')).map(function (r) { return r.dataset.castId; }));
+        const fold = function (t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); };
+        const term = fold(search.value.trim());
+        const matches = (window.STREAMORG_CAST_STREAMERS || [])
+            .filter(function (s) { return !chosen.has(String(s.id)) && (term === '' || fold(s.name).indexOf(term) !== -1); })
+            .slice(0, 8);
+
+        results.replaceChildren();
+
+        if (!matches.length) {
+            if (term === '') { results.hidden = true; return; }
+            const empty = document.createElement('p');
+            empty.className = 'muted small';
+            empty.textContent = (window.STREAMORG_L || {}).picker_none || '—';
+            results.append(empty);
+            results.hidden = false;
+            return;
+        }
+
+        matches.forEach(function (s, i) {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'cast-pick-option' + (i === 0 ? ' active' : '');
+            option.dataset.castPick = String(s.id);
+
+            const pic = s.avatar ? document.createElement('img') : document.createElement('span');
+            pic.className = 'cast-avatar';
+            if (s.avatar) { pic.src = s.avatar; pic.alt = ''; pic.loading = 'lazy'; pic.referrerPolicy = 'no-referrer'; }
+            else pic.textContent = String(s.name).charAt(0).toUpperCase();
+
+            const name = document.createElement('span');
+            name.textContent = s.name;
+            option.append(pic, name);
+            results.append(option);
+        });
+
+        results.hidden = false;
+    }
+
+    function castPick(search, id) {
+        const s = (window.STREAMORG_CAST_STREAMERS || []).find(function (x) { return String(x.id) === String(id); });
+        if (!s) return;
+        castAddRow(search.closest('[data-cast-picker]'), s, s.id);
+        search.value = '';
+        castPickResults(search);
+        search.focus();
+    }
+
+    document.addEventListener('input', function (event) {
+        const search = event.target.closest('[data-cast-pick-search]');
+        if (search) castPickResults(search);
+    });
+
+    document.addEventListener('focusin', function (event) {
+        const search = event.target.closest('[data-cast-pick-search]');
+        if (search) castPickResults(search);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        const search = event.target.closest('[data-cast-pick-search]');
+        if (!search) return;
+
+        const results = search.closest('[data-cast-picker]').querySelector('[data-cast-pick-results]');
+        const options = Array.from(results.querySelectorAll('[data-cast-pick]'));
+        const current = options.findIndex(function (o) { return o.classList.contains('active'); });
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!options.length) return;
+            const next = (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+            options.forEach(function (o, i) { o.classList.toggle('active', i === next); });
+            options[next].scrollIntoView({ block: 'nearest' });
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (options[current]) castPick(search, options[current].dataset.castPick);
+        }
+    });
+
+    /** Escape closes the streamer suggestions first, not the form's window. */
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const search = event.target.closest('[data-cast-pick-search]');
+        const results = search ? search.closest('[data-cast-picker]').querySelector('[data-cast-pick-results]') : null;
+        if (!results || results.hidden) return;
+
+        results.hidden = true;
+        event.preventDefault();
+        event.stopPropagation();
+    }, true);
+
+    document.addEventListener('mousedown', function (event) {
+        const option = event.target.closest('[data-cast-pick]');
+        if (option) {
+            event.preventDefault();
+            castPick(option.closest('[data-cast-picker]').querySelector('[data-cast-pick-search]'), option.dataset.castPick);
+            return;
+        }
+
+        document.querySelectorAll('[data-cast-pick-results]').forEach(function (results) {
+            if (!results.closest('[data-cast-picker]').contains(event.target)) results.hidden = true;
+        });
+    });
 
     document.addEventListener('input', function (event) {
         const search = event.target.closest('[data-cast-add-search]');
@@ -4375,6 +5360,33 @@
             const fresh = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector('[data-auto-refresh]');
             if (fresh && fresh.innerHTML !== current.innerHTML) current.innerHTML = fresh.innerHTML;
         }, seconds * 1000);
+    });
+
+    /**
+     * Page tabs (partials/tabs.php): the chosen panel shows at once, the
+     * others hide, and the address keeps the choice. A calendar in a panel
+     * that just appeared is told to measure itself again.
+     */
+    document.addEventListener('click', function (event) {
+        const tab = event.target.closest('[data-tabs] [data-tab]');
+        if (!tab) return;
+
+        const key = tab.dataset.tab;
+        tab.closest('[data-tabs]').querySelectorAll('[data-tab]').forEach(function (t) {
+            const on = t === tab;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('[data-tab-panel]').forEach(function (panel) {
+            panel.hidden = panel.dataset.tabPanel !== key;
+        });
+
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', key);
+        history.replaceState(history.state, '', window.location.pathname + '?' + params.toString() + window.location.hash);
+
+        window.dispatchEvent(new Event('resize'));
     });
 
     /** Table or cards from the user menu: the lists change at once, saved in the background. */

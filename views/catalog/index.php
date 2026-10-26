@@ -5,6 +5,13 @@
 <h1><?= e(__('ui.nav.catalog')) ?></h1>
 <p class="muted"><?= e(__('ui.message.catalog_intro')) ?></p>
 
+<?php $tab = ($_GET['tab'] ?? '') === 'add' ? 'add' : 'games'; ?>
+<?= View::partial('partials/tabs', ['name' => 'games', 'active' => $tab, 'tabs' => [
+    'games' => __('ui.nav.games'),
+    'add' => __('ui.label.tab_add_game'),
+]]) ?>
+
+<div data-tab-panel="add" <?= $tab === 'add' ? '' : 'hidden' ?>>
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.action.create')) ?></h2>
@@ -29,25 +36,16 @@
         <div id="catalog-results" class="results"></div>
     <?php endif; ?>
 </section>
+</div>
 
-<form class="card filters" method="get" action="<?= e(url('/catalog')) ?>">
-    <label class="grow">
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($filters['q']) ?>">
-    </label>
-    <label>
-        <span><?= e(__('ui.field.release_date')) ?></span>
-        <select name="stale">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <option value="1" <?= $filters['stale'] === '1' ? 'selected' : '' ?>>
-                <?= e(__('ui.label.needs_date')) ?> (<?= $needsDate ?>)
-            </option>
-        </select>
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/catalog')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+<div data-tab-panel="games" <?= $tab === 'games' ? '' : 'hidden' ?>>
+<form class="card filters" method="get" action="<?= e(url('/catalog')) ?>" data-filters>
+    <?= View::partial('partials/filter_search', ['value' => $filters['q'], 'placeholder' => __('ui.label.search_games')]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'stale', 'label' => __('ui.field.release_date'), 'selected' => $filters['stale'], 'multiple' => false,
+        'options' => ['1' => __('ui.label.needs_date') . ' (' . $needsDate . ')'],
+    ]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/catalog', 'active' => $filters['q'] !== '' || $filters['stale'] !== '']) ?>
 </form>
 
 <section class="card">
@@ -70,19 +68,21 @@
             </thead>
             <tbody>
             <?php foreach ($games as $game): ?>
-                <tr data-game-id="<?= (int) $game['id'] ?>">
+                <tr data-game-id="<?= (int) $game['id'] ?>"<?= row_art($game['cover_path'], $game['cover_version']) ?>>
                     <td class="rowactions">
                         <?php if ($game['source_provider']): ?>
                             <button type="button" class="btn small game-refresh" data-id="<?= (int) $game['id'] ?>"
                                     title="<?= e(__('ui.action.refresh_hint')) ?>">
-                                <?= e(__('ui.action.refresh')) ?>
+                                <?= icon_label('refresh', __('ui.action.refresh')) ?>
                             </button>
                         <?php else: ?>
                             <span class="muted small"><?= e(__('ui.label.manual_entry')) ?></span>
                         <?php endif; ?>
                     </td>
                     <td data-card-title data-col="title" data-label="<?= e(__('ui.field.title')) ?>">
-                        <span class="game-cell">
+                        <img class="card-cover" loading="lazy" alt=""
+                             src="<?= e($game['cover_path'] ? GameImages::publicUrl($game['cover_path'], (string) $game['cover_version']) : url('/assets/game-missing.svg')) ?>">
+                        <span class="game-cell has-card-cover">
                             <?php if ($game['thumb_path']): ?>
                                 <img class="picker-cover" alt="" loading="lazy"
                                      src="<?= e(GameImages::publicUrl($game['thumb_path'], (string) $game['thumb_version'])) ?>">
@@ -124,3 +124,4 @@
         </div>
     <?php endif; ?>
 </section>
+</div>

@@ -195,10 +195,12 @@ final class AdminController
             'manual'      => (int) $pdo->query('SELECT count(*) FROM games WHERE source_provider IS NULL')->fetchColumn(),
             'manualOnly'  => $manualOnly,
             'games' => $pdo->query(
-                'SELECT g.*, p.name AS publisher_name, d.name AS developer_name
+                'SELECT g.*, p.name AS publisher_name, d.name AS developer_name,
+                        art.path AS art_path, art.updated_at AS art_version
                    FROM games g
               LEFT JOIN publishers p ON p.id = g.publisher_id
-              LEFT JOIN developers d ON d.id = g.developer_id'
+              LEFT JOIN developers d ON d.id = g.developer_id
+              ' . GameImages::artJoin('g.id')
                 . ($manualOnly ? ' WHERE g.source_provider IS NULL' : '') . '
                ORDER BY g.title'
             )->fetchAll(),
@@ -270,6 +272,26 @@ final class AdminController
             $gameId !== false ? __('ui.message.saved') : __('ui.message.duplicate')
         );
 
+        redirect('/admin/games');
+    }
+
+    /** POST /admin/games/hashtag — the game's own hashtag for titles; empty goes back to the guess. */
+    public static function gameHashtag(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $id  = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: 0;
+        $raw = trim((string) ($_POST['hashtag'] ?? ''));
+        $tag = GameHashtag::fromInput($raw);
+
+        if ($raw !== '' && $tag === null) {
+            flash('error', __('ui.message.invalid_hashtag'));
+            redirect('/admin/games');
+        }
+
+        Database::connection()->prepare('UPDATE games SET hashtag = ? WHERE id = ?')->execute([$tag, $id]);
+        flash('success', __('ui.message.saved'));
         redirect('/admin/games');
     }
 
@@ -491,13 +513,14 @@ final class AdminController
         }
 
         $stmt = Database::connection()->prepare(
-            'INSERT INTO key_platforms (code, website, sort_order, tags_content)
-             VALUES (:code, :website, :sort, :tags) ON CONFLICT (code) DO NOTHING'
+            'INSERT INTO key_platforms (code, website, sort_order, tags_content, uses_game_tag)
+             VALUES (:code, :website, :sort, :tags, :game_tag) ON CONFLICT (code) DO NOTHING'
         );
         $stmt->bindValue('code', $code);
         $stmt->bindValue('website', safe_url($_POST['website'] ?? null));
         $stmt->bindValue('sort', filter_input(INPUT_POST, 'sort_order', FILTER_VALIDATE_INT) ?: 0, PDO::PARAM_INT);
         $stmt->bindValue('tags', !empty($_POST['tags_content']), PDO::PARAM_BOOL);
+        $stmt->bindValue('game_tag', !empty($_POST['uses_game_tag']), PDO::PARAM_BOOL);
         $stmt->execute();
 
         if ($stmt->rowCount() > 0) {
@@ -723,12 +746,13 @@ final class AdminController
 
         $stmt = Database::connection()->prepare(
             'UPDATE key_platforms
-                SET website = :website, sort_order = :sort, tags_content = :tags
+                SET website = :website, sort_order = :sort, tags_content = :tags, uses_game_tag = :game_tag
               WHERE id = :id'
         );
         $stmt->bindValue('website', safe_url($_POST['website'] ?? null));
         $stmt->bindValue('sort', filter_input(INPUT_POST, 'sort_order', FILTER_VALIDATE_INT) ?: 0, PDO::PARAM_INT);
         $stmt->bindValue('tags', !empty($_POST['tags_content']), PDO::PARAM_BOOL);
+        $stmt->bindValue('game_tag', !empty($_POST['uses_game_tag']), PDO::PARAM_BOOL);
         $stmt->bindValue('id', $id, PDO::PARAM_INT);
         $stmt->execute();
 

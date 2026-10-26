@@ -5,6 +5,103 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.10.0 — 2026-10-26
+
+This release has database migrations (048: game hashtags, the sponsor's
+game-hashtag flag and the title order; 049: the joint plans' chat; 050:
+draft joint plans).
+
+### Added
+- The content form is split into sections (content, sponsor and collab,
+  game and key, when, notes), in the new form and the edit forms alike.
+- Sponsor and key fill each other: a new key starts with the content's
+  sponsor as its source, and choosing or saving a key from a sponsor
+  makes it the content's sponsor (and swaps the title's tag).
+- The order of a title's parts (prefix, your text, suffix, collab
+  credit, game hashtag, developer/publisher tags, sponsor tag) can be
+  changed by dragging the coloured chips under the title, which rewrites
+  it; the default order is set under Profile → Defaults. Tags added by
+  choosing a game, sponsor or collab go where the order says.
+- Games have their own hashtag (#CastlevaniaBC), set by administrators.
+  Admin → Games shows a guess (the name in CamelCase, only its first words
+  when long) to confirm with one click or change; titles only use a saved
+  one;
+  key sites marked "adds the game's hashtag" (Keymailer) put it in the
+  title of the content they sponsor.
+- "Today" next to the start puts content in today's first free spot, and
+  a length field (with −1 h, −30, +30 and +1 h) and an end time follow
+  each other; the length is saved with the content.
+- The title helper now works in the edit forms too.
+- A new look for the content calendar: a rounded grid with softer lines,
+  weekday headers and a highlighted today, segmented view buttons, a light
+  shade on off-hours, and events as plain chips led by a dot in the colour
+  of their status (month chips show the time and the game; on phones they
+  become slim bars). The "Sem data" list matches the dashboard's: game
+  art, game and title on a line each, and the deadline.
+- Editing content can now add or change its game and key, and its embargo
+  date, like the create form. The embargo is filled in with the game's most
+  recent embargo.
+- The content details window shows the game pictures, and has an Edit
+  button that opens the edit form in place, from the calendar, the list and
+  the dashboard.
+- The key vault's add form has the Region field the edit form already had.
+
+### Changed
+- The plan-together page was redone: a header with the shared time (as a
+  range, with "in 3 days"), the game art and where things stand (agreed,
+  waiting for answers, invitation, no time yet, cancelled); a "needs your
+  answer" box only when something waits for you, showing the old and the
+  new time and who agreed; one card per participant with their game and
+  title (your own with Edit); and the time changed in a small window
+  with the content form's start, length and end.
+- "Plan together" now opens the plan as a draft only the host sees: they
+  set the date and time and can write a first message, and the
+  invitations go out only when they send them, saying when. A draft can
+  be discarded without telling anyone.
+- Each joint plan has a chat for the people taking part, beside the
+  plans, updated every few seconds while the page is open.
+- Joint plans keep their notifications down to one unread per plan and
+  person: further news (messages, proposals, answers) folds into "News in
+  …" until the plan is opened, which marks it read.
+- Content, the game catalog and Streamers are split into tabs: content
+  starts on the calendar with the list in the second tab; the catalog and
+  Streamers keep adding (from the APIs or Twitch) in a tab of their own.
+  The content counters that filter the list sit in the List tab.
+- The card views of the game catalog and of the content list show each game's picture.
+- Filter bars apply themselves: results follow as you type (the box keeps
+  its focus) and as soon as a choice changes. Status, platform, type and
+  source filters in content, the key vault and the admin bug tracker and
+  error log take several values at once, shown as chips.
+- Long lists show 50 rows at a time and load more as you scroll (or with
+  "Show more"); sorting still covers the whole list.
+- The dashboard's "Needs attention" card became "Content without a date":
+  each plan with its game art, game and title on a line each, and a button
+  that puts it in today's first free spot (from your usual start time, or
+  from now, after what is already planned and in a gap long enough).
+- Cleaner tables: taller rows set apart from each other, row buttons as
+  icons (coloured where it helps) with tooltips that show the label and its
+  hint, and a fade at the edge that hints a table scrolls sideways. Rows of
+  a game (content, keys, given keys, embargoes, the catalog, giveaway prizes
+  and the admin games) show the game's art faded in behind the start of the
+  row; games without art show a "no picture" image, also in card view.
+- Collabs: streamers are picked by searching, with their pictures, and only
+  the chosen ones are listed, on both the create and the edit forms.
+- Content without a key is ordinary: no "no key" badge in the content list,
+  the calendar or the dashboard, no "missing key" tile, reminder or filter,
+  and the guides no longer suggest it needs attention. Choosing a key for
+  content still leaves the key's status as it is.
+
+### Fixed
+- Saving linked content without changing its time (a new title, games
+  or key) no longer starts a new round of answers in its joint plan.
+- Times typed in the content forms were read in the server's time zone
+  (UTC in production) instead of yours, so content started hours off on
+  the calendar while the form still showed the typed time. The database
+  now reads and shows times in the signed-in user's time zone.
+- A giveaway's winner mode (winner picks, or a key set for each winner) can
+  no longer be changed once it has winners, which left their claims
+  inconsistent; the form shows it fixed.
+
 ## 0.9.7 — 2026-10-25
 
 ### Fixed

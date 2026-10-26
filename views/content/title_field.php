@@ -12,6 +12,7 @@
  * @var string $value the title (or its template, with {counters})
  * @var ?int $caret where the cursor goes on first focus (a new title: between the default prefixes and suffixes)
  * @var ?int $streamId the content being edited, null when new
+ * @var ?list<string> $order the order of the title's parts (Profile → Defaults)
  */
 ?>
 <div class="title-editor-wrap" data-title-editor data-stream-id="<?= $streamId !== null ? (int) $streamId : '' ?>"<?= isset($caret) ? ' data-caret="' . (int) $caret . '"' : '' ?>>
@@ -33,10 +34,5 @@
         <span class="title-hint" data-title-hint data-max="<?= ContentController::TWITCH_TITLE_MAX ?>"
               data-undated="<?= e(__('ui.label.number_when_dated')) ?>" data-over="<?= e(__('ui.label.twitch_title_over')) ?>"></span>
     </div>
-    <div class="title-legend" aria-hidden="true">
-        <span class="tok-prefix"><?= e(__('ui.label.legend_prefix')) ?></span>
-        <span class="tok-collab"><?= e(__('ui.label.legend_collab')) ?></span>
-        <span class="tok-devpub"><?= e(__('ui.label.legend_devpub')) ?></span>
-        <span class="tok-sponsor"><?= e(__('ui.label.legend_sponsor')) ?></span>
-    </div>
+    <?= View::partial('content/title_order', ['order' => $order ?? ContentDefaults::TITLE_PARTS]) ?>
 </div>

@@ -25,7 +25,7 @@ final class PickerController
     {
         Auth::requireLogin();
 
-        $sql = "SELECT g.id, g.title, g.cover_url,
+        $sql = "SELECT g.id, g.title, g.cover_url, g.hashtag,
                        extract(year FROM g.release_date)::int AS year,
                        d.name AS developer, p.name AS publisher,
                        t.path AS thumb_path, t.updated_at AS thumb_version
@@ -48,6 +48,7 @@ final class PickerController
                 : $g['cover_url'],
             'developer' => $g['developer'],
             'publisher' => $g['publisher'],
+            'hashtag'   => $g['hashtag'] ?: null,
         ], $stmt->fetchAll())]);
     }
 

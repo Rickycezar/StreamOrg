@@ -4,7 +4,7 @@
  * priority, impact or a search, most urgent first, with a dot on the ones
  * that changed since an administrator last opened them.
  *
- * @var list<array> $bugs @var array<string,int> $counts @var string $show @var string $priority @var string $impact @var string $query
+ * @var list<array> $bugs @var array<string,int> $counts @var string $show @var list<string> $priority @var list<string> $impact @var string $query
  */
 $tiles = ['open', 'new', 'confirmed', 'in_progress', 'need_info', 'fixed', 'closed', 'wont_fix', 'all'];
 $open  = array_sum(array_map(static fn (string $s): int => $counts[$s] ?? 0, BugReports::OPEN));
@@ -24,34 +24,18 @@ $link  = static fn (array $change): string => url('/admin/bugs?' . http_build_qu
     <?php endforeach; ?>
 </section>
 
-<form class="card filters" method="get" action="<?= e(url('/admin/bugs')) ?>">
+<form class="card filters" method="get" action="<?= e(url('/admin/bugs')) ?>" data-filters>
     <input type="hidden" name="show" value="<?= e($show) ?>">
-    <label>
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($query) ?>" placeholder="<?= e(__('ui.support.tracker_search_hint')) ?>">
-    </label>
-    <label>
-        <span><?= e(__('ui.support.f_priority')) ?></span>
-        <select name="priority">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach (BugReports::PRIORITIES as $p): ?>
-                <option value="<?= e($p) ?>" <?= $priority === $p ? 'selected' : '' ?>><?= e(__('ui.bug_priority.' . $p)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <label>
-        <span><?= e(__('ui.support.f_impact')) ?></span>
-        <select name="impact">
-            <option value=""><?= e(__('ui.label.any')) ?></option>
-            <?php foreach (BugReports::IMPACTS as $i): ?>
-                <option value="<?= e($i) ?>" <?= $impact === $i ? 'selected' : '' ?>><?= e(__('ui.bug_impact.' . $i)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/admin/bugs')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+    <?= View::partial('partials/filter_search', ['value' => $query, 'placeholder' => __('ui.support.tracker_search_hint')]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'priority', 'label' => __('ui.support.f_priority'), 'selected' => $priority,
+        'options' => array_combine(BugReports::PRIORITIES, array_map(static fn ($p) => __('ui.bug_priority.' . $p), BugReports::PRIORITIES)),
+    ]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'impact', 'label' => __('ui.support.f_impact'), 'selected' => $impact,
+        'options' => array_combine(BugReports::IMPACTS, array_map(static fn ($i) => __('ui.bug_impact.' . $i), BugReports::IMPACTS)),
+    ]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/admin/bugs?show=' . urlencode($show), 'active' => $query !== '' || $priority !== [] || $impact !== []]) ?>
 </form>
 
 <section class="card">
@@ -79,7 +63,7 @@ $link  = static fn (array $change): string => url('/admin/bugs?' . http_build_qu
                 <tbody>
                 <?php foreach ($bugs as $b): ?>
                     <tr class="<?= $b['unread'] ? 'is-new' : '' ?>">
-                        <td class="rowactions"><a class="btn small" href="<?= e(url('/admin/bugs/view?id=' . (int) $b['id'])) ?>"><?= e(__('ui.support.open_report')) ?></a></td>
+                        <td class="rowactions"><a class="btn small" href="<?= e(url('/admin/bugs/view?id=' . (int) $b['id'])) ?>"><?= icon_label('report', __('ui.support.open_report')) ?></a></td>
                         <td data-sort="<?= (int) $b['id'] ?>" class="muted">#<?= (int) $b['id'] ?></td>
                         <td data-card-title data-label="<?= e(__('ui.support.f_title')) ?>">
                             <?php if ($b['unread']): ?><span class="support-dot" title="<?= e(__('ui.support.news')) ?>"></span><?php endif; ?>

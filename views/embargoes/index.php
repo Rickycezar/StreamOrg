@@ -91,11 +91,11 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
             </thead>
             <tbody>
             <?php foreach ($embargoes as $row): ?>
-                <tr>
+                <tr<?= row_art($row['art_path'], $row['art_version']) ?>>
                     <td class="rowactions">
                         <button type="button" class="btn small" data-modal-form="#edit-emb-<?= (int) $row['id'] ?>"
                                 data-modal-title="<?= e($row['game_title']) ?>">
-                            <?= e(__('ui.action.edit')) ?>
+                            <?= icon_label('edit', __('ui.action.edit')) ?>
                         </button>
                     </td>
                     <td data-card-title data-label="<?= e(__('ui.field.game')) ?>">
@@ -173,7 +173,7 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
         </thead>
         <tbody>
         <?php foreach ($uncovered as $row): ?>
-            <tr>
+            <tr<?= row_art($row['art_path'], $row['art_version']) ?>>
                 <td data-card-title data-label="<?= e(__('ui.field.game')) ?>"><?= e($row['title']) ?></td>
                 <td data-label="<?= e(__('ui.field.release_date')) ?>">
                     <?php if ($row['release_date'] && $row['release_precision'] === 'day'): ?>

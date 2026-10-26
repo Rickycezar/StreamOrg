@@ -16,7 +16,7 @@ final class ErrorLogController
 
         $focus = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: null;
         $show  = in_array($_GET['show'] ?? '', self::SHOWS, true) ? (string) $_GET['show'] : ($focus !== null ? 'all' : 'open');
-        $level = in_array($_GET['level'] ?? '', ErrorLog::LEVELS, true) ? (string) $_GET['level'] : '';
+        $level = filter_values('level', ErrorLog::LEVELS);
         $query = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 120);
 
         View::render('admin/errors', [
@@ -61,7 +61,7 @@ final class ErrorLogController
     {
         $query = array_filter([
             'show'  => in_array($_POST['show'] ?? '', self::SHOWS, true) ? $_POST['show'] : null,
-            'level' => in_array($_POST['level'] ?? '', ErrorLog::LEVELS, true) ? $_POST['level'] : null,
+            'level' => array_values(array_intersect((array) ($_POST['level'] ?? []), ErrorLog::LEVELS)) ?: null,
             'q'     => trim((string) ($_POST['q'] ?? '')) ?: null,
         ]);
 

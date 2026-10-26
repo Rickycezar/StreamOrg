@@ -11,23 +11,13 @@ $removable = static fn (array $w): bool => in_array($w['state'], ['waiting', 'ex
 <h1><?= e(__('ui.nav.winners')) ?></h1>
 <p class="muted"><?= e(__('ui.message.winners_admin_intro')) ?></p>
 
-<form class="card filters" method="get" action="<?= e(url('/admin/winners')) ?>">
-    <label>
-        <span><?= e(__('ui.action.search')) ?></span>
-        <input type="search" name="q" value="<?= e($query) ?>" placeholder="<?= e(__('ui.label.winners_search_hint')) ?>">
-    </label>
-    <label>
-        <span><?= e(__('ui.field.status')) ?></span>
-        <select name="state">
-            <?php foreach (PrizeRemovals::STATES as $s): ?>
-                <option value="<?= e($s) ?>" <?= $state === $s ? 'selected' : '' ?>><?= e(__('ui.label.winners_filter_' . $s)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-    <div class="filter-actions">
-        <button type="submit" class="btn"><?= e(__('ui.action.filter')) ?></button>
-        <a class="btn ghost" href="<?= e(url('/admin/winners')) ?>"><?= e(__('ui.action.clear')) ?></a>
-    </div>
+<form class="card filters" method="get" action="<?= e(url('/admin/winners')) ?>" data-filters>
+    <?= View::partial('partials/filter_search', ['value' => $query, 'placeholder' => __('ui.label.winners_search_hint')]) ?>
+    <?= View::partial('partials/filter_select', [
+        'name' => 'state', 'label' => __('ui.field.status'), 'selected' => $state, 'multiple' => false, 'any' => false,
+        'options' => array_combine(PrizeRemovals::STATES, array_map(static fn ($s) => __('ui.label.winners_filter_' . $s), PrizeRemovals::STATES)),
+    ]) ?>
+    <?= View::partial('partials/filter_actions', ['clear' => '/admin/winners', 'active' => $query !== '' || $state !== 'all']) ?>
 </form>
 
 <section class="card">
@@ -83,7 +73,7 @@ $removable = static fn (array $w): bool => in_array($w['state'], ['waiting', 'ex
                         <td class="rowactions">
                             <?php if ($removable($w)): ?>
                                 <button type="button" class="btn small danger-outline" data-modal-form="#remove-<?= (int) $w['id'] ?>"
-                                        data-modal-title="<?= e(sprintf(__('ui.label.remove_key_from'), $w['display_name'] ?: $w['twitch_login'])) ?>"><?= e(__('ui.action.remove_key')) ?></button>
+                                        data-modal-title="<?= e(sprintf(__('ui.label.remove_key_from'), $w['display_name'] ?: $w['twitch_login'])) ?>"><?= icon_label('unlink', __('ui.action.remove_key')) ?></button>
                             <?php endif; ?>
                         </td>
                     </tr>

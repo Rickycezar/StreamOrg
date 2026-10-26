@@ -116,12 +116,12 @@ $value = static fn (string $key, string $default = ''): string => (string) ($old
                     <td class="nowrap" data-label="<?= e(__('ui.field.created_at')) ?>"><?= e(fmt_date($u['created_at'])) ?></td>
                     <td class="rowactions">
                         <button type="button" class="btn small" data-modal-form="#edit-user-<?= (int) $u['id'] ?>"
-                                data-modal-title="<?= e(sprintf(__('ui.label.edit_user'), $u['username'])) ?>"><?= e(__('ui.action.edit')) ?></button>
+                                data-modal-title="<?= e(sprintf(__('ui.label.edit_user'), $u['username'])) ?>"><?= icon_label('edit', __('ui.action.edit')) ?></button>
                         <button type="button" class="btn small" data-modal-form="#reset-user-<?= (int) $u['id'] ?>"
-                                data-modal-title="<?= e(sprintf(__('ui.label.reset_password_for'), $u['username'])) ?>"><?= e(__('ui.action.reset_password')) ?></button>
+                                data-modal-title="<?= e(sprintf(__('ui.label.reset_password_for'), $u['username'])) ?>"><?= icon_label('key', __('ui.action.reset_password')) ?></button>
                         <?php if ((int) $u['id'] !== Auth::id()): ?>
                             <button type="button" class="btn small danger-btn" data-modal-form="#delete-user-<?= (int) $u['id'] ?>"
-                                    data-modal-title="<?= e(sprintf(__('ui.label.delete_user'), $u['username'])) ?>"><?= e(__('ui.action.delete')) ?></button>
+                                    data-modal-title="<?= e(sprintf(__('ui.label.delete_user'), $u['username'])) ?>"><?= icon_label('user-x', __('ui.action.delete')) ?></button>
                         <?php endif; ?>
                     </td>
                 </tr>
