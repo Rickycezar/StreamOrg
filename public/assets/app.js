@@ -5035,7 +5035,7 @@
         const form = root.querySelector('[data-game-draw-options]');
         const commands = root.querySelectorAll('[data-game-command]');
         const UNDER_WAY = ['open', 'running', 'showdown', 'result'];
-        const COMMANDS = { open: ['idle', 'done'], start: ['open'], reset: ['open', 'running', 'showdown', 'result', 'done'] };
+        const COMMANDS = { open: ['idle', 'result', 'done'], reopen: ['result', 'done'], start: ['open'], reset: ['open', 'running', 'showdown', 'result', 'done'] };
 
         let config = readJson(root, '[data-game-draw-config]', {});
         let phase = null;
@@ -5129,6 +5129,7 @@
         commands.forEach(function (button) {
             button.addEventListener('click', function () {
                 if (button.dataset.confirmText && !window.confirm(button.dataset.confirmText)) return;
+                say('');
                 send({ type: 'bossdraw:command', action: button.dataset.gameCommand });
             });
         });

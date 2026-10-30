@@ -56,7 +56,7 @@ final class ChatBotTest extends DatabaseTestCase
             ChatBot::commandFromInput('heartbeat', self::INPUT)
         );
         self::assertSame(
-            ['none' => 'Nothing open', 'entry' => '', 'announce' => 'Go {link}'],
+            ['none' => 'Nothing open', 'entry' => '', 'announce' => 'Go {link}', 'winner' => ''],
             ChatBot::commandFromInput('giveaway', self::INPUT + ['messages' => ['none' => ' Nothing   open ', 'announce' => 'Go {link}', 'other' => 'x']])['messages']
         );
     }

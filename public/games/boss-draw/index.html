@@ -53,7 +53,7 @@
         }
 
         #arena-host, #arena-host .draw-arena { width: 1280px; height: 720px; border: 0; }
-        #arena-host .draw-banner { top: 76px; }
+        #arena-host .draw-banner { top: calc(76px + var(--top-offset, 0px)); }
 
         .too-small {
             position: absolute;
@@ -110,6 +110,20 @@
             gap: 8px;
         }
 
+        .controlbar {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 60;
+            display: flex;
+            gap: 6px;
+        }
+
+        .quick-audio { display: flex; align-items: center; gap: 4px; padding: 0 6px; background: rgba(13, 10, 16, .55); border: 3px solid #0d0a10; }
+        .quick-audio .btn { min-width: 36px; min-height: 28px; padding: 0 6px; }
+        .quick-audio .btn[aria-pressed="false"] { opacity: .5; text-decoration: line-through; }
+        .quick-audio input[type="range"] { width: 70px; }
+
         .speeds { display: flex; }
         .speeds .btn { min-width: 46px; }
         .speeds .btn + .btn { margin-left: -3px; }
@@ -119,7 +133,7 @@
 
         .prize {
             position: absolute;
-            top: 14px;
+            top: calc(14px + var(--top-offset, 0px));
             left: 50%;
             z-index: 30;
             max-width: 760px;
@@ -272,6 +286,10 @@
         .gate[hidden] { display: none; }
 
         input:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
+
+        .stage-confirm { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 14px 0 4px; }
+        .stage-confirm .btn { min-height: 46px; padding: 6px 26px 9px; font-size: 22px; }
+        .stage-confirm p { margin: 0; min-height: 20px; color: #fff; font: 700 18px/1.2 var(--ui-font); text-shadow: var(--outline); }
         #fullscreen[hidden] { display: none; }
     </style>
 </head>
@@ -286,7 +304,20 @@
 </div>
 <div id="gate" class="gate" data-t="page.sound_gate" hidden></div>
 
+<div class="controlbar">
+    <button id="bar-open" class="btn small green" type="button" data-t="bar.open" data-t-title="bar.open_title"></button>
+    <button id="bar-start" class="btn small gold" type="button" data-t="bar.start" data-t-title="bar.start_title"></button>
+    <button id="bar-reopen" class="btn small" type="button" data-t="bar.reopen" data-t-title="bar.reopen_title"></button>
+    <button id="bar-clear" class="btn small" type="button" data-t="bar.clear" data-t-title="bar.clear_title"></button>
+</div>
+
 <div class="topbar">
+    <div class="quick-audio">
+        <button id="fx-toggle" class="btn" type="button" aria-pressed="true" data-t-title="page.effects_toggle">🔊</button>
+        <input id="fx-quick" type="range" min="0" max="1" step="0.05" data-t-title="sound.effects">
+        <button id="music-toggle" class="btn" type="button" aria-pressed="true" data-t-title="page.music_toggle">♫</button>
+        <input id="music-quick" type="range" min="0" max="1" step="0.05" data-t-title="sound.music">
+    </div>
     <div class="speeds" role="group" data-t-title="page.speed">
         <button class="btn" type="button" data-speed="1" aria-pressed="true">1×</button>
         <button class="btn" type="button" data-speed="2" aria-pressed="false">2×</button>
@@ -335,6 +366,11 @@
             <label class="field"><span data-t="draw.hearts"></span><input id="main-hits" type="number" min="1" max="5"></label>
         </div>
         <div class="row">
+            <label class="check"><input id="boss-custom" type="checkbox"> <span data-t="option.boss_custom"></span></label>
+            <input id="boss-name" class="grow" type="text" maxlength="40" spellcheck="false" data-t-title="option.boss_name">
+        </div>
+        <small class="hint-text" data-t="option.boss_custom.hint"></small>
+        <div class="row">
             <label class="check grow"><input id="showdown-on" type="checkbox"> <span data-t="draw.showdown"></span></label>
             <label class="check"><input id="showdown-seconds" type="number" min="10" max="300" step="5" style="width: 70px"> <span data-t="draw.showdown_seconds"></span></label>
         </div>
@@ -345,7 +381,8 @@
         <div class="row">
             <button id="open" class="btn green" type="button" data-t="entries.open_button"></button>
             <button id="run" class="btn gold" type="button" data-t="entries.start_button"></button>
-            <button id="reset" class="btn" type="button" data-t="entries.reset_button"></button>
+            <button id="reopen" class="btn" type="button" data-t="entries.reopen_button"></button>
+            <button id="reset" class="btn" type="button" data-t="entries.clear_button"></button>
         </div>
         <div class="row">
             <button id="skip" class="btn small" type="button" data-t="entries.skip" disabled></button>
@@ -358,7 +395,6 @@
             <div id="lost-line" class="hint-text" hidden></div>
             <div id="fewer-line" class="hint-text" hidden></div>
             <div class="row">
-                <button id="confirm" class="btn gold" type="button" data-t="result.confirm"></button>
                 <button id="rerun" class="btn" type="button" data-t="result.rerun"></button>
                 <button id="redraw" class="btn" type="button" data-t="showdown.redraw" hidden></button>
             </div>
@@ -390,6 +426,26 @@
             <input id="rule-sub-hearts" type="number" min="1" max="3" step="1">
             <small data-t="option.sub_bonus_hearts.hint"></small>
         </label>
+        <label class="check"><input id="rule-extra-regen" type="checkbox"> <span data-t="option.extra_regen"></span></label>
+        <p class="hint-text" data-t="option.extra_regen.hint"></p>
+
+        <h2 data-t="rules.kicked"></h2>
+        <p class="hint-text" data-t="rules.kicked_help"></p>
+        <div id="kicked-list" class="row"></div>
+        <div class="row"><button id="unkick-all" class="btn small" type="button" data-t="rules.unkick_all"></button></div>
+
+        <h2 data-t="rules.list"></h2>
+        <textarea id="entrants" data-t-placeholder="adv.paste_hint"></textarea>
+        <label class="field">
+            <span data-t="option.list_duplicates"></span>
+            <select id="rule-list-dups" data-option="list_duplicates"></select>
+            <small data-t="option.list_duplicates.hint"></small>
+        </label>
+        <div class="row">
+            <label class="field"><span data-t="option.list_min_hearts"></span><input id="rule-list-min" type="number" min="1" max="20"></label>
+            <label class="field"><span data-t="option.list_max_hearts"></span><input id="rule-list-max" type="number" min="1" max="20"></label>
+        </div>
+        <div class="row"><button id="add-list" class="btn small" type="button" data-t="adv.paste_add"></button></div>
     </section>
 
     <section class="tab-body" data-body="advanced" hidden>
@@ -428,11 +484,6 @@
             <span data-t="showdown.test"></span>
             <span id="showdown-buttons" class="row"></span>
         </div>
-        <details>
-            <summary data-t="adv.paste"></summary>
-            <textarea id="entrants" data-t-placeholder="adv.paste_hint"></textarea>
-            <div class="row"><button id="add-list" class="btn small" type="button" data-t="adv.paste_add"></button></div>
-        </details>
         <details>
             <summary data-t="adv.sounds"></summary>
             <p class="hint-text"><span data-t="adv.sounds_help"></span>

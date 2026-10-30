@@ -16,7 +16,7 @@
  */
 const DRAW_GAME = {
     name: 'boss-draw',
-    version: '1.0.2',
+    version: '1.1.5',
     contract: 1,
     options: [
         { key: 'hearts', type: 'int', min: 1, max: 5, step: 1, default: 2, group: 'battle' },
@@ -24,7 +24,13 @@ const DRAW_GAME = {
         { key: 'showdown_seconds', type: 'int', min: 10, max: 300, step: 5, default: 60, group: 'draw' },
         { key: 'entry_from', type: 'select', choices: ['everyone', 'subs', 'subs_vips'], default: 'everyone', group: 'rules' },
         { key: 'sub_bonus', type: 'select', choices: ['none', 'flat', 'tier'], default: 'none', group: 'rules' },
-        { key: 'sub_bonus_hearts', type: 'int', min: 1, max: 3, step: 1, default: 1, group: 'rules' }
+        { key: 'sub_bonus_hearts', type: 'int', min: 1, max: 3, step: 1, default: 1, group: 'rules' },
+        { key: 'extra_regen', type: 'bool', default: false, group: 'rules' },
+        { key: 'list_duplicates', type: 'select', choices: ['ignore', 'hearts'], default: 'ignore', group: 'rules' },
+        { key: 'list_min_hearts', type: 'int', min: 1, max: 20, step: 1, default: 1, group: 'rules' },
+        { key: 'list_max_hearts', type: 'int', min: 1, max: 20, step: 1, default: 5, group: 'rules' },
+        { key: 'boss_custom', type: 'bool', default: false, group: 'battle' },
+        { key: 'boss_name', type: 'text', maxLength: 40, default: '', group: 'battle' }
     ]
 };
 

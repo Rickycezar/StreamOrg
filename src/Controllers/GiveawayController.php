@@ -128,9 +128,9 @@ final class GiveawayController
         $input = self::input('/giveaways');
 
         $stmt = Database::connection()->prepare(
-            'INSERT INTO giveaways (user_id, title, keyword, rules_note, starts_at, ends_at, is_surprise,
+            'INSERT INTO giveaways (user_id, title, keyword, rules_note, starts_at, ends_at, is_surprise, post_winner_link,
                                     winner_mode, entry_method, claim_days, stream_id, notes, streaming_platform_id)
-             VALUES (:user, :title, :keyword, :rules, :starts, :ends, :surprise, :mode, :method, :days, :stream, :notes,
+             VALUES (:user, :title, :keyword, :rules, :starts, :ends, :surprise, :postlink, :mode, :method, :days, :stream, :notes,
                      (SELECT id FROM streaming_platforms WHERE code = \'twitch\'))
              RETURNING id'
         );
@@ -156,7 +156,7 @@ final class GiveawayController
 
         Database::connection()->prepare(
             'UPDATE giveaways SET title = :title, keyword = :keyword, rules_note = :rules, starts_at = :starts,
-                    ends_at = :ends, is_surprise = :surprise, winner_mode = :mode, entry_method = :method,
+                    ends_at = :ends, is_surprise = :surprise, post_winner_link = :postlink, winner_mode = :mode, entry_method = :method,
                     claim_days = :days, stream_id = :stream, notes = :notes, updated_at = now()
               WHERE id = :id'
         )->execute(['id' => $giveaway['id']] + $input);
@@ -354,7 +354,7 @@ final class GiveawayController
         $prizeId  = filter_input(INPUT_POST, 'prize_id', FILTER_VALIDATE_INT) ?: null;
 
         try {
-            Giveaways::addWinner((int) Auth::id(), (int) $giveaway['id'], (string) ($_POST['login'] ?? ''),
+            $token = Giveaways::addWinner((int) Auth::id(), (int) $giveaway['id'], (string) ($_POST['login'] ?? ''),
                 (string) ($_POST['method'] ?? 'manual'), $prizeId, trim((string) ($_POST['twitch_id'] ?? '')) ?: null);
         } catch (UserError $e) {
             flash('error', $e->getMessage());
@@ -362,6 +362,7 @@ final class GiveawayController
         }
 
         flash('success', __('ui.message.winner_added'));
+        self::flashLinkPosted(Giveaways::postWinnerLinks($giveaway, [$token]));
         redirect($back);
     }
 
@@ -454,6 +455,7 @@ final class GiveawayController
         }
 
         flash('success', sprintf(__('ui.message.winner_drawn'), $result['login']));
+        self::flashLinkPosted(Giveaways::postWinnerLinks($giveaway, [$result['token']]));
         redirect($back);
     }
 
@@ -479,6 +481,14 @@ final class GiveawayController
 
         flash($ok ? 'success' : 'error', __($ok ? 'ui.message.winner_extended' : 'ui.message.not_found'));
         redirect('/giveaways/show?id=' . (int) $giveaway['id']);
+    }
+
+    /** Tells whether the bot took the winners' claim links for the chat (nothing when it was not asked to). */
+    private static function flashLinkPosted(?bool $posted): void
+    {
+        if ($posted !== null) {
+            flash($posted ? 'success' : 'error', __($posted ? 'ui.message.winner_link_posted' : 'ui.message.winner_link_not_posted'));
+        }
     }
 
     /** The giveaway named by the posted id, or back to the list. */
@@ -548,6 +558,7 @@ final class GiveawayController
             'starts'   => $starts,
             'ends'     => $ends,
             'surprise' => !empty($_POST['is_surprise']) ? 'true' : 'false',
+            'postlink' => !empty($_POST['post_winner_link']) ? 'true' : 'false',
             'mode'     => $_POST['winner_mode'],
             'method'   => $_POST['entry_method'],
             'days'     => $days,

@@ -5,6 +5,29 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.1 — 2026-10-30
+
+This release has a database migration (054: posting winners' links in
+chat).
+
+### Added
+- The chat bot can post each new winner's claim link in the chat,
+  tagging them, as soon as the winner is recorded (confirmed in the
+  battle, drawn, or added by hand). It is a switch on each giveaway, on
+  for new ones, and the words are the giveaway command's new "winner"
+  message. Several winners share a message, and a link only opens for
+  its winner's Twitch account.
+- The battle draw (boss-draw 1.1.5): a custom boss name, entrant lists
+  where repeated names can count as extra hearts (with a minimum and a
+  maximum), three new bosses, buttons on the game screen, quick music
+  and effects toggles, a charged finishing blow in the showdown, and a
+  confirmation before removing a player. A new rule decides whether
+  extra hearts come back when a boss falls; it is off by default, so
+  extra hearts once lost now stay lost. Inside a giveaway the result is
+  confirmed from the winner screen; the public page only shows it. The
+  giveaway's battle page has a "Reopen entries" button that keeps who
+  already entered.
+
 ## 0.11.0 — 2026-10-30
 
 This release has database migrations (051: the overlays' stop signal;

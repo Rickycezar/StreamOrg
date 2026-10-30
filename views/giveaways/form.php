@@ -79,6 +79,10 @@ $local = static fn (?string $at): string => $at ? substr(str_replace(' ', 'T', $
         <input type="checkbox" name="is_surprise" value="1" <?= !empty($g['is_surprise']) ? 'checked' : '' ?>>
         <span><?= e(__('ui.field.is_surprise')) ?> <small class="muted"><?= e(__('ui.label.surprise_hint')) ?></small></span>
     </label>
+    <label class="inline">
+        <input type="checkbox" name="post_winner_link" value="1" <?= !$g || !empty($g['post_winner_link']) ? 'checked' : '' ?>>
+        <span><?= e(__('ui.field.post_winner_link')) ?> <small class="muted"><?= e(__('ui.label.post_winner_link_hint')) ?></small></span>
+    </label>
     <label>
         <span><?= e(__('ui.field.notes')) ?> <small class="muted"><?= e(__('ui.label.private_notes')) ?></small></span>
         <input type="text" name="notes" value="<?= e($v('notes')) ?>" maxlength="500">

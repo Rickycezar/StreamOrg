@@ -383,23 +383,47 @@
     100% { opacity: 0; transform: translateY(-46px) scale(1.15); }
 }
 
-.draw-lobby .draw-layer .draw-player { pointer-events: auto; cursor: pointer; }
+/* Only a player's own grid cell takes clicks (their sprite overflows it onto the neighbours). */
+.draw-lobby .draw-layer .draw-player, .draw-lobby .draw-layer .draw-player * { pointer-events: none; }
+.draw-lobby .draw-layer .draw-player::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--slot-w, 100%);
+    height: var(--slot-h, 100%);
+    pointer-events: auto;
+    cursor: pointer;
+}
+.draw-lobby .draw-layer .draw-kick-menu, .draw-lobby .draw-layer .draw-kick-menu * { pointer-events: auto; }
 .draw-kick-armed .draw-clip { filter: drop-shadow(0 0 3px #ff3030) drop-shadow(0 0 6px #ff3030); }
-.draw-kick-armed::before {
-    content: attr(data-kick-label);
+.draw-kick-armed { z-index: 6; }
+.draw-kick-menu {
     position: absolute;
     left: 50%;
-    top: -22px;
-    z-index: 5;
-    transform: translateX(-50%);
-    padding: 2px 8px;
-    border-radius: 4px;
-    background: #c62828;
+    bottom: calc(100% + 4px);
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transform: translateX(-50%) scale(calc(1 / var(--army-zoom, 1)));
+    transform-origin: 50% 100%;
+}
+.draw-kick-menu button {
+    min-width: 110px;
+    padding: 4px 12px 6px;
+    border: 3px solid #0d0a10;
+    border-radius: 0;
     color: #fff;
-    font: 700 15px/1.2 var(--font-name);
+    font: 700 16px/1 var(--font-name);
     text-shadow: var(--outline);
     white-space: nowrap;
+    cursor: pointer;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .35), 0 3px 0 rgba(0, 0, 0, .4);
 }
+.draw-kick-yes { background: #c62828; }
+.draw-kick-no { background: #3a2f45; }
+.draw-kick-menu button:hover { filter: brightness(1.2); }
 
 /* Time to speak: the winners under a countdown while the boss closes in. */
 .draw-showdown {
@@ -412,7 +436,7 @@
 }
 .draw-countdown {
     position: absolute;
-    top: max(96px, 14%);
+    top: calc(max(96px, 14%) + var(--top-offset, 0px));
     left: 0;
     right: 0;
     text-align: center;
@@ -423,7 +447,7 @@
 .draw-countdown-hurry { color: #ff4a3a; animation: draw-countdown-beat 1s ease-out infinite; }
 .draw-showdown-prompt {
     position: absolute;
-    top: calc(max(96px, 14%) + 88px);
+    top: calc(max(96px, 14%) + 88px + var(--top-offset, 0px));
     left: 0;
     right: 0;
     padding: 0 24px;
@@ -501,16 +525,63 @@
     position: absolute;
     inset: 0;
     z-index: 20;
+    overflow: hidden;
     pointer-events: none;
-    background: radial-gradient(circle at var(--x) var(--y), #fff 0, #fff 55%, #fffbe6 80%, #fff1b0 100%);
-    animation: draw-whiteout-in .55s cubic-bezier(.3, 0, .2, 1) forwards;
 }
-.draw-whiteout-fade { animation: draw-whiteout-in .55s forwards, draw-whiteout-out 1.3s ease-in forwards; }
-@keyframes draw-whiteout-in {
-    from { clip-path: circle(0 at var(--x) var(--y)); }
-    to { clip-path: circle(150% at var(--x) var(--y)); }
+.draw-whiteout-glow {
+    position: absolute;
+    left: calc(var(--x) - 1700px);
+    top: calc(var(--y) - 1700px);
+    width: 3400px;
+    height: 3400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0, #fff 52%, rgba(255, 249, 220, .95) 58%, rgba(255, 232, 150, .55) 64%, rgba(255, 220, 120, 0) 70%);
+    transform: scale(0);
+    animation: draw-whiteout-grow .85s cubic-bezier(.25, .6, .3, 1) forwards;
 }
-@keyframes draw-whiteout-out { from { opacity: 1; } to { opacity: 0; } }
+.draw-whiteout-fade { animation: draw-whiteout-out 1.7s cubic-bezier(.45, 0, .55, 1) forwards; }
+@keyframes draw-whiteout-grow {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+}
+@keyframes draw-whiteout-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* The finishing blow: the hero charges and sparks rush in (the rumble and the camera are driven from draw_view.js). */
+.draw-charging { animation: draw-charge-swell 1.4s cubic-bezier(.4, 0, .6, 1) forwards; }
+.draw-charging .draw-sprite { animation: draw-charge-glow .18s steps(2) infinite; }
+.draw-release { animation: draw-release .35s ease-out; }
+.draw-converge {
+    position: absolute;
+    line-height: 0;
+    text-align: left;
+    opacity: 0;
+    filter: sepia(1) saturate(7) hue-rotate(-14deg) brightness(1.4) drop-shadow(0 0 4px rgba(255, 210, 70, .95));
+    animation: draw-converge .7s ease-in infinite;
+}
+@keyframes draw-charge-swell {
+    0% { transform: scale(1); }
+    70% { transform: scale(1.22); }
+    85% { transform: scale(1.18) translateY(2px); }
+    100% { transform: scale(1.28); }
+}
+@keyframes draw-charge-glow {
+    from { filter: brightness(1.6) sepia(.6) saturate(3) drop-shadow(0 0 10px #ffd84a); }
+    to { filter: brightness(2.4) sepia(1) saturate(4) drop-shadow(0 0 18px #fff3a0); }
+}
+@keyframes draw-release {
+    0% { transform: scale(1.28); }
+    40% { transform: scale(.92) translateX(-6px); }
+    100% { transform: scale(1); }
+}
+@keyframes draw-converge {
+    0% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; }
+    25% { opacity: 1; }
+    100% { transform: translate(0, 0) scale(.25); opacity: 0; }
+}
+
 
 /* Four to ten winners: two rows of smaller heroes. */
 .draw-champions-many { flex-wrap: wrap; gap: 0 18px; max-width: 1100px; }
@@ -522,3 +593,6 @@
 
 /* Extra hearts from the subscriber rules: golden. */
 .draw-heart-bonus { filter: hue-rotate(42deg) saturate(1.6) brightness(1.25); }
+
+/* More than five hearts: one heart and "hp/max". */
+.draw-heart-count { margin-left: 3px; font: 700 12px/12px var(--font-name); color: #fff; text-shadow: var(--outline); white-space: nowrap; }

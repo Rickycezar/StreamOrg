@@ -34,6 +34,9 @@ final class Giveaways
 
     /** Statuses in which prizes and winners can no longer change. */
     public const ENDED = ['finished', 'cancelled'];
+
+    /** The longest chat message Twitch takes. */
+    public const CHAT_MAX = 500;
     public const WINNER_MODES = ['pick', 'assigned'];
     public const ENTRY_METHODS = ['chat', 'external', 'manual'];
 
@@ -629,6 +632,63 @@ final class Giveaways
             'entry'    => $entry,
             'link'     => self::publicUrl((string) $giveaway['public_code'], $locale),
         ]);
+    }
+
+    /**
+     * Has the chat bot post new winners' claim links in the streamer's
+     * chat, tagging each winner (the giveaway built-in's "winner"
+     * message), when the giveaway asks for it. Several winners share a
+     * message up to Twitch's 500 characters, so a whole draw fits in the
+     * bot's queue. A link opens only for its winner's Twitch account, so
+     * posting it in chat gives nobody else the prize.
+     *
+     * @param list<string> $tokens the new winners' claim tokens
+     * @return ?bool null when nothing was to be posted (switched off, an
+     *               empty message, no winners), else whether the bot took it
+     */
+    public static function postWinnerLinks(array $giveaway, array $tokens): ?bool
+    {
+        $userId   = (int) $giveaway['user_id'];
+        $template = ChatBot::message($userId, 'giveaway', 'winner');
+
+        if (empty($giveaway['post_winner_link']) || $giveaway['is_direct'] || trim($template) === '' || $tokens === []) {
+            return null;
+        }
+
+        $locale = ChatBot::localeOf($userId);
+        $find   = Database::connection()->prepare('SELECT twitch_login FROM giveaway_winners WHERE claim_token_hash = ? AND giveaway_id = ?');
+        $lines  = [];
+
+        foreach ($tokens as $token) {
+            $find->execute([hash('sha256', $token), $giveaway['id']]);
+            $login = $find->fetchColumn();
+
+            if (is_string($login) && $login !== '') {
+                $lines[] = ChatBot::render($template, ['user' => $login, 'giveaway' => $giveaway['title'], 'link' => self::claimUrl($token, $locale)]);
+            }
+        }
+
+        $messages = [];
+
+        foreach ($lines as $line) {
+            $last = array_key_last($messages);
+
+            if ($last !== null && mb_strlen($messages[$last] . ' ' . $line) <= self::CHAT_MAX) {
+                $messages[$last] .= ' ' . $line;
+            } else {
+                $messages[] = $line;
+            }
+        }
+
+        try {
+            foreach ($messages as $message) {
+                ChatBot::post($userId, $message);
+            }
+        } catch (UserError) {
+            return false;
+        }
+
+        return $messages === [] ? null : true;
     }
 
     /** Decrypts the stored copy of a winner's claim token. */

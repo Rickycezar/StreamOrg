@@ -633,6 +633,7 @@ return [
             'today_none' => 'Nada planejado para hoje',
             'week_none' => 'Nada planejado para os próximos 7 dias',
             'watchtime_none' => 'Nenhum tempo registrado para essa pessoa',
+            'giveaway_winner' => 'Marca um novo vencedor com o link de resgate, quando o sorteio posta os links dos vencedores no chat',
         ],
         'bot_access' => [
             'permission' => 'Com a sua permissão',
@@ -752,7 +753,7 @@ return [
                 'battle_title' => 'Sortear com batalha',
                 'battle_text' => "Com \"Sortear com batalha\", quem decide os vencedores é uma batalha contra chefes, ao vivo na sua tela: os espectadores entram pelo seu chat com o comando de participar, e cada um vira um herói.\nAs opções da batalha (corações, hora de falar, quem pode entrar…) começam pelas do seu último sorteio. Ao confirmar o resultado no jogo, os vencedores entram neste sorteio na ordem da batalha, e com um prêmio por vencedor o primeiro fica com o primeiro prêmio.\nO jogo também tem uma página pública, sem login, em /games/boss-draw/: ela só mostra os vencedores na tela e não registra nada.",
                 'claim_title' => 'O link de resgate',
-                'claim_text' => "Cada vencedor recebe um link para mandar no privado ou postar no chat.\nEle pede para entrar com a Twitch e só abre para a conta do próprio vencedor, então um link vazado não serve para mais ninguém.\nDepois de resgatada, a chave fica em \"Meus prêmios\" do vencedor.",
+                'claim_text' => "Cada vencedor recebe um link para mandar no privado ou postar no chat. Ligue \"Postar o link do vencedor no chat\" no sorteio e o bot do chat marca cada novo vencedor com o link assim que ele é registrado.\nEle pede para entrar com a Twitch e só abre para a conta do próprio vencedor, então um link vazado não serve para mais ninguém.\nDepois de resgatada, a chave fica em \"Meus prêmios\" do vencedor.",
                 'private_title' => 'Se o seu cofre é privado',
                 'private_text' => "Um cofre privado só abre com a sua senha, então os vencedores não alcançam as chaves sozinhos.\nQuando estiver pronto, \"Liberar prêmios para resgate\" guarda uma cópia protegida só dessas chaves para os vencedores. \"Recolher de volta\" tira essa cópia quando você quiser.\nUm vencedor que escolher uma chave ainda trancada fica com ela reservada, e recebe assim que você liberar.",
                 'finish_title' => 'Encerrando',
@@ -2025,6 +2026,7 @@ return [
             'game_hashtag' => 'Hashtag do jogo',
             'duration' => 'Duração',
             'title_order' => 'Ordem do título',
+            'post_winner_link' => 'Postar o link do vencedor no chat',
         ],
 
         'label' => [
@@ -2459,6 +2461,7 @@ return [
             'lang_default' => 'Padrão',
             'lang_export_hint' => 'Baixa todos os textos alterados (todos os idiomas) em JSON, para virarem os padrões no código',
             'game_draw' => 'Sortear com batalha',
+            'post_winner_link_hint' => 'o bot marca cada novo vencedor com o link de resgate',
         ],
 
         'message' => [
@@ -2914,6 +2917,8 @@ return [
             'game_winners_recorded' => 'Vencedores registrados no sorteio: %d.',
             'game_texts_saved' => 'Textos salvos. Alterados agora nesta visão: %d.',
             'game_texts_refused' => 'Não salvos, porque tiram ou inventam um {marcador} que o jogo preenche: %s.',
+            'winner_link_posted' => 'O bot do chat está postando o link de resgate no seu chat.',
+            'winner_link_not_posted' => 'O bot do chat não conseguiu postar o link de resgate (ele não está no seu chat): copie da lista de vencedores.',
         ],
         'channel_event' => [
             'follow' => 'Follow',
@@ -2979,6 +2984,8 @@ return [
             'leave' => 'Há um sorteio em andamento. Sair desta página mesmo assim?',
             'public' => 'Página pública',
             'public_hint' => 'O mesmo jogo para qualquer pessoa, sem login: mostra os vencedores na tela e não registra nada.',
+            'cmd_reopen' => 'Reabrir inscrições',
+            'cmd_reopen_hint' => 'Volta a aceitar inscrições mantendo quem já entrou; depois de uma batalha, quem lutou volta.',
         ],
 
         'game_texts' => [

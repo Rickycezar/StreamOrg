@@ -57,6 +57,7 @@ $current = (array) $config['options'];
         <div class="card-actions game-draw-controls">
             <span class="badge" data-game-draw-phase><?= e(__('ui.game_draw.waiting')) ?></span>
             <button type="button" class="btn" data-game-command="open" disabled><?= e(__('ui.game_draw.cmd_open')) ?></button>
+            <button type="button" class="btn" data-game-command="reopen" disabled title="<?= e(__('ui.game_draw.cmd_reopen_hint')) ?>"><?= e(__('ui.game_draw.cmd_reopen')) ?></button>
             <button type="button" class="btn primary" data-game-command="start" disabled><?= icon_label('swords', __('ui.game_draw.cmd_start')) ?></button>
             <button type="button" class="btn ghost" data-game-command="reset" disabled data-confirm-text="<?= e(__('ui.game_draw.reset_confirm')) ?>"><?= icon_label('refresh', __('ui.game_draw.cmd_reset')) ?></button>
             <button type="button" class="btn" data-game-fullscreen><?= icon_label('maximize', __('ui.game_draw.fullscreen')) ?></button>

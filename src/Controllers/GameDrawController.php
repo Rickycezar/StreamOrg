@@ -80,7 +80,7 @@ final class GameDrawController
         $result   = json_decode((string) ($_POST['result'] ?? ''), true);
 
         try {
-            $count = GameDraws::record($userId, (int) $giveaway['id'], self::GAME, $result);
+            $recorded = GameDraws::record($userId, (int) $giveaway['id'], self::GAME, $result);
         } catch (UserError $e) {
             json_response(['ok' => false, 'message' => $e->getMessage()], 422);
         } catch (Throwable $e) {
@@ -90,7 +90,8 @@ final class GameDrawController
 
         json_response([
             'ok'      => true,
-            'message' => sprintf(__('ui.message.game_winners_recorded'), $count),
+            'message' => sprintf(__('ui.message.game_winners_recorded'), $recorded['count'])
+                . match ($recorded['posted']) { true => ' ' . __('ui.message.winner_link_posted'), false => ' ' . __('ui.message.winner_link_not_posted'), null => '' },
             'config'  => GameDraws::config($userId, Giveaways::find($userId, (int) $giveaway['id']) ?? $giveaway, self::GAME),
         ]);
     }

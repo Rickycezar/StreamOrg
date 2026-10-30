@@ -31,6 +31,9 @@ import { HURRY_SONG } from './music/hurry_theme.js';
 /** Output gain at full page volume; keeps sounds up to volume 1.4 from clipping. */
 const HEADROOM = 0.7;
 
+/** Music level at full music volume (what the old master volume default of 0.8 gave). */
+const MUSIC_LEVEL = 0.8;
+
 /** Default sounds of the draw, by name. `gap` is the minimum ms between two plays. */
 export const DRAW_SOUND_DEFAULTS = {
     chip: { zzfx: [.45, .2, 520, , .01, .04, 2, 1.5, -30], gap: 90 },
@@ -50,6 +53,7 @@ export const DRAW_SOUND_DEFAULTS = {
     switch: { zzfx: [.5, .1, 300, , .05, .2, 4, 1, 10, , , , , .6], gap: 120 },
     flare: { zzfx: [.8, 0, 220, .05, .35, .4, 2, 1, 18, , 300, .12, , , , , .08, .7] },
     execute: { zzfx: [1.5, .05, 45, .01, .25, .9, 4, 2, -3, , , , , 2.5, , .6, .15, .4, .1] },
+    charge: { zzfx: [.7, 0, 90, .9, .35, .15, 2, 1, 7, , , , .07, , , .08, , .55, .1] },
     blast: { zzfx: [1.3, .05, 80, .005, .12, .6, 4, 1.8, -4, , , , , 1.6, , .4, .05, .5, .15] },
     tick: { zzfx: [.35, 0, 1600, , .01, .03, 1, 1, , , , , , , , .1], gap: 200 }
 };
@@ -66,6 +70,8 @@ export class DrawSound {
         this.volume = 0.8;
         this.musicVolume = 0.5;
         this.muted = false;
+        this.effectsMuted = false;
+        this.musicMuted = false;
         this.music = new DrawMusic(BATTLE_SONG_V2);
         this.hurry = new DrawMusic(HURRY_SONG);
         this.active = null;
@@ -114,17 +120,38 @@ export class DrawSound {
     }
 
     /**
-     * Sets the master volume.
+     * Sets the sound effects volume.
      *
      * @param {number} volume - From 0 to 1.
      */
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
+    }
+
+    /**
+     * Mutes or unmutes the sound effects only.
+     *
+     * @param {boolean} muted
+     */
+    setEffectsMuted(muted) {
+        this.effectsMuted = !!muted;
+        if (muted) {
+            this.stop();
+        }
+    }
+
+    /**
+     * Mutes or unmutes the music only.
+     *
+     * @param {boolean} muted
+     */
+    setMusicMuted(muted) {
+        this.musicMuted = !!muted;
         this._applyMusicGain();
     }
 
     /**
-     * Sets the music volume, as a share of the master volume.
+     * Sets the music volume (independent of the effects).
      *
      * @param {number} volume - From 0 to 1.
      */
@@ -226,7 +253,7 @@ export class DrawSound {
             return;
         }
         const ctx = ZZFX.audioContext;
-        const target = this.muted ? 0 : this.volume * this.musicVolume * HEADROOM;
+        const target = this.muted || this.musicMuted ? 0 : this.musicVolume * MUSIC_LEVEL * HEADROOM;
         const g = this.musicGain.gain;
         g.cancelScheduledValues(ctx.currentTime);
         g.setValueAtTime(g.value, ctx.currentTime);
@@ -245,7 +272,7 @@ export class DrawSound {
     play(name, options = {}) {
         const def = this.defs[name];
         const sounds = this.cache[name];
-        if (this.muted || this.volume === 0 || !def || !sounds) {
+        if (this.muted || this.effectsMuted || this.volume === 0 || !def || !sounds) {
             return;
         }
         const now = performance.now();

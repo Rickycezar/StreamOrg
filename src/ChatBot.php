@@ -41,7 +41,7 @@ final class ChatBot
      * {placeholders}. An empty message means saying nothing in that case.
      */
     public const MESSAGES = [
-        'giveaway'  => ['none' => ['user'], 'entry' => ['command'], 'announce' => ['giveaway', 'entry', 'link']],
+        'giveaway'  => ['none' => ['user'], 'entry' => ['command'], 'announce' => ['giveaway', 'entry', 'link'], 'winner' => ['user', 'giveaway', 'link']],
         'join'      => ['already' => ['user', 'giveaway'], 'which' => ['user', 'list'], 'unknown' => ['user', 'keyword', 'list'], 'none' => ['user']],
         'prizes'    => ['ask' => ['user', 'command', 'list'], 'unknown' => ['user', 'name', 'list'], 'none' => ['user']],
         'today'     => ['none' => ['user']],

@@ -67,6 +67,7 @@ const PARAM_INFO = {
 const CHAT_COMMANDS = {
     open: ['open', 'abrir'],
     start: ['start', 'iniciar'],
+    reopen: ['reopen', 'reabrir'],
     reset: ['reset', 'resetar']
 };
 
@@ -96,6 +97,8 @@ let speed = 1;
 let chatOpen = false;
 let connectedChannel = null;
 let phase = null;
+/** Who was kicked in the last entry phase (kept for "reopen" after a battle). */
+let lastKicks = [];
 
 /** Embedded mode: set by a valid bossdraw:config. */
 let embedded = false;
@@ -165,7 +168,8 @@ function store(key, value) {
 
 /** Page settings: channel, prize text, entry command, showdown, language. */
 const settings = Object.assign({ channel: '', prize: '', entry: DRAW_PAGE.defaultEntry, showdown: false, showdownSeconds: 60, lang: '',
-    entryFrom: 'everyone', subBonus: 'none', subBonusHearts: 1 },
+    entryFrom: 'everyone', subBonus: 'none', subBonusHearts: 1, extraRegen: false, listDuplicates: 'ignore', listMinHearts: 1, listMaxHearts: 5,
+    bossCustom: false, bossName: '' },
     stored(DRAW_PAGE.settingsKey, {}));
 delete settings.confirmUrl;
 const query = new URLSearchParams(location.search);
@@ -187,7 +191,13 @@ const OPTION_FIELDS = {
     showdown_seconds: 'showdown-seconds',
     entry_from: 'rule-entry-from',
     sub_bonus: 'rule-sub-bonus',
-    sub_bonus_hearts: 'rule-sub-hearts'
+    sub_bonus_hearts: 'rule-sub-hearts',
+    extra_regen: 'rule-extra-regen',
+    list_duplicates: 'rule-list-dups',
+    list_min_hearts: 'rule-list-min',
+    list_max_hearts: 'rule-list-max',
+    boss_custom: 'boss-custom',
+    boss_name: 'boss-name'
 };
 
 /** The options in use, each checked against its declaration. */
@@ -198,7 +208,13 @@ function optionValues() {
         showdown_seconds: Number(settings.showdownSeconds),
         entry_from: settings.entryFrom,
         sub_bonus: settings.subBonus,
-        sub_bonus_hearts: Number(settings.subBonusHearts)
+        sub_bonus_hearts: Number(settings.subBonusHearts),
+        extra_regen: !!settings.extraRegen,
+        list_duplicates: settings.listDuplicates,
+        list_min_hearts: Number(settings.listMinHearts),
+        list_max_hearts: Number(settings.listMaxHearts),
+        boss_custom: !!settings.bossCustom,
+        boss_name: String(settings.bossName || '')
     };
     const out = {};
     for (const option of DRAW_GAME.options) {
@@ -223,6 +239,12 @@ function applyOptions(values) {
     settings.entryFrom = v.entry_from;
     settings.subBonus = v.sub_bonus;
     settings.subBonusHearts = v.sub_bonus_hearts;
+    settings.extraRegen = v.extra_regen;
+    settings.listDuplicates = v.list_duplicates;
+    settings.listMinHearts = Math.min(v.list_min_hearts, v.list_max_hearts);
+    settings.listMaxHearts = Math.max(v.list_min_hearts, v.list_max_hearts);
+    settings.bossCustom = v.boss_custom;
+    settings.bossName = v.boss_name;
     $('main-hits').value = v.hearts;
     fillRules();
 }
@@ -240,8 +262,34 @@ function fillRules() {
     $('rule-sub-bonus').value = settings.subBonus;
     $('rule-sub-hearts').value = settings.subBonusHearts;
     $('rule-sub-hearts').disabled = locks.has('options.sub_bonus_hearts') || settings.subBonus !== 'flat';
+    $('rule-extra-regen').checked = !!settings.extraRegen;
+    $('rule-list-dups').value = settings.listDuplicates;
+    $('rule-list-min').value = settings.listMinHearts;
+    $('rule-list-max').value = settings.listMaxHearts;
+    for (const [key, id] of [['list_min_hearts', 'rule-list-min'], ['list_max_hearts', 'rule-list-max']]) {
+        $(id).disabled = locks.has(`options.${key}`) || settings.listDuplicates !== 'hearts';
+    }
+    $('boss-custom').checked = !!settings.bossCustom;
+    $('boss-name').value = settings.bossName;
+    $('boss-name').placeholder = connectedChannel || settings.channel || drawT('option.boss_name');
+    $('boss-name').disabled = locks.has('options.boss_name') || !settings.bossCustom;
     $('showdown-on').checked = !!settings.showdown;
     $('showdown-seconds').value = settings.showdownSeconds;
+}
+
+/** The custom boss name in use (the channel name when left empty), or '' for the bosses' own names. */
+function bossNameInUse() {
+    if (!settings.bossCustom) {
+        return '';
+    }
+    return String(settings.bossName || '').trim().slice(0, 40) || connectedChannel || settings.channel || '';
+}
+
+/** Shows the boss name on the entry screen. */
+function showBossName() {
+    if (lobby) {
+        lobby.arena.bossLabel.textContent = drawBossLabel(lobby.arena.bossId, 1, bossNameInUse());
+    }
 }
 
 /**
@@ -312,7 +360,49 @@ function joinByRules(entry, options) {
     if (!mayEnter(who)) {
         return;
     }
-    lobby.join(Object.assign({}, entry, who, { bonus: bonusFor(tier) }), options);
+    let bonus = bonusFor(tier);
+    if (entry.fromList && settings.listDuplicates === 'hearts') {
+        const base = readParams().hitsPerPlayer;
+        const total = Math.min(settings.listMaxHearts, Math.max(settings.listMinHearts, base + bonus + (entry.extra || 0)));
+        bonus = total - base;
+    }
+    lobby.join(Object.assign({}, entry, who, { bonus }), options);
+}
+
+/** Rebuilds the entry screen with the current rules and hearts, keeping its players, kicks and open state. */
+function rebuildLobby() {
+    if (!lobby) {
+        return;
+    }
+    const wasOpen = chatOpen;
+    openLobby(lobby.entrants(), lobby.kickedList());
+    chatOpen = wasOpen;
+    refreshHint();
+}
+
+/** Lists the kicked players in "Regras", each with a button to let them back in. */
+function renderKicked() {
+    const box = $('kicked-list');
+    box.textContent = '';
+    const list = lobby ? lobby.kickedList() : [];
+    if (!list.length) {
+        const none = document.createElement('span');
+        none.className = 'hint-text';
+        none.textContent = drawT('rules.kicked_none');
+        box.appendChild(none);
+    }
+    for (const k of list) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn small';
+        button.textContent = `${k.name} · ${drawT('rules.unkick')}`;
+        button.addEventListener('click', () => {
+            lobby.unkick([k.id]);
+            renderKicked();
+        });
+        box.appendChild(button);
+    }
+    $('unkick-all').disabled = !list.length;
 }
 
 /** The rules changed: the entry screen is rebuilt with them (bonus hearts redone, those left out removed). */
@@ -321,12 +411,7 @@ function rulesChanged() {
     if (!embedded) {
         saveSettings();
     }
-    if (lobby) {
-        const wasOpen = chatOpen;
-        openLobby(lobby.entrants());
-        chatOpen = wasOpen;
-        refreshHint();
-    }
+    rebuildLobby();
 }
 
 /**
@@ -397,6 +482,7 @@ function readParams() {
         out[input.name] = typeof DRAW_DEFAULTS[input.name] === 'number' ? Number(input.value) : input.value;
     }
     out.winners = wantedWinners();
+    out.extraRegen = !!settings.extraRegen;
     out.hitsPerPlayer = Math.min(5, Math.max(1, Math.round(Number($('main-hits').value) || DRAW_DEFAULTS.hitsPerPlayer)));
     return out;
 }
@@ -408,6 +494,7 @@ function saveParams() {
     if (embedded) {
         delete params.hitsPerPlayer;
         delete params.winners;
+        delete params.extraRegen;
     }
     store(DRAW_PAGE.storageKey, params);
 }
@@ -418,12 +505,35 @@ function saveParams() {
  * @param {{melee: number, ranged: number}} counts
  */
 function showCounts(counts) {
+    renderKicked();
     $('counts').textContent = drawT('entries.counts', { total: counts.melee + counts.ranged, ranged: counts.ranged, melee: counts.melee });
 }
 
 /** Shows the prize text on top of the arena. */
 function showPrize() {
     $('prize').textContent = settings.prize || '';
+    placePrize();
+}
+
+/**
+ * Moves the prize ribbon (and the showdown countdown under it) down when
+ * the buttons on top would cover it, as in a narrow frame.
+ */
+function placePrize() {
+    const stage = $('stage');
+    stage.style.setProperty('--top-offset', '0px');
+    const prize = $('prize');
+    if (!prize.textContent) {
+        return;
+    }
+    const scale = Number(stage.style.getPropertyValue('--stage-scale')) || 1;
+    const ribbon = prize.getBoundingClientRect();
+    const bars = [document.querySelector('.controlbar'), document.querySelector('.topbar')].map(el => el.getBoundingClientRect());
+    const covered = bars.some(b => b.right > ribbon.left && b.left < ribbon.right && b.bottom > ribbon.top);
+    if (covered) {
+        const below = Math.max(...bars.map(b => b.bottom)) + 6;
+        stage.style.setProperty('--top-offset', `${Math.ceil((below - ribbon.top) / scale)}px`);
+    }
 }
 
 /**
@@ -442,9 +552,27 @@ function setHint(text, small) {
     }
 }
 
-/** The bottom hint for the entry state (only while a chat is connected), and the phase report. */
+/** Turns the open / start / reopen / clear buttons (panel and screen) on or off for the current phase. */
+function updateButtons() {
+    const now = currentPhase();
+    const busy = now === 'running' || now === 'showdown';
+    const state = {
+        open: now === 'idle' || now === 'result' || now === 'done',
+        start: now === 'idle' || now === 'open',
+        reopen: now === 'idle' || now === 'result' || now === 'done',
+        clear: !busy
+    };
+    for (const [key, ids] of Object.entries({ open: ['open', 'bar-open'], start: ['run', 'bar-start'], reopen: ['reopen', 'bar-reopen'], clear: ['reset', 'bar-clear'] })) {
+        for (const id of ids) {
+            $(id).disabled = !state[key];
+        }
+    }
+}
+
+/** The bottom hint for the entry state (only while a chat is connected), the buttons and the phase report. */
 function refreshHint() {
     updatePhase();
+    updateButtons();
     if (!connectedChannel || playback) {
         setHint('');
         return;
@@ -475,8 +603,9 @@ function clearDraw() {
  * Opens a fresh entry phase.
  *
  * @param {Array} [restore] - Entrants to put back (from the last draw), on their sides and heroes.
+ * @param {Array<{id: string, name: string}>} [kicks] - Kicked players who stay out.
  */
-function openLobby(restore = []) {
+function openLobby(restore = [], kicks = []) {
     stopChat();
     if (playback) {
         playback.destroy();
@@ -492,15 +621,21 @@ function openLobby(restore = []) {
     $('panel-toggle').textContent = drawT('page.panel');
     $('skip').disabled = true;
     $('back').disabled = true;
-    lobby = new DrawLobby(arenaHost, { hitsPerPlayer: readParams().hitsPerPlayer, sound, onChange: showCounts });
+    lobby = new DrawLobby(arenaHost, { hitsPerPlayer: readParams().hitsPerPlayer, sound, onChange: showCounts, bossName: bossNameInUse() });
+    for (const k of kicks) {
+        lobby.kicked.add(k.id);
+        lobby.kickedNames.set(k.id, k.name);
+    }
     for (const e of restore) {
-        joinByRules({ login: e.id, name: e.name, color: e.color, side: e.kind, hero: e.hero, tier: e.tier, vip: e.vip }, { instant: true });
+        joinByRules({ login: e.id, name: e.name, color: e.color, side: e.kind, hero: e.hero, tier: e.tier, vip: e.vip,
+            extra: e.extra, fromList: e.fromList }, { instant: true });
         const p = lobby.players.get(e.id);
         if (p) {
             p.picked = e.picked;
         }
     }
     setEntryEnabled(true);
+    renderKicked();
     refreshHint();
 }
 
@@ -510,7 +645,7 @@ function openLobby(restore = []) {
  * @param {boolean} on
  */
 function setEntryEnabled(on) {
-    for (const id of ['join', 'simulate', 'fake', 'add-list', 'run', 'open']) {
+    for (const id of ['join', 'simulate', 'fake', 'add-list']) {
         $(id).disabled = !on;
     }
 }
@@ -567,21 +702,29 @@ function readSide(text) {
  * @returns {Array<{name: string, color: string|null, side: string|null}>}
  */
 function readList() {
-    const out = [];
+    const byName = new Map();
     for (const line of $('entrants').value.split('\n')) {
         const parts = line.trim().split(/\s+/).filter(Boolean);
-        if (parts.length) {
-            const tier = parts.find(x => /^t[1-3]$/i.test(x));
-            out.push({
-                name: parts[0],
-                color: parts.find(x => /^#[0-9a-f]{6}$/i.test(x)) || null,
-                side: readSide(parts.slice(1).join(' ')),
-                tier: tier ? Number(tier[1]) : 0,
-                vip: parts.some(x => x.toLowerCase() === 'vip')
-            });
+        if (!parts.length) {
+            continue;
         }
+        const key = parts[0].toLowerCase();
+        if (byName.has(key)) {
+            byName.get(key).extra++;
+            continue;
+        }
+        const tier = parts.find(x => /^t[1-3]$/i.test(x));
+        byName.set(key, {
+            name: parts[0],
+            color: parts.find(x => /^#[0-9a-f]{6}$/i.test(x)) || null,
+            side: readSide(parts.slice(1).join(' ')),
+            tier: tier ? Number(tier[1]) : 0,
+            vip: parts.some(x => x.toLowerCase() === 'vip'),
+            extra: 0,
+            fromList: true
+        });
     }
-    return out;
+    return [...byName.values()];
 }
 
 /**
@@ -685,6 +828,7 @@ function startDraw(newSeed, replacement = false) {
     chatOpen = false;
     stopChat();
     if (lobby) {
+        lastKicks = lobby.kickedList();
         lobby.destroy();
         lobby = null;
     }
@@ -707,7 +851,8 @@ function startDraw(newSeed, replacement = false) {
         sound,
         onEnd: showResult,
         onShowdown: showShowdown,
-        showdown: settings.showdown ? { seconds: settings.showdownSeconds } : null
+        showdown: settings.showdown ? { seconds: settings.showdownSeconds } : null,
+        bossName: bossNameInUse()
     });
     playback.setSpeed(speed);
     playback.play();
@@ -804,7 +949,7 @@ function showResult(result) {
     $('fewer-line').hidden = !(missing > 0 && !canRedraw && kept.length > 0);
     $('result-json').textContent = JSON.stringify(resultPayload(), null, 2);
     $('result-box').hidden = false;
-    $('confirm').disabled = !kept.length;
+    addStageConfirm();
     $('rerun').disabled = false;
     $('confirm-status').textContent = '';
     $('panel-toggle').classList.add('has-result');
@@ -839,37 +984,74 @@ function showShowdown(ids) {
     refreshHint();
 }
 
-/** Locks the result after confirmation: no second confirmation, no redraw. */
+/**
+ * Inside StreamOrg, puts the confirm button on the winner screen, under the
+ * winners' names, with a line for StreamOrg's answer. The public page has
+ * no confirmation: the result is only shown.
+ */
+function addStageConfirm() {
+    const panel = arenaHost.querySelector('.draw-result');
+    if (!embedded || !kept.length || !panel) {
+        return;
+    }
+    const box = document.createElement('div');
+    box.className = 'stage-confirm';
+    const button = document.createElement('button');
+    button.id = 'stage-confirm-button';
+    button.type = 'button';
+    button.className = 'btn gold';
+    button.textContent = drawT('result.confirm_send');
+    button.addEventListener('click', confirmResult);
+    const status = document.createElement('p');
+    status.id = 'stage-confirm-status';
+    box.append(button, status);
+    const champions = panel.querySelector('.draw-champions');
+    champions.after(box);
+}
+
+/**
+ * Updates the confirm button and the answer line (on the winner screen and in the panel).
+ *
+ * @param {boolean} enabled - Whether the button can be pressed.
+ * @param {string} [text] - Status text.
+ */
+function confirmUi(enabled, text) {
+    const button = $('stage-confirm-button');
+    if (button) {
+        button.disabled = !enabled;
+    }
+    if (text !== undefined) {
+        $('confirm-status').textContent = text;
+        if ($('stage-confirm-status')) {
+            $('stage-confirm-status').textContent = text;
+        }
+    }
+}
+
+/** Locks the result after StreamOrg saved it: no second confirmation, no redraw. */
 function lockResult() {
     confirmed = true;
-    for (const id of ['confirm', 'rerun', 'redraw', 'back']) {
+    confirmUi(false);
+    for (const id of ['rerun', 'redraw', 'back']) {
         $(id).disabled = true;
     }
     refreshHint();
 }
 
-/** Confirms the result: locked on screen in public mode; sent to StreamOrg (and awaited) while embedded. */
+/** Sends the result to StreamOrg (embedded mode only) and waits for its answer. */
 function confirmResult() {
-    if (!rounds.length || confirmed) {
-        return;
-    }
-    const status = $('confirm-status');
-    if (!embedded) {
-        lockResult();
-        status.textContent = drawT('result.confirmed');
+    if (!embedded || !rounds.length || confirmed || pendingConfirm) {
         return;
     }
     const id = Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16).padStart(2, '0')).join('');
     pendingConfirm = id;
-    $('confirm').disabled = true;
-    status.textContent = drawT('result.sending');
+    confirmUi(false, drawT('result.sending'));
     post({ type: 'bossdraw:result', id, result: resultPayload() });
     clearTimeout(confirmTimer);
     confirmTimer = setTimeout(() => {
         if (pendingConfirm === id) {
             pendingConfirm = null;
-            status.textContent = drawT('result.no_answer');
-            $('confirm').disabled = false;
+            confirmUi(true, drawT('result.no_answer'));
         }
     }, DRAW_PAGE.savedTimeoutMs);
 }
@@ -885,12 +1067,13 @@ function onSaved(data) {
     }
     pendingConfirm = null;
     clearTimeout(confirmTimer);
-    $('confirm-status').textContent = typeof data.message === 'string' ? data.message.slice(0, 300) : '';
+    const message = typeof data.message === 'string' ? data.message.slice(0, 300) : '';
     if (data.ok === true) {
+        confirmUi(false, message);
         lockResult();
     }
     else {
-        $('confirm').disabled = false;
+        confirmUi(true, message);
     }
 }
 
@@ -993,21 +1176,50 @@ const sound = new DrawSound(soundDefs());
 
 /** Applies the saved volume and mute switch to the player and the panel. */
 function loadAudio() {
-    const audio = Object.assign({ volume: 0.8, music: 0.5, muted: false }, stored(DRAW_PAGE.audioKey, {}));
+    const audio = Object.assign({ volume: 0.8, music: 0.5, muted: false, effectsOff: false, musicOff: false }, stored(DRAW_PAGE.audioKey, {}));
     sound.setVolume(audio.volume);
     sound.setMusicVolume(audio.music);
     sound.setMuted(!!audio.muted);
-    $('mute').checked = sound.muted;
-    $('volume').value = sound.volume;
-    $('music-volume').value = sound.musicVolume;
+    sound.setEffectsMuted(!!audio.effectsOff);
+    sound.setMusicMuted(!!audio.musicOff);
+    showAudio();
 }
 
-/** Applies and remembers the volume and the mute switch. */
-function saveAudio() {
-    sound.setVolume(Number($('volume').value));
-    sound.setMusicVolume(Number($('music-volume').value));
-    sound.setMuted($('mute').checked);
-    store(DRAW_PAGE.audioKey, { volume: sound.volume, music: sound.musicVolume, muted: sound.muted });
+/** Puts the sound state into the panel and the quick controls on top. */
+function showAudio() {
+    $('mute').checked = sound.muted;
+    $('volume').value = sound.volume;
+    $('fx-quick').value = sound.volume;
+    $('music-volume').value = sound.musicVolume;
+    $('music-quick').value = sound.musicVolume;
+    $('fx-toggle').setAttribute('aria-pressed', String(!sound.effectsMuted));
+    $('music-toggle').setAttribute('aria-pressed', String(!sound.musicMuted));
+}
+
+/**
+ * Applies and remembers the volumes and mute switches.
+ *
+ * @param {object} [change] - What changed: volume, music, muted, effectsOff, musicOff.
+ */
+function saveAudio(change = {}) {
+    if ('volume' in change) {
+        sound.setVolume(Number(change.volume));
+    }
+    if ('music' in change) {
+        sound.setMusicVolume(Number(change.music));
+    }
+    if ('muted' in change) {
+        sound.setMuted(!!change.muted);
+    }
+    if ('effectsOff' in change) {
+        sound.setEffectsMuted(!!change.effectsOff);
+    }
+    if ('musicOff' in change) {
+        sound.setMusicMuted(!!change.musicOff);
+    }
+    showAudio();
+    store(DRAW_PAGE.audioKey, { volume: sound.volume, music: sound.musicVolume, muted: sound.muted,
+        effectsOff: sound.effectsMuted, musicOff: sound.musicMuted });
 }
 
 /**
@@ -1029,6 +1241,8 @@ function connectChat(channel) {
     connectedChannel = name;
     settings.channel = name;
     $('channel').value = name;
+    $('boss-name').placeholder = name;
+    showBossName();
     if (!embedded) {
         saveSettings();
     }
@@ -1053,11 +1267,14 @@ function connectChat(channel) {
  */
 function runAction(action) {
     const now = currentPhase();
-    if (action === 'open' && now === 'idle') {
+    if (action === 'open' && (now === 'idle' || now === 'result' || now === 'done')) {
         openEntries();
     }
     else if (action === 'start' && (now === 'open' || now === 'idle')) {
         startDraw(true);
+    }
+    else if (action === 'reopen' && (now === 'idle' || now === 'result' || now === 'done')) {
+        reopenEntries();
     }
     else if (action === 'reset' && now !== 'running' && now !== 'showdown') {
         resetEntries();
@@ -1118,17 +1335,34 @@ function onChat(user, text, flags, extra, command, args) {
     }
 }
 
-/** Opens a fresh entry phase to chat. */
+/** Opens the entries to chat: on the players already there, or on a fresh field after a battle. */
 function openEntries() {
     if (playback && !playback.finished) {
         return;
     }
-    openLobby();
+    if (playback || !lobby) {
+        openLobby();
+    }
     chatOpen = true;
     refreshHint();
 }
 
-/** Clears everything and closes the entries. */
+/** Opens the entries again keeping the players (after a battle: the ones who fought) and the kicks. */
+function reopenEntries() {
+    if (playback && !playback.finished) {
+        return;
+    }
+    if (playback) {
+        openLobby(lockedEntrants, lastKicks);
+    }
+    else if (!lobby) {
+        openLobby();
+    }
+    chatOpen = true;
+    refreshHint();
+}
+
+/** Clears everything (players and kicks) and closes the entries. */
 function resetEntries() {
     openLobby();
     chatOpen = false;
@@ -1195,6 +1429,7 @@ function queueSettings() {
         };
         delete payload.params.winners;
         delete payload.params.hitsPerPlayer;
+        delete payload.params.extraRegen;
         if (JSON.stringify(payload).length <= DRAW_PAGE.settingsMaxBytes) {
             post({ type: 'bossdraw:settings', settings: payload });
         }
@@ -1248,8 +1483,10 @@ function cleanSettings(raw) {
                 audio[key] = raw.audio[key];
             }
         }
-        if (typeof raw.audio.muted === 'boolean') {
-            audio.muted = raw.audio.muted;
+        for (const key of ['muted', 'effectsOff', 'musicOff']) {
+            if (typeof raw.audio[key] === 'boolean') {
+                audio[key] = raw.audio[key];
+            }
         }
         out[DRAW_PAGE.audioKey] = audio;
     }
@@ -1433,18 +1670,14 @@ function fillFields() {
 function applyTexts() {
     drawTranslatePage();
     document.title = drawT('page.title');
+    placePrize();
     if ($('panel-toggle').classList.contains('has-result')) {
         $('panel-toggle').textContent = drawT('page.panel_result');
     }
     buildParams(readParams());
     fillRules();
     updateFullscreenButton();
-    if (lobby) {
-        const entrants = lobby.entrants();
-        const wasOpen = chatOpen;
-        openLobby(entrants);
-        chatOpen = wasOpen;
-    }
+    rebuildLobby();
     if (connectedChannel) {
         $('chat-status').textContent = drawT($('chat-dot').classList.contains('on') ? 'stream.connected' : 'stream.connecting', { channel: connectedChannel });
     }
@@ -1504,6 +1737,7 @@ function fitStage() {
     const scale = Math.min(width / DRAW_PAGE.stageWidth, height / DRAW_PAGE.stageHeight);
     $('stage').style.setProperty('--stage-scale', String(scale));
     $('too-small').hidden = width >= DRAW_PAGE.minWidth && height >= DRAW_PAGE.minHeight;
+    placePrize();
 }
 
 /** Whether this page can go fullscreen. */
@@ -1539,6 +1773,9 @@ setLanguage(publicLang);
 fillFields();
 fitStage();
 window.addEventListener('resize', fitStage);
+if (document.fonts) {
+    document.fonts.ready.then(placePrize);
+}
 window.addEventListener('message', onMessage);
 document.addEventListener('fullscreenchange', updateFullscreenButton);
 document.addEventListener('keydown', (e) => {
@@ -1603,12 +1840,53 @@ $('entry-command').addEventListener('input', () => {
     }
     refreshHint();
 });
-for (const id of ['main-winners', 'main-hits']) {
-    $(id).addEventListener('change', saveParams);
+$('main-winners').addEventListener('change', saveParams);
+$('main-hits').addEventListener('change', () => {
+    saveParams();
+    rebuildLobby();
+});
+for (const [action, ids] of Object.entries({ open: ['open', 'bar-open'], start: ['run', 'bar-start'], reopen: ['reopen', 'bar-reopen'], reset: ['reset', 'bar-clear'] })) {
+    for (const id of ids) {
+        $(id).addEventListener('click', () => {
+            sound.unlock();
+            runAction(action);
+        });
+    }
 }
-$('open').addEventListener('click', openEntries);
-$('run').addEventListener('click', () => startDraw(false));
-$('reset').addEventListener('click', resetEntries);
+$('unkick-all').addEventListener('click', () => {
+    if (lobby) {
+        lobby.unkick();
+        renderKicked();
+    }
+});
+$('rule-extra-regen').addEventListener('change', () => {
+    settings.extraRegen = $('rule-extra-regen').checked;
+    rulesChanged();
+});
+$('rule-list-dups').addEventListener('change', () => {
+    settings.listDuplicates = $('rule-list-dups').value;
+    rulesChanged();
+});
+for (const [key, id] of [['listMinHearts', 'rule-list-min'], ['listMaxHearts', 'rule-list-max']]) {
+    $(id).addEventListener('change', () => {
+        settings[key] = Math.min(20, Math.max(1, Math.round(Number($(id).value) || 1)));
+        if (settings.listMinHearts > settings.listMaxHearts) {
+            settings[key === 'listMinHearts' ? 'listMaxHearts' : 'listMinHearts'] = settings[key];
+        }
+        rulesChanged();
+    });
+}
+$('boss-custom').addEventListener('change', () => {
+    settings.bossCustom = $('boss-custom').checked;
+    fillRules();
+    saveSettings();
+    showBossName();
+});
+$('boss-name').addEventListener('input', () => {
+    settings.bossName = $('boss-name').value.slice(0, 40);
+    saveSettings();
+    showBossName();
+});
 $('skip').addEventListener('click', () => playback && playback.skip());
 $('back').addEventListener('click', () => {
     openLobby(lockedEntrants);
@@ -1626,7 +1904,6 @@ $('showdown-seconds').addEventListener('change', () => {
     $('showdown-seconds').value = settings.showdownSeconds;
     saveSettings();
 });
-$('confirm').addEventListener('click', confirmResult);
 $('rule-entry-from').addEventListener('change', () => {
     settings.entryFrom = $('rule-entry-from').value;
     rulesChanged();
@@ -1659,9 +1936,19 @@ $('fake').addEventListener('click', () => {
 });
 $('simulate').addEventListener('click', toggleChat);
 $('add-list').addEventListener('click', () => addMany(readList()));
-$('mute').addEventListener('change', saveAudio);
-$('volume').addEventListener('input', saveAudio);
-$('music-volume').addEventListener('input', saveAudio);
+$('mute').addEventListener('change', () => saveAudio({ muted: $('mute').checked }));
+$('volume').addEventListener('input', () => saveAudio({ volume: $('volume').value }));
+$('music-volume').addEventListener('input', () => saveAudio({ music: $('music-volume').value }));
+$('fx-quick').addEventListener('input', () => saveAudio({ volume: $('fx-quick').value }));
+$('music-quick').addEventListener('input', () => saveAudio({ music: $('music-quick').value }));
+$('fx-toggle').addEventListener('click', () => {
+    sound.unlock();
+    saveAudio({ effectsOff: !sound.effectsMuted });
+});
+$('music-toggle').addEventListener('click', () => {
+    sound.unlock();
+    saveAudio({ musicOff: !sound.musicMuted });
+});
 $('volume').addEventListener('change', () => {
     sound.unlock();
     sound.play('coin', { force: true });

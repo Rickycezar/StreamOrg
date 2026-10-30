@@ -1223,11 +1223,503 @@ const DRAW_DATA = {
     "melee": 300,
     "ranged": 300
    }
+  },
+  "troll": {
+   "url": "imagens/arena/boss_troll.png",
+   "w": 65,
+   "h": 58,
+   "faces": "right",
+   "anims": {
+    "idle": [
+     {
+      "row": 0,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       10,
+       2,
+       41,
+       55
+      ],
+      "loop": true
+     }
+    ],
+    "walk": [
+     {
+      "row": 1,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       6,
+       1,
+       50,
+       55
+      ],
+      "loop": true
+     }
+    ],
+    "melee": [
+     {
+      "row": 2,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       4,
+       3,
+       60,
+       54
+      ],
+      "loop": false
+     }
+    ],
+    "ranged": [
+     {
+      "row": 2,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       4,
+       3,
+       60,
+       54
+      ],
+      "loop": false
+     }
+    ],
+    "hurt": [
+     {
+      "row": 3,
+      "count": 4,
+      "durations": [
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       4,
+       3,
+       55,
+       54
+      ],
+      "loop": false
+     }
+    ],
+    "die": [
+     {
+      "row": 4,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       10,
+       3,
+       53,
+       54
+      ],
+      "loop": false
+     }
+    ],
+    "spawn": [
+     {
+      "row": 5,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       3,
+       62,
+       54
+      ],
+      "loop": false
+     }
+    ]
+   },
+   "windupMs": {
+    "melee": 400,
+    "ranged": 400
+   }
+  },
+  "mech": {
+   "url": "imagens/arena/boss_mech.png",
+   "w": 104,
+   "h": 80,
+   "faces": "right",
+   "anims": {
+    "idle": [
+     {
+      "row": 0,
+      "count": 2,
+      "durations": [
+       100,
+       100
+      ],
+      "box": [
+       1,
+       31,
+       74,
+       49
+      ],
+      "loop": true
+     }
+    ],
+    "walk": [
+     {
+      "row": 1,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       31,
+       74,
+       49
+      ],
+      "loop": true
+     }
+    ],
+    "melee": [
+     {
+      "row": 2,
+      "count": 7,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       1,
+       98,
+       79
+      ],
+      "loop": false
+     }
+    ],
+    "ranged": [
+     {
+      "row": 2,
+      "count": 7,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       1,
+       98,
+       79
+      ],
+      "loop": false
+     }
+    ],
+    "hurt": [
+     {
+      "row": 3,
+      "count": 4,
+      "durations": [
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       31,
+       74,
+       49
+      ],
+      "loop": false
+     }
+    ],
+    "die": [
+     {
+      "row": 4,
+      "count": 6,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       31,
+       102,
+       49
+      ],
+      "loop": false
+     }
+    ],
+    "spawn": [
+     {
+      "row": 1,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       31,
+       74,
+       49
+      ],
+      "loop": false
+     }
+    ]
+   },
+   "windupMs": {
+    "melee": 400,
+    "ranged": 400
+   }
+  },
+  "demon_lord": {
+   "url": "imagens/arena/boss_demon_lord.png",
+   "w": 194,
+   "h": 126,
+   "faces": "right",
+   "anims": {
+    "idle": [
+     {
+      "row": 0,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       66,
+       30,
+       50,
+       49
+      ],
+      "loop": true
+     }
+    ],
+    "walk": [
+     {
+      "row": 1,
+      "count": 6,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       66,
+       25,
+       50,
+       54
+      ],
+      "loop": true
+     }
+    ],
+    "melee": [
+     {
+      "row": 2,
+      "count": 6,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       65,
+       16,
+       52,
+       63
+      ],
+      "loop": false
+     }
+    ],
+    "ranged": [
+     {
+      "row": 3,
+      "count": 8,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       45,
+       17,
+       96,
+       72
+      ],
+      "loop": false
+     }
+    ],
+    "hurt": [
+     {
+      "row": 4,
+      "count": 5,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       56,
+       13,
+       60,
+       66
+      ],
+      "loop": false
+     }
+    ],
+    "die": [
+     {
+      "row": 5,
+      "count": 6,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       66,
+       30,
+       92,
+       51
+      ],
+      "loop": false
+     }
+    ],
+    "spawn": [
+     {
+      "row": 6,
+      "count": 5,
+      "durations": [
+       100,
+       100,
+       100,
+       100,
+       100
+      ],
+      "box": [
+       1,
+       1,
+       192,
+       124
+      ],
+      "loop": false
+     }
+    ]
+   },
+   "windupMs": {
+    "melee": 300,
+    "ranged": 400
+   }
   }
  },
  "bossCycle": [
   "goblin",
-  "orc"
+  "orc",
+  "troll",
+  "mech",
+  "demon_lord"
  ],
  "pieces": {
   "wall": {

@@ -634,6 +634,7 @@ return [
             'today_none' => 'Nothing planned for today',
             'week_none' => 'Nothing planned for the next 7 days',
             'watchtime_none' => 'No watch time recorded for that person',
+            'giveaway_winner' => 'Tags a new winner with their claim link, when the giveaway posts winners\' links in chat',
         ],
         'bot_access' => [
             'permission' => 'With your permission',
@@ -753,7 +754,7 @@ return [
                 'battle_title' => 'Draw with a battle',
                 'battle_text' => "With \"Draw with a battle\", a battle against bosses decides the winners, live on your screen: viewers enter through your chat with the join command, and each becomes a hero.\nThe battle's options (hearts, time to speak, who may enter…) start from your last draw. When you confirm the result in the game, the winners join this giveaway in the battle's order, and with a prize set per winner the first one gets the first prize.\nThe game also has a public page, no sign-in needed, at /games/boss-draw/: it only shows the winners on screen and records nothing.",
                 'claim_title' => 'The claim link',
-                'claim_text' => "Each winner gets a link to send privately or post in the chat.\nIt asks them to sign in with Twitch and only opens for the winner's own account, so a leaked link is useless to anyone else.\nOnce claimed, the key stays in the winner's \"My prizes\".",
+                'claim_text' => "Each winner gets a link to send privately or post in the chat. Turn on \"Post the winner's link in chat\" on the giveaway and the chat bot tags each new winner with their link as soon as they are recorded.\nIt asks them to sign in with Twitch and only opens for the winner's own account, so a leaked link is useless to anyone else.\nOnce claimed, the key stays in the winner's \"My prizes\".",
                 'private_title' => 'If your vault is private',
                 'private_text' => "A private vault only opens with your password, so winners cannot reach the keys on their own.\nWhen you are ready, \"Make prizes claimable\" keeps a protected copy of just those keys for the winners. \"Take them back\" removes it again at any time.\nA winner who picks a key while it is still locked has it reserved, and gets it as soon as you make it claimable.",
                 'finish_title' => 'Finishing',
@@ -2026,6 +2027,7 @@ return [
             'game_hashtag' => 'Game hashtag',
             'duration' => 'Length',
             'title_order' => 'Order of the title',
+            'post_winner_link' => 'Post the winner\'s link in chat',
         ],
 
         'label' => [
@@ -2460,6 +2462,7 @@ return [
             'lang_default' => 'Default',
             'lang_export_hint' => 'Download every edited text (all languages) as JSON, to make them the defaults in the code',
             'game_draw' => 'Draw with a battle',
+            'post_winner_link_hint' => 'the bot tags each new winner with their claim link',
         ],
 
         'message' => [
@@ -2915,6 +2918,8 @@ return [
             'game_winners_recorded' => 'Winners recorded in the giveaway: %d.',
             'game_texts_saved' => 'Texts saved. Changed now in this view: %d.',
             'game_texts_refused' => 'Not saved, because they drop or invent a {placeholder} the game fills in: %s.',
+            'winner_link_posted' => 'The chat bot is posting the claim link in your chat.',
+            'winner_link_not_posted' => 'The chat bot could not post the claim link (it is not in your chat): copy it from the winners list.',
         ],
         'channel_event' => [
             'follow' => 'Follow',
@@ -2980,6 +2985,8 @@ return [
             'leave' => 'A draw is under way. Leave this page anyway?',
             'public' => 'Public page',
             'public_hint' => 'The same game for anyone, with no sign-in: it shows the winners on screen and records nothing.',
+            'cmd_reopen' => 'Reopen entries',
+            'cmd_reopen_hint' => 'Takes entries again keeping who already entered; after a battle, the players who fought come back.',
         ],
 
         'game_texts' => [

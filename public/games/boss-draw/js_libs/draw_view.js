@@ -113,6 +113,34 @@ function drawBossFor(cycle) {
     return { id: order[(cycle - 1) % order.length], tint: Math.floor((cycle - 1) / order.length) };
 }
 
+/**
+ * A boss's name: its own, or the streamer's custom name numbered by wave
+ * ("Name (1)", "Name (2)"…).
+ *
+ * @param {string} id - Boss id.
+ * @param {number} cycle - Wave number.
+ * @param {string} [custom] - Custom name.
+ * @returns {string}
+ */
+function drawBossName(id, cycle, custom) {
+    return custom ? `${custom} (${cycle})` : drawT(`boss.${id}`);
+}
+
+/**
+ * The boss label over the HP bar.
+ *
+ * @param {string} id - Boss id.
+ * @param {number} cycle - Wave number.
+ * @param {string} [custom] - Custom name.
+ * @returns {string}
+ */
+function drawBossLabel(id, cycle, custom) {
+    return custom ? drawBossName(id, cycle, custom) : drawT('boss.label', { n: cycle, name: drawBossName(id, cycle) });
+}
+
+/** Most hearts drawn one by one; above it a player shows one heart and "hp/max". */
+const DRAW_HEART_ICONS = 5;
+
 /** Side labels, in the order the sides are drawn (left to right). */
 const DRAW_SIDES = [['ranged'], ['melee']];
 
@@ -279,9 +307,9 @@ class DrawArena {
         el.append(hearts, clip, name);
         this.sides[p.kind].body.appendChild(el);
 
-        const bonus = Math.max(0, Math.floor(Number(p.bonus) || 0));
+        const max = Math.max(1, hitsPerPlayer + Math.floor(Number(p.bonus) || 0));
         const state = { id: p.id, name: p.name, color, el, clip, holder, hearts, animator: null, kind: p.kind,
-            hp: hitsPerPlayer + bonus, max: hitsPerPlayer + bonus, bonus, dead: false };
+            hp: max, max, bonus: max - hitsPerPlayer, dead: false };
         this.dressPlayer(state, DRAW_DATA.heroes[p.hero] ? p.hero : drawPickHero(p.kind));
         this.renderHearts(state);
         return state;
@@ -332,7 +360,15 @@ class DrawArena {
                 this.animators = this.animators.filter(a => a !== this.boss);
             }
             this.bossHolder.textContent = '';
-            Object.assign(this.bossBody.style, { width: `${def.w * DRAW_SCALE}px`, height: `${def.h * DRAW_SCALE}px` });
+            const idle = Array.isArray(def.anims.idle) ? def.anims.idle[0] : def.anims.idle;
+            const [bx, by, bw, bh] = idle.box || [0, 0, def.w, def.h];
+            Object.assign(this.bossBody.style, { width: `${bw * DRAW_SCALE}px`, height: `${bh * DRAW_SCALE}px` });
+            Object.assign(this.bossHolder.style, {
+                left: `${-bx * DRAW_SCALE}px`,
+                top: `${-by * DRAW_SCALE}px`,
+                width: `${def.w * DRAW_SCALE}px`,
+                height: `${def.h * DRAW_SCALE}px`
+            });
             this.bossBody.classList.toggle('draw-flip', def.faces === 'right');
             this.boss = drawCharacter(this.bossHolder, def);
             this.boss.playAnimation('idle');
@@ -408,8 +444,14 @@ class DrawArena {
      */
     renderHearts(state) {
         state.hearts.textContent = '';
-        const base = state.max - (state.bonus || 0);
-        for (let i = 0; i < state.max; i++) {
+        const base = state.max - Math.max(0, state.bonus || 0);
+        if (state.hp > DRAW_HEART_ICONS) {
+            const heart = drawEl('span', 'draw-heart');
+            heart.classList.toggle('draw-heart-bonus', state.bonus > 0);
+            state.hearts.append(heart, drawEl('span', 'draw-heart-count', `${state.hp}/${state.max}`));
+            return;
+        }
+        for (let i = 0; i < Math.min(state.max, DRAW_HEART_ICONS); i++) {
             const heart = drawEl('span', i < state.hp ? 'draw-heart' : 'draw-heart draw-heart-empty');
             heart.classList.toggle('draw-heart-bonus', i >= base);
             state.hearts.appendChild(heart);
@@ -540,6 +582,7 @@ class DrawLobby {
         this.onChange = options.onChange || null;
         this.players = new Map();
         this.kicked = new Set();
+        this.kickedNames = new Map();
         this.order = { melee: [], ranged: [] };
         this.walkPxPerSecond = 240;
         this.slotWidth = DRAW_PLAYER_W;
@@ -550,7 +593,7 @@ class DrawLobby {
             this._layout();
         };
         window.addEventListener('resize', this._onResize);
-        this.arena.bossLabel.textContent = drawT('boss.label', { n: 1, name: drawT(`boss.${this.arena.bossId}`) });
+        this.arena.bossLabel.textContent = drawBossLabel(this.arena.bossId, 1, options.bossName);
         this.arena.bossHpText.textContent = drawT('boss.waiting');
         this._changed();
     }
@@ -603,12 +646,13 @@ class DrawLobby {
         state.picked = !!side;
         state.tier = Math.max(0, Math.min(3, Math.floor(Number(entry.tier) || 0)));
         state.vip = !!entry.vip;
+        state.extra = entry.extra || 0;
+        state.fromList = !!entry.fromList;
         state.rawColor = entry.color || null;
         state.x = null;
         state.y = null;
         state.moving = false;
         this.layer.appendChild(state.el);
-        state.el.dataset.kickLabel = drawT('player.kick');
         state.el.addEventListener('click', () => this._clickPlayer(state));
         this.players.set(id, state);
         this.order[kind].push(state);
@@ -642,30 +686,76 @@ class DrawLobby {
         for (const [kind] of DRAW_SIDES) {
             for (const p of this.order[kind]) {
                 out.push({ id: p.id, name: p.name, color: p.rawColor, kind: p.kind, picked: p.picked, hero: p.hero,
-                    tier: p.tier, vip: p.vip, bonus: p.bonus });
+                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList });
             }
         }
         return out;
     }
 
     /**
-     * A click on a player arms the kick ("remover?" shows over them for a
-     * moment); a second click removes them.
+     * A click on a player opens the kick confirmation over them (Remove,
+     * and Cancel under it); clicking the player again closes it.
      *
      * @param {object} state - Player state.
      */
     _clickPlayer(state) {
-        if (state.kickArmed) {
-            this.kick(state.id);
+        if (this.kickOpen === state) {
+            this._closeKick();
             return;
         }
-        state.kickArmed = true;
+        this._closeKick();
+        const menu = drawEl('div', 'draw-kick-menu');
+        const remove = drawEl('button', 'draw-kick-yes', drawT('player.kick'));
+        const cancel = drawEl('button', 'draw-kick-no', drawT('player.kick_cancel'));
+        remove.type = 'button';
+        cancel.type = 'button';
+        remove.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._closeKick();
+            this.kick(state.id);
+        });
+        cancel.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._closeKick();
+        });
+        menu.append(remove, cancel);
+        state.el.appendChild(menu);
         state.el.classList.add('draw-kick-armed');
-        clearTimeout(state.kickTimer);
-        state.kickTimer = setTimeout(() => {
-            state.kickArmed = false;
-            state.el.classList.remove('draw-kick-armed');
-        }, 2500);
+        this.kickOpen = state;
+        this.kickMenu = menu;
+    }
+
+    /** Closes the kick confirmation, if one is open. */
+    _closeKick() {
+        if (!this.kickOpen) {
+            return;
+        }
+        this.kickMenu.remove();
+        this.kickOpen.el.classList.remove('draw-kick-armed');
+        this.kickOpen = null;
+        this.kickMenu = null;
+    }
+
+    /**
+     * Lets kicked players join again.
+     *
+     * @param {string[]} [ids] - Who (everyone kicked when missing).
+     */
+    unkick(ids) {
+        for (const id of ids || [...this.kicked]) {
+            this.kicked.delete(id);
+            this.kickedNames.delete(id);
+        }
+        this._changed();
+    }
+
+    /**
+     * Kicked players, to show and undo.
+     *
+     * @returns {Array<{id: string, name: string}>}
+     */
+    kickedList() {
+        return [...this.kicked].map(id => ({ id, name: this.kickedNames.get(id) || id }));
     }
 
     /**
@@ -679,8 +769,8 @@ class DrawLobby {
             return;
         }
         this.kicked.add(id);
+        this.kickedNames.set(id, state.name);
         this.players.delete(id);
-        clearTimeout(state.kickTimer);
         clearTimeout(state.switchTimer);
         this.order[state.kind] = this.order[state.kind].filter(p => p !== state);
         state.el.classList.remove('draw-kick-armed');
@@ -799,6 +889,8 @@ class DrawLobby {
             }
             this.slotHeight = sample.el.offsetHeight + 2;
         }
+        this.layer.style.setProperty('--slot-w', `${this.slotWidth}px`);
+        this.layer.style.setProperty('--slot-h', `${this.slotHeight}px`);
         const zoom = this.arena.zoom || 1;
         const shapes = {};
         for (const [kind] of DRAW_SIDES) {
@@ -906,6 +998,7 @@ class DrawPlayback {
         this.onEnd = options.onEnd || null;
         this.sound = options.sound || null;
         this.showdown = options.showdown || null;
+        this.bossName = options.bossName || '';
         this.onShowdown = options.onShowdown || null;
         this.inShowdown = false;
         this.clock = 0;
@@ -987,6 +1080,9 @@ class DrawPlayback {
     destroy() {
         clearInterval(this._celebrate);
         clearInterval(this._showdownTick);
+        clearInterval(this._rumbleTimer);
+        this.arena.root.style.transform = '';
+        this.arena.el.style.transform = '';
         this.inShowdown = false;
         this.finished = true;
         cancelAnimationFrame(this._rafId);
@@ -1103,7 +1199,9 @@ class DrawPlayback {
                 if (e.type === 'bossSpawn' && !instant) {
                     this.bossBody.classList.remove('draw-boss-dead');
                     this.boss.stop().playAnimation('spawn').playAnimation('idle');
-                    this.arena.showBanner(drawT('boss.appears', { n: e.cycle, name: drawT(`boss.${this.arena.bossId}`) }), 2200 / this.speed);
+                    this.arena.showBanner(this.bossName
+                        ? drawT('boss.custom_appears', { name: drawBossName(this.arena.bossId, e.cycle, this.bossName) })
+                        : drawT('boss.appears', { n: e.cycle, name: drawBossName(this.arena.bossId, e.cycle) }), 2200 / this.speed);
                     this._sfx('spawn');
                 }
                 break;
@@ -1122,7 +1220,8 @@ class DrawPlayback {
             case 'bossDown':
                 for (const id of e.healed) {
                     const state = this.players.get(id);
-                    state.hp = state.max;
+                    state.hp = this.result.params.extraRegen ? state.max
+                        : Math.max(state.hp, Math.min(state.max, this.result.params.hitsPerPlayer));
                     this.arena.renderHearts(state);
                     if (!instant) {
                         this._flash(state.el, 'draw-healed');
@@ -1266,7 +1365,7 @@ class DrawPlayback {
     _setBoss(cycle, hp, maxHp) {
         this.bossMaxHp = maxHp;
         this.arena.setBoss(drawBossFor(cycle));
-        this.arena.bossLabel.textContent = drawT('boss.label', { n: cycle, name: drawT(`boss.${this.arena.bossId}`) });
+        this.arena.bossLabel.textContent = drawBossLabel(this.arena.bossId, cycle, this.bossName);
         this._setBossHp(hp);
     }
 
@@ -1556,6 +1655,13 @@ class DrawPlayback {
         this.showdownLeft.delete(id);
         this.confirmed.push(id);
         const hero = this.showdownHeroes.get(id);
+        const last = !this.showdownLeft.size;
+        if (last) {
+            clearInterval(this._showdownTick);
+            this.countdown.textContent = '';
+            this._charge(hero);
+            return true;
+        }
         hero.box.classList.add('draw-flare');
         const attacks = hero.state.def.attacks[hero.state.kind] || Object.values(hero.state.def.attacks)[0];
         hero.animator.stop().playAnimation(attacks[0]).playAnimation('idle');
@@ -1576,13 +1682,84 @@ class DrawPlayback {
             hero.box.appendChild(spark);
         }
         this._sfx('flare', { force: true });
-        const last = !this.showdownLeft.size;
-        if (last) {
-            clearInterval(this._showdownTick);
-            this.countdown.textContent = '';
-        }
-        this._after(() => this._bolt(hero, last), 280);
+        this._after(() => this._bolt(hero, false), 280);
         return true;
+    }
+
+    /**
+     * The finishing blow, charged: the boss freezes, the hero swells and
+     * glows while sparks rush into them, the camera slowly zooms and tilts
+     * towards the hero as the ground shakes harder and harder, then the
+     * camera snaps back and the bolt flies.
+     *
+     * @param {object} hero - Showdown hero ({box, animator, state, scale, y}).
+     */
+    _charge(hero) {
+        const chargeMs = 1400;
+        const boss = this.showdownBoss;
+        boss.box.style.left = getComputedStyle(boss.box).left;
+        boss.box.style.transition = 'none';
+        boss.animator.stop().playAnimation('idle');
+        hero.box.classList.add('draw-flare', 'draw-charging');
+        hero.box.style.zIndex = '3';
+        this._sfx('charge', { force: true });
+
+        const kinds = Object.keys(DRAW_DATA.effects);
+        const centreY = -this._idleBox(hero.state.def)[3] * hero.scale * 0.55;
+        for (let i = 0; i < 14; i++) {
+            const fx = DRAW_DATA.effects[kinds[i % kinds.length]];
+            const angle = (i / 14) * Math.PI * 2;
+            const spark = drawEl('div', 'draw-converge');
+            Object.assign(spark.style, {
+                left: `${Math.round(-fx.w * 1.5)}px`,
+                top: `${Math.round(centreY - fx.h * 1.5)}px`,
+                width: `${fx.w * 3}px`,
+                height: `${fx.h * 3}px`,
+                animationDelay: `${((i % 7) * 0.1).toFixed(2)}s`
+            });
+            spark.style.setProperty('--dx', `${Math.round(Math.cos(angle) * 170)}px`);
+            spark.style.setProperty('--dy', `${Math.round(Math.sin(angle) * 130)}px`);
+            const anim = drawCharacter(spark, fx, 3);
+            anim.playAnimation('play');
+            this.arena.animators.push(anim);
+            hero.box.appendChild(spark);
+        }
+
+        const lane = this.showdownLane;
+        const el = this.arena.el;
+        const x = parseFloat(hero.box.style.left);
+        const y = lane.offsetTop + hero.y + centreY;
+        el.style.transformOrigin = `${Math.round(x)}px ${Math.round(y)}px`;
+        el.style.transition = `transform ${chargeMs}ms cubic-bezier(.35, 0, .25, 1)`;
+        void el.offsetWidth;
+        el.style.transform = 'scale(1.16) rotate(-2.5deg)';
+        const root = this.arena.root;
+        const started = performance.now();
+        this._rumbleTimer = setInterval(() => {
+            const amp = 0.5 + 6 * Math.min(1, (performance.now() - started) / chargeMs);
+            root.style.transform = `translate(${((Math.random() * 2 - 1) * amp).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp * 0.7).toFixed(1)}px)`;
+        }, 40);
+
+        this._after(() => {
+            clearInterval(this._rumbleTimer);
+            root.style.transform = '';
+            el.style.transition = 'transform 160ms cubic-bezier(.2, .8, .3, 1)';
+            el.style.transform = '';
+            for (const spark of hero.box.querySelectorAll('.draw-converge')) {
+                spark.remove();
+            }
+            hero.box.classList.remove('draw-charging');
+            hero.box.classList.add('draw-release');
+            const attacks = hero.state.def.attacks[hero.state.kind] || Object.values(hero.state.def.attacks)[0];
+            hero.animator.stop().playAnimation(attacks[0]).playAnimation('idle');
+            this._sfx('flare', { force: true });
+            this._flash(this.arena.root, 'draw-shake', 350);
+            this._after(() => {
+                el.style.transition = '';
+                el.style.transformOrigin = '';
+                this._bolt(hero, true);
+            }, 200);
+        }, chargeMs);
     }
 
     /**
@@ -1686,14 +1863,15 @@ class DrawPlayback {
         const arena = this.arena.el.getBoundingClientRect();
         const at = blast.getBoundingClientRect();
         const light = drawEl('div', 'draw-whiteout');
+        light.appendChild(drawEl('div', 'draw-whiteout-glow'));
         light.style.setProperty('--x', `${Math.round((at.left - arena.left) / scale)}px`);
         light.style.setProperty('--y', `${Math.round((at.top - arena.top) / scale)}px`);
         this.arena.el.appendChild(light);
         this._after(() => {
             this._closeShowdown();
             light.classList.add('draw-whiteout-fade');
-            this._after(() => light.remove(), 1400);
-        }, 700);
+            this._after(() => light.remove(), 1800);
+        }, 800);
     }
 
     /**

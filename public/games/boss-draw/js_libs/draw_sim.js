@@ -13,7 +13,8 @@
  * untouched. With minWipesSide 'no', the minimum number of targets never hits
  * every member of a side while the other side still has players (the ratio
  * alone still can). When the boss dies the survivors heal to full and a
- * stronger boss spawns. The last `winners` players standing win, ranked by
+ * stronger boss spawns (extra hearts from the rules come back only with
+ * extraRegen; otherwise survivors heal up to the normal hearts). The last `winners` players standing win, ranked by
  * the hearts they kept (ties drawn): the first gets the first prize.
  *
  * @author Henrique Cezar
@@ -41,7 +42,9 @@ const DRAW_DEFAULTS = {
     minTargets: 3,
     minWipesSide: 'yes',
     respawnMs: 3000,
-    maxDurationMs: 900000
+    maxDurationMs: 900000,
+    /** Whether extra hearts (bonus over hitsPerPlayer) come back when a boss falls. */
+    extraRegen: false
 };
 
 /**
@@ -151,8 +154,8 @@ function simulateDraw(entrants, overrides = {}, seed) {
         picked: !!e.picked,
         hero: e.hero || null,
         kind: hasSide(e) ? e.kind : (rangedIds.has(e.id) ? 'ranged' : 'melee'),
-        bonus: Math.max(0, Math.floor(Number(e.bonus) || 0)),
-        hp: params.hitsPerPlayer + Math.max(0, Math.floor(Number(e.bonus) || 0))
+        bonus: Math.max(1 - params.hitsPerPlayer, Math.floor(Number(e.bonus) || 0)),
+        hp: Math.max(1, params.hitsPerPlayer + Math.floor(Number(e.bonus) || 0))
     }));
 
     const events = [];
@@ -215,7 +218,8 @@ function simulateDraw(entrants, overrides = {}, seed) {
             if (bossHp === 0) {
                 const healed = living().map(p => p.id);
                 for (const p of living()) {
-                    p.hp = params.hitsPerPlayer + p.bonus;
+                    const full = params.hitsPerPlayer + p.bonus;
+                    p.hp = params.extraRegen ? full : Math.max(p.hp, Math.min(params.hitsPerPlayer, full));
                 }
                 events.push({ t, type: 'bossDown', cycle, healed });
                 cycle++;

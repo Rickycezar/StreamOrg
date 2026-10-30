@@ -114,10 +114,14 @@ final class GameDraws
      * first prize), all or none, and keeps the result. The options it was
      * played with become the creator's next ones.
      *
-     * @return int how many winners were recorded
+     * Then the bot posts the winners' claim links in the chat, when the
+     * giveaway asks for it.
+     *
+     * @return array{count:int, posted:?bool} how many winners were recorded, and whether
+     *         the bot took their links for the chat (null: not asked to)
      * @throws UserError when the result does not fit this giveaway or a winner cannot be recorded
      */
-    public static function record(int $userId, int $giveawayId, string $game, mixed $result): int
+    public static function record(int $userId, int $giveawayId, string $game, mixed $result): array
     {
         $giveaway = Giveaways::find($userId, $giveawayId);
 
@@ -144,21 +148,25 @@ final class GameDraws
             $accounts[] = $account;
         }
 
-        Database::transaction(static function (PDO $pdo) use ($giveaway, $game, $result, $accounts): void {
+        $tokens = Database::transaction(static function (PDO $pdo) use ($giveaway, $game, $result, $accounts): array {
+            $tokens = [];
+
             foreach ($accounts as $account) {
-                Giveaways::addDrawnWinner($giveaway, $account);
+                $tokens[] = Giveaways::addDrawnWinner($giveaway, $account);
             }
 
             $pdo->prepare('INSERT INTO giveaway_game_draws (giveaway_id, game, version, winners, result) VALUES (?, ?, ?, ?, CAST(? AS jsonb))')
                 ->execute([$giveaway['id'], $game, mb_substr((string) $result['version'], 0, 20), count($accounts), json_encode($result, JSON_UNESCAPED_UNICODE)]);
             $pdo->prepare('UPDATE giveaways SET drawn_at = now() WHERE id = ?')->execute([$giveaway['id']]);
+
+            return $tokens;
         });
 
         if (is_array($result['options'] ?? null)) {
             Games::saveOptions($userId, $game, $result['options']);
         }
 
-        return count($accounts);
+        return ['count' => count($accounts), 'posted' => Giveaways::postWinnerLinks($giveaway, $tokens)];
     }
 
     /**

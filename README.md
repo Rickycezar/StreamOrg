@@ -144,7 +144,9 @@ private preview. Preview access: streamorg@outlook.com.
   account picked is stored by its Twitch id. Either the winner picks a
   key from the giveaway, or a key is assigned to them.
 - **Claim links only the winner can open**: the link works for that Twitch
-  account only, signed in, until it expires (30 days by default).
+  account only, signed in, until it expires (30 days by default). The chat
+  bot can post it in the chat, tagging the winner, as soon as they are
+  recorded (a switch per giveaway).
 - **Public prize page**: each giveaway has a page anyone can open (the
   link the chat bot gives), with its rules, the
   prizes still to win and the ones already won, never a code. *Post in

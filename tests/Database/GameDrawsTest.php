@@ -80,7 +80,7 @@ final class GameDrawsTest extends DatabaseTestCase
         $g = $this->giveaway('assigned', 3);
 
         self::assertSame(3, GameDraws::openSlots($g));
-        self::assertSame(2, GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['first_one', 'second_one'])));
+        self::assertSame(2, GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['first_one', 'second_one']))['count']);
 
         $rows = $this->pdo->query(
             "SELECT w.twitch_login, w.method, p.id AS prize FROM giveaway_winners w JOIN giveaway_prizes p ON p.winner_id = w.id
@@ -94,6 +94,45 @@ final class GameDrawsTest extends DatabaseTestCase
         self::assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM giveaway_game_draws WHERE giveaway_id = {$g} AND winners = 2")->fetchColumn());
         self::assertNotNull($this->pdo->query("SELECT drawn_at FROM giveaways WHERE id = {$g}")->fetchColumn());
         self::assertSame(4, Games::preferences($this->user, self::GAME)['options']['hearts'], 'The options played become the next ones.');
+    }
+
+    public function testTheBotTagsEachWinnerWithTheirLinkPackedIntoFewMessages(): void
+    {
+        $this->pdo->exec("UPDATE bot_account SET is_enabled = true, twitch_login = 'phpunit_bot', twitch_user_id = '1' WHERE id = 1");
+        ChatBot::setChannel($this->user, true);
+        $g       = $this->giveaway('pick', 0);
+        $winners = array_map(static fn (int $i): string => 'winner_number_' . $i, range(1, 10));
+
+        self::assertSame(['count' => 10, 'posted' => true], GameDraws::record($this->user, $g, self::GAME, $this->gameResult($winners)));
+
+        $posted = $this->pdo->query("SELECT message FROM bot_outbox WHERE user_id = {$this->user} ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+        $all    = implode(' ', $posted);
+
+        self::assertLessThan(10, count($posted), 'Several winners share a message.');
+        self::assertLessThanOrEqual(6, count($posted), 'A whole draw fits in the bot\'s queue.');
+        foreach ($posted as $message) {
+            self::assertLessThanOrEqual(Giveaways::CHAT_MAX, mb_strlen($message));
+        }
+        foreach ($winners as $login) {
+            self::assertStringContainsString('@' . $login, $all);
+        }
+        self::assertSame(10, substr_count($all, '/claim?t='));
+
+        $token = Giveaways::tokenOf($this->pdo->query("SELECT * FROM giveaway_winners WHERE giveaway_id = {$g} AND twitch_login = 'winner_number_1'")->fetch());
+        self::assertStringContainsString('/claim?t=' . rawurlencode((string) $token), $all, 'The link is the winner\'s own.');
+    }
+
+    public function testNoLinkIsPostedWhenTheGiveawayDoesNotAskOrTheBotIsAway(): void
+    {
+        $this->pdo->exec("UPDATE bot_account SET is_enabled = true, twitch_login = 'phpunit_bot', twitch_user_id = '1' WHERE id = 1");
+        $off = $this->giveaway('pick', 0);
+        $this->pdo->exec("UPDATE giveaways SET post_winner_link = false WHERE id = {$off}");
+
+        self::assertNull(GameDraws::record($this->user, $off, self::GAME, $this->gameResult(['quiet_one']))['posted']);
+
+        $away = $this->giveaway('pick', 0);
+        self::assertSame(['count' => 1, 'posted' => false], GameDraws::record($this->user, $away, self::GAME, $this->gameResult(['lonely_one'])), 'Recorded even when the bot cannot post.');
+        self::assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM bot_outbox WHERE user_id = {$this->user}")->fetchColumn());
     }
 
     public function testAResultIsRecordedWholeOrNotAtAll(): void
