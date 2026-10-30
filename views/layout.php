@@ -121,6 +121,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                         '/admin/settings' => __('ui.nav.settings'),
                         '/admin/api'      => __('ui.nav.api_settings'),
                         '/admin/lang'     => __('ui.nav.languages'),
+                        '/admin/game-texts' => __('ui.nav.game_texts'),
                     ],
                 ],
             ];

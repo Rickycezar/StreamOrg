@@ -140,7 +140,12 @@ $mediaOptions = static function (array $list, ?int $chosen): string {
                             </label>
                         <?php endif;
                     endforeach; ?>
-                    <button type="button" class="btn small danger-btn rule-remove" data-rule-remove><?= e(__('ui.action.remove')) ?></button>
+                    <div class="rule-actions">
+                        <?php if (($field['target'] ?? '') === 'login'): ?>
+                            <button type="button" class="btn small rule-test" data-rule-test title="<?= e(__('ui.overlay.rule_test_hint')) ?>"><?= icon_label('play', __('ui.overlay.rule_test')) ?></button>
+                        <?php endif; ?>
+                        <button type="button" class="btn small danger-btn rule-remove" data-rule-remove><?= e(__('ui.action.remove')) ?></button>
+                    </div>
                 </div>
                 <?php return (string) ob_get_clean();
             }; ?>

@@ -258,12 +258,16 @@ final class Overlays
         ChatBot::notify();
     }
 
+    /** Overlay types whose tests can show a chosen name (a channel for a shoutout, a viewer for a streak). */
+    public const NAMED_TESTS = ['shoutout', 'watch_streak'];
+
     /**
-     * Sends a test event (one of the type's tests) to the open overlays.
+     * Sends a test event (one of the type's tests) to the open overlays,
+     * for $name when the type takes one, or the user's own channel.
      *
-     * @throws UserError when it is not the user's or not one of its tests
+     * @throws UserError when it is not the user's, not one of its tests, or not a Twitch name
      */
-    public static function test(int $overlayId, int $userId, string $event): void
+    public static function test(int $overlayId, int $userId, string $event, string $name = ''): void
     {
         $overlay = self::owned($overlayId, $userId);
 
@@ -271,7 +275,25 @@ final class Overlays
             throw new UserError(__('ui.message.invalid_input'));
         }
 
-        self::signal($overlayId, 'test', ['event' => $event, 'user' => self::sampleUser($userId), 'label' => __('ui.overlay.test_tag')]);
+        $name = ltrim(trim($name), '@');
+
+        if ($name !== '' && (!in_array($overlay['type'], self::NAMED_TESTS, true) || !preg_match('/^[A-Za-z0-9_]{1,25}$/', $name))) {
+            throw new UserError(__('ui.message.overlay_test_name_invalid'));
+        }
+
+        self::signal($overlayId, 'test', ['event' => $event, 'user' => $name !== '' ? $name : self::sampleUser($userId), 'label' => __('ui.overlay.test_tag')]);
+    }
+
+    /**
+     * Stops what the open overlays are showing: the current alert, the
+     * ones waiting and their sound.
+     *
+     * @throws UserError when it is not the user's
+     */
+    public static function stop(int $overlayId, int $userId): void
+    {
+        self::owned($overlayId, $userId);
+        self::signal($overlayId, 'stop');
     }
 
     /**

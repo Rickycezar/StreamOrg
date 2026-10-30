@@ -5,6 +5,45 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.0 — 2026-10-30
+
+This release has database migrations (051: the overlays' stop signal;
+052: the texts edited in Administration → Languages; 053: the hosted
+games' texts, options and draws).
+
+### Added
+- Giveaways can be drawn with a battle: "Draw with a battle" opens the
+  boss battle game inside the giveaway. Viewers enter through the chat,
+  the battle's options start from the creator's last draw, and the
+  confirmed winners are recorded in the battle's order (with a prize set
+  per winner, the first gets the first prize). Every result is kept so
+  the draw can be replayed. The game also has a public page, with no
+  sign-in, at /games/boss-draw/, which only shows the winners. Both can
+  go full screen.
+- Administration → Game texts: the hosted games' texts, apart from
+  StreamOrg's own, changeable in any language (or in a new one) without
+  a new build of the game; a text that drops or invents a {placeholder}
+  is refused.
+- Overlay tests can be interrupted: "Interrupt" stops what the preview
+  and the overlay open in OBS are showing, what waits in their queue and
+  their sound, for every overlay type.
+- Shoutout and watch-streak overlays take an optional name above the test
+  buttons (the channel or viewer the test shows), in the preview and in
+  OBS, and each viewer's row in the per-viewer tab has a Test button that
+  shows their own alert in the preview.
+
+### Changed
+- Administration → Languages keeps edits in the database, over the texts
+  that ship with the code: each edited text shows its default, a blank (or
+  the default) brings it back, a counter shows how many are edited, and
+  "Download edits" gives them as JSON for bin/lang_overrides.php to make
+  them the defaults in the code.
+
+### Fixed
+- The Play buttons beside the overlay sounds did nothing.
+- Texts edited in Administration → Languages were written into the files
+  and lost on the next deploy.
+
 ## 0.10.1 — 2026-10-26
 
 ### Changed

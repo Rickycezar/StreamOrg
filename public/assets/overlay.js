@@ -12,7 +12,7 @@
  *
  * A type's script uses window.StreamOrgOverlay:
  *   on(event, fn)          "settings" (also called at once if known), "test",
- *                          and chat: "command", "chat", "reward", "sub",
+ *                          "stop" (clear what is shown and waiting), and chat: "command", "chat", "reward", "sub",
  *                          "resub", "cheer", "raw" (each with one object)
  *   playSound(sound)       a sound setting {url, start, duration, volume, fade_in, fade_out}
  *   chat(fn)               fn(user, command, message, flags, extra) for chat commands
@@ -153,6 +153,12 @@
             overlay.on('command', function (c) { fn(c.user, c.command, c.message, c.flags, c.extra); });
         }
     };
+
+    /** The settings page's "Interrupt": sounds stop, and each type clears what it shows and what waits. */
+    function stopAll() {
+        sound.stop();
+        overlay.emit('stop');
+    }
 
     function preloadOne(ref) {
         sound.preload([{ name: overlay.soundName(ref), fileName: ref.url, start: ref.start || 0, duration: ref.duration || null, volume: ref.volume ?? 1, fadeIn: ref.fade_in || 0, fadeOut: ref.fade_out || 0 }]);
@@ -329,6 +335,7 @@
         since = state.since;
         (state.signals || []).forEach(function (signal) {
             if (signal.kind === 'test') overlay.emit('test', signal.payload || {});
+            if (signal.kind === 'stop') stopAll();
             if (signal.kind === 'reload') window.location.reload();
         });
 
@@ -347,6 +354,7 @@
             apply(data.settings, data.css || '');
         }
         if (data.type === 'streamorg-preview-test') overlay.emit('test', data.payload || {});
+        if (data.type === 'streamorg-preview-stop') stopAll();
         if (data.type === 'streamorg-preview-lookup-result' && lookups[data.id]) {
             lookups[data.id](data.channel || null);
             delete lookups[data.id];

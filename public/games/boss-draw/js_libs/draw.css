@@ -1,0 +1,524 @@
+/**
+ * BossDraw arena styles, shared by the draw page and the stream export:
+ * the arena, sides, players, toasts, boss, banners and the winner screen.
+ * Pixel fonts: Press Start 2P for numbers, Pixelify Sans for words (it keeps
+ * Portuguese accents readable at small sizes).
+ *
+ * @author Henrique Cezar
+ * @license MIT
+ */
+
+:root {
+    --line: #37324a;
+    --text: #e9e6f2;
+    --muted: #9993ad;
+    --accent: #f5c542;
+    --hp: #e52521;
+    --heal: #4ade80;
+}
+
+.draw-arena {
+    --font-px: 'Press Start 2P', monospace;
+    --font-name: 'Pixelify Sans', monospace;
+    --outline: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: 44% 1fr;
+    align-items: start;
+    gap: 0 16px;
+    height: 600px;
+    padding: 24px 16px;
+    background: #6ec6f0 url('../imagens/land.png') center 34% / cover no-repeat;
+    image-rendering: pixelated;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    font-family: var(--font-name);
+    font-variant-ligatures: none;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+    font-smooth: never;
+}
+
+.draw-toasts {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+}
+
+.draw-toast {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px 6px 8px;
+    background: rgba(0, 0, 0, .72);
+    border-left: 4px solid var(--hp);
+    font: 700 20px/1 var(--font-name);
+    text-shadow: var(--outline);
+    white-space: nowrap;
+    animation: draw-toast var(--toast-ms, 3500ms) linear forwards;
+}
+
+.draw-toast-name { overflow: hidden; text-overflow: ellipsis; }
+
+.draw-skull {
+    flex: none;
+    width: 21px;
+    height: 21px;
+    background: var(--icon-skull) center / contain no-repeat;
+}
+
+.draw-army {
+    position: relative;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    min-width: 0;
+}
+
+.draw-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.draw-side-head {
+    display: flex;
+    gap: 8px;
+    font: 700 15px/1 var(--font-name);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text);
+    text-shadow: var(--outline);
+}
+
+.draw-side-count { color: var(--accent); font: 11px/15px var(--font-px); }
+
+.draw-side-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 0;
+    justify-content: center;
+    align-content: center;
+    width: 100%;
+}
+
+.draw-player {
+    position: relative;
+    width: 124px;
+    text-align: center;
+    transition: opacity .6s, filter .6s;
+}
+
+.draw-clip {
+    position: relative;
+    width: 124px;
+    height: 84px;
+    margin: 0 auto;
+    transition: filter .2s;
+}
+
+.draw-clip .draw-sprite { position: absolute; text-align: left; line-height: 0; }
+
+.draw-flip { transform: scaleX(-1); }
+
+.draw-targeted .draw-clip { filter: drop-shadow(0 0 3px #ff3b30); }
+.draw-facing-left .draw-clip { transform: scaleX(-1); }
+.draw-walking { z-index: 2; }
+.draw-layer { position: absolute; inset: 0; pointer-events: none; }
+.draw-layer .draw-player { position: absolute; left: 0; top: 0; transition: none; }
+
+.draw-hearts {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    height: 12px;
+}
+
+.draw-heart {
+    width: 14px;
+    height: 12px;
+    background: var(--icon-heart) center / contain no-repeat;
+}
+
+.draw-heart-empty { background-image: var(--icon-heart-empty); }
+
+.draw-name {
+    display: inline-block;
+    max-width: 122px;
+    margin-top: 1px;
+    padding: 1px 5px 2px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, .58);
+    font: 700 max(19px, calc(14px / var(--army-zoom, 1)))/1.1 var(--font-name);
+    text-shadow: var(--outline);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+}
+
+.draw-poof {
+    position: absolute;
+    left: 30px;
+    top: 18px;
+    width: 64px;
+    height: 64px;
+    pointer-events: none;
+    background: radial-gradient(circle, #fff 0 22%, #d9d4ec 23% 42%, rgba(160, 150, 190, .7) 43% 60%, transparent 61%);
+    animation: draw-poof .5s steps(5) forwards;
+}
+
+.draw-dead { opacity: .3; filter: grayscale(1); }
+.draw-hit { animation: draw-hit .45s; }
+.draw-healed .draw-hearts { animation: draw-heal .45s; }
+.draw-winner { opacity: 1; filter: drop-shadow(0 0 6px var(--accent)); }
+.draw-winner .draw-name { font-weight: 700; }
+
+.draw-boss-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.draw-boss-label {
+    font: 700 18px/1 var(--font-name);
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    text-shadow: var(--outline);
+}
+
+.draw-hp {
+    position: relative;
+    margin: 12px 0 8px 24px;
+    background-repeat: no-repeat;
+}
+
+.draw-hp-track { position: absolute; overflow: hidden; }
+
+.draw-hp-fill {
+    height: 100%;
+    background-repeat: no-repeat;
+    transition: width .2s steps(8);
+}
+
+.draw-hp-emblem {
+    position: absolute;
+    left: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-repeat: no-repeat;
+}
+
+.draw-hp-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 600 12px/1 var(--font-name);
+    text-shadow: var(--outline);
+    white-space: nowrap;
+}
+
+.draw-scenery { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.draw-scenery > div, .draw-hp, .draw-hp div, .draw-boss, .draw-player { image-rendering: pixelated; }
+.draw-wall { position: absolute; left: 0; right: 0; bottom: 54%; background-repeat: repeat-x; }
+.draw-floor { position: absolute; left: 0; right: 0; top: 46%; bottom: 0; background-repeat: repeat; }
+.draw-deco { position: absolute; background-repeat: no-repeat; }
+.draw-deco-lantern { bottom: calc(54% + 96px); }
+.draw-deco-gargoyle { bottom: calc(54% - 66px); }
+.draw-deco-bush { bottom: calc(54% - 30px); }
+.draw-deco-rock { bottom: 3%; }
+.draw-toasts, .draw-army, .draw-boss-zone { position: relative; z-index: 1; }
+.draw-toasts { z-index: 3; }
+.draw-army { grid-column: 1; grid-row: 2; }
+.draw-boss-zone { grid-column: 2; grid-row: 2; align-self: start; margin-top: -40px; }
+
+.draw-boss {
+    position: relative;
+    transition: opacity .8s;
+}
+
+.draw-boss .draw-sprite { position: absolute; left: 0; top: 0; }
+
+.draw-boss-dead { opacity: .5; }
+
+.draw-float {
+    position: absolute;
+    top: 30%;
+    pointer-events: none;
+    font: 12px/1 var(--font-px);
+    text-shadow: var(--outline);
+    animation: draw-float linear forwards;
+}
+
+.draw-float-damage { color: #fff; }
+.draw-float-miss { color: var(--accent); top: 0; left: 50% !important; transform: translateX(-50%); font-size: 10px; }
+
+.draw-banner {
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    transform: translateX(-50%);
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, .8);
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font: 700 18px/1.3 var(--font-name);
+    letter-spacing: 1px;
+    text-shadow: var(--outline);
+    opacity: 0;
+    transition: opacity .3s;
+    white-space: nowrap;
+}
+
+.draw-banner-show { opacity: 1; }
+.draw-shake { animation: draw-shake .35s; }
+
+.draw-result {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: radial-gradient(circle at 50% 45%, rgba(20, 14, 4, .55), rgba(6, 4, 10, .88) 70%);
+    text-align: center;
+}
+
+.draw-result-title { font: 700 22px/1 var(--font-name); letter-spacing: 4px; text-transform: uppercase; color: var(--text); text-shadow: var(--outline); }
+.draw-coin { width: 128px; height: 128px; }
+.draw-result-names { padding: 0 16px; font: 700 40px/1.2 var(--font-name); text-shadow: var(--outline), 0 3px 0 #000; }
+.draw-result-meta { margin-top: 10px; color: var(--muted); font: 14px/1 var(--font-name); }
+
+@keyframes draw-float { to { transform: translateY(-60px); opacity: 0; } }
+@keyframes draw-toast {
+    0% { transform: translateX(-110%); opacity: 0; }
+    6% { transform: none; opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+@keyframes draw-poof {
+    0% { transform: scale(.3); opacity: 1; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+@keyframes draw-hit { 50% { filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } }
+@keyframes draw-heal { 50% { color: var(--heal); transform: scale(1.4); } }
+@keyframes draw-shake {
+    25% { transform: translate(-4px, 2px); }
+    50% { transform: translate(4px, -2px); }
+    75% { transform: translate(-2px, 1px); }
+}
+
+@media (max-width: 720px) {
+    .draw-arena { grid-template-columns: minmax(0, 1fr); }
+    .draw-toasts { left: 8px; top: 8px; width: 240px; }
+}
+
+.draw-banner { z-index: 3; }
+.draw-result { z-index: 4; }
+
+.draw-side.draw-warn .draw-player:not(.draw-dead) .draw-clip { animation: draw-warn .3s steps(1) infinite; }
+.draw-side.draw-warn .draw-side-head { animation: draw-warn-text .3s steps(1) infinite; }
+
+@keyframes draw-warn {
+    50% { filter: brightness(.85) sepia(1) saturate(14) hue-rotate(-52deg) drop-shadow(0 0 3px #ff0000) drop-shadow(0 0 7px #ff2a2a); }
+}
+
+@keyframes draw-warn-text {
+    50% { color: #ff4040; }
+}
+
+.draw-champions { display: flex; gap: 40px; justify-content: center; }
+.draw-champion { display: flex; flex-direction: column; align-items: center; }
+.draw-champion-stage { position: relative; width: 320px; height: 320px; }
+.draw-champion-stage .draw-sprite { position: absolute; text-align: left; line-height: 0; }
+
+.draw-rays {
+    position: absolute;
+    inset: -70px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, rgba(255, 210, 80, .6) 0deg 7deg, rgba(255, 210, 80, 0) 7deg 18deg);
+    -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+    mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+    animation: draw-spin 9s linear infinite;
+}
+
+.draw-glow {
+    position: absolute;
+    inset: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 236, 160, .85), rgba(255, 196, 60, .3) 45%, transparent 70%);
+    animation: draw-pulse 1.4s ease-in-out infinite alternate;
+}
+
+.draw-particle {
+    position: absolute;
+    line-height: 0;
+    text-align: left;
+    opacity: 0;
+    filter: sepia(1) saturate(7) hue-rotate(-14deg) brightness(1.25) drop-shadow(0 0 3px rgba(255, 200, 60, .9));
+    animation: draw-particle 2.8s ease-in-out infinite;
+}
+
+.draw-champion-name { margin-top: -18px; font: 700 44px/1.1 var(--font-name); text-shadow: var(--outline), 0 3px 0 #000; }
+
+@keyframes draw-spin { to { transform: rotate(360deg); } }
+@keyframes draw-pulse { from { opacity: .65; transform: scale(.94); } to { opacity: 1; transform: scale(1.06); } }
+@keyframes draw-particle {
+    0% { opacity: 0; transform: translateY(14px) scale(.8); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-46px) scale(1.15); }
+}
+
+.draw-lobby .draw-layer .draw-player { pointer-events: auto; cursor: pointer; }
+.draw-kick-armed .draw-clip { filter: drop-shadow(0 0 3px #ff3030) drop-shadow(0 0 6px #ff3030); }
+.draw-kick-armed::before {
+    content: attr(data-kick-label);
+    position: absolute;
+    left: 50%;
+    top: -22px;
+    z-index: 5;
+    transform: translateX(-50%);
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #c62828;
+    color: #fff;
+    font: 700 15px/1.2 var(--font-name);
+    text-shadow: var(--outline);
+    white-space: nowrap;
+}
+
+/* Time to speak: the winners under a countdown while the boss closes in. */
+.draw-showdown {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 30% 70%, rgba(40, 6, 10, .55), rgba(4, 2, 8, .92) 75%);
+    animation: draw-showdown-in .6s ease-out;
+}
+.draw-countdown {
+    position: absolute;
+    top: max(96px, 14%);
+    left: 0;
+    right: 0;
+    text-align: center;
+    font: 64px/1 var(--font-px);
+    color: #ffe9a8;
+    text-shadow: var(--outline), 0 4px 0 #000;
+}
+.draw-countdown-hurry { color: #ff4a3a; animation: draw-countdown-beat 1s ease-out infinite; }
+.draw-showdown-prompt {
+    position: absolute;
+    top: calc(max(96px, 14%) + 88px);
+    left: 0;
+    right: 0;
+    padding: 0 24px;
+    text-align: center;
+    font: 700 28px/1.2 var(--font-name);
+    color: var(--text);
+    text-shadow: var(--outline);
+}
+.draw-showdown-lane { position: absolute; left: 0; right: 0; bottom: 70px; height: 0; }
+.draw-lane-sprite { position: absolute; top: 0; width: 0; height: 0; }
+.draw-lane-sprite .draw-sprite { position: absolute; line-height: 0; text-align: left; }
+.draw-lane-name {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font: 700 26px/1 var(--font-name);
+    text-shadow: var(--outline), 0 3px 0 #000;
+}
+.draw-lane-boss { z-index: 1; }
+.draw-lane-dead { animation: draw-boss-fade 1.8s ease-in 0.6s forwards; }
+.draw-flare .draw-sprite { animation: draw-flare 1.2s ease-out forwards; }
+.draw-flare-spark { animation-duration: 1.6s; }
+.draw-executed .draw-sprite { filter: grayscale(1) brightness(.6); transition: filter .6s; }
+.draw-stamp {
+    position: absolute;
+    top: -150px;
+    left: 0;
+    transform: translateX(-50%) rotate(-12deg);
+    padding: 6px 14px;
+    border: 4px solid #ff3a2a;
+    font: 24px/1 var(--font-px);
+    color: #ff3a2a;
+    white-space: nowrap;
+    text-shadow: 0 2px 0 #000;
+    animation: draw-stamp .35s cubic-bezier(.2, 1.6, .4, 1);
+}
+.draw-lost-name { margin-top: 16px; color: #ff6a5a; text-decoration: line-through; }
+.draw-lost-line { color: #ff8a7a; }
+
+@keyframes draw-showdown-in { from { opacity: 0; } }
+@keyframes draw-countdown-beat { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes draw-flare {
+    0% { filter: brightness(1); }
+    30% { filter: brightness(2.4) sepia(1) saturate(4) hue-rotate(-12deg) drop-shadow(0 0 14px #ffd84a); }
+    100% { filter: brightness(1.15) drop-shadow(0 0 8px #ffd84a); }
+}
+@keyframes draw-boss-fade { to { opacity: 0; } }
+@keyframes draw-stamp { from { transform: translateX(-50%) rotate(-12deg) scale(3); opacity: 0; } }
+.draw-in-showdown .draw-army,
+.draw-in-showdown .draw-boss-zone,
+.draw-in-showdown .draw-toasts { opacity: 0; transition: opacity .6s; }
+
+.draw-bolt, .draw-blast { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 2; }
+.draw-bolt .draw-sprite, .draw-blast .draw-sprite { position: absolute; line-height: 0; text-align: left; }
+.draw-bolt .draw-sprite { filter: sepia(1) saturate(6) hue-rotate(-12deg) brightness(1.5) drop-shadow(0 0 8px #ffe066) drop-shadow(0 0 16px #ffb020); }
+.draw-blast .draw-sprite { filter: sepia(1) saturate(5) hue-rotate(-18deg) brightness(1.4) drop-shadow(0 0 10px #ffd040); }
+.draw-blast-flash {
+    position: absolute;
+    left: -120px;
+    top: -120px;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 230, .95), rgba(255, 210, 80, .5) 35%, transparent 70%);
+    animation: draw-blast-flash .5s ease-out forwards;
+}
+.draw-lane-hit .draw-sprite { filter: brightness(3) saturate(0); }
+@keyframes draw-blast-flash { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.draw-whiteout {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--x) var(--y), #fff 0, #fff 55%, #fffbe6 80%, #fff1b0 100%);
+    animation: draw-whiteout-in .55s cubic-bezier(.3, 0, .2, 1) forwards;
+}
+.draw-whiteout-fade { animation: draw-whiteout-in .55s forwards, draw-whiteout-out 1.3s ease-in forwards; }
+@keyframes draw-whiteout-in {
+    from { clip-path: circle(0 at var(--x) var(--y)); }
+    to { clip-path: circle(150% at var(--x) var(--y)); }
+}
+@keyframes draw-whiteout-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Four to ten winners: two rows of smaller heroes. */
+.draw-champions-many { flex-wrap: wrap; gap: 0 18px; max-width: 1100px; }
+.draw-champions-many .draw-rays { inset: -30px; }
+.draw-champions-many .draw-glow { inset: 20px; }
+.draw-champions-many .draw-champion-name { margin-top: -14px; max-width: 200px; font-size: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.draw-showdown-many .draw-lane-name { top: 6px; max-width: 116px; font-size: 17px; }
+.draw-showdown-many .draw-showdown-prompt { font-size: 22px; }
+
+/* Extra hearts from the subscriber rules: golden. */
+.draw-heart-bonus { filter: hue-rotate(42deg) saturate(1.6) brightness(1.25); }

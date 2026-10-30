@@ -9,6 +9,17 @@ $root = dirname(__DIR__);
 
 require $root . '/vendor/autoload.php';
 
+if (PHP_SAPI === 'cli-server') {
+    $devPath = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+
+    if (GameFiles::serveDev($devPath)) {
+        return true;
+    }
+    if ($devPath !== '/' && is_file(__DIR__ . $devPath)) {
+        return false;
+    }
+}
+
 $config = Config::load();
 
 $debug = !empty($config['app']['debug']) && ($config['app']['env'] ?? 'production') !== 'production';
@@ -36,6 +47,10 @@ if (str_starts_with($requestHost, 'www.') && in_array(substr($requestHost, 4), a
 
 $requestPath = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
 $hasSession  = isset($_COOKIE[session_name()]);
+
+if (str_starts_with($requestPath, '/games/') && GameFiles::handle($requestPath)) {
+    exit;
+}
 
 if ($requestPath === '/healthz') {
     HealthController::index();
@@ -110,6 +125,7 @@ $routes = [
         '/giveaway'          => [ViewerController::class, 'giveaway'],
         '/privacy'           => [ViewerController::class, 'privacy'],
         '/giveaways/show'    => [GiveawayController::class, 'show'],
+        '/giveaways/battle'  => [GameDrawController::class, 'show'],
         '/giveaways/winners/search' => [GiveawayController::class, 'searchWinner'],
         '/negotiations'      => [NegotiationController::class, 'index'],
         '/content'           => [ContentController::class, 'index'],
@@ -185,6 +201,8 @@ $routes = [
         '/admin/users'       => [UserAdminController::class, 'index'],
         '/admin/testimonials/download' => [AdminController::class, 'downloadTestimonials'],
         '/admin/lang'        => [LangController::class, 'index'],
+        '/admin/lang/edits'  => [LangController::class, 'exportEdits'],
+        '/admin/game-texts'  => [GameTextsController::class, 'index'],
         '/admin/import'      => [ImportController::class, 'index'],
         '/admin/import/search' => [ImportController::class, 'search'],
         '/content/show'      => [ContentController::class, 'show'],
@@ -218,6 +236,9 @@ $routes = [
         '/giveaways/winners/draw' => [GiveawayController::class, 'draw'],
         '/giveaways/winners/cancel' => [GiveawayController::class, 'cancelWinner'],
         '/giveaways/winners/extend' => [GiveawayController::class, 'extendWinner'],
+        '/giveaways/battle/options' => [GameDrawController::class, 'options'],
+        '/giveaways/battle/settings' => [GameDrawController::class, 'settings'],
+        '/giveaways/battle/result' => [GameDrawController::class, 'result'],
         '/keys/status'       => [KeysController::class, 'updateStatus'],
         '/keys/quick'        => [KeysController::class, 'quickStore'],
         '/content'           => [ContentController::class, 'store'],
@@ -244,6 +265,7 @@ $routes = [
         '/overlays/new-link' => [OverlayStudioController::class, 'newLink'],
         '/overlays/delete'   => [OverlayStudioController::class, 'delete'],
         '/overlays/test'     => [OverlayStudioController::class, 'test'],
+        '/overlays/stop'     => [OverlayStudioController::class, 'stop'],
         '/overlays/preview'  => [OverlayStudioController::class, 'preview'],
         '/admin/overlays'    => [OverlayStudioController::class, 'saveAdmin'],
         '/media-library'     => [MediaController::class, 'upload'],
@@ -334,6 +356,7 @@ $routes = [
         '/admin/api/test'    => [AdminController::class, 'testProvider'],
         '/admin/lang'        => [LangController::class, 'save'],
         '/admin/lang/labels' => [LangController::class, 'saveCodeLabels'],
+        '/admin/game-texts'  => [GameTextsController::class, 'save'],
         '/admin/import/game' => [ImportController::class, 'import'],
     ],
 ];

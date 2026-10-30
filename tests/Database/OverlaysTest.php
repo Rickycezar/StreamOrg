@@ -116,6 +116,33 @@ final class OverlaysTest extends DatabaseTestCase
         Overlays::test($overlay['id'], $user, 'not_a_test');
     }
 
+    public function testNamedTestsAndStopReachTheOpenOverlay(): void
+    {
+        $user     = $this->createUser('phpunit_overlay');
+        $shoutout = Overlays::find(Overlays::create($user, 'shoutout'), $user);
+        $key      = self::keyOf($shoutout);
+        $opened   = Overlays::state($key, 0, -1);
+
+        Overlays::test($shoutout['id'], $user, 'shoutout', '@SomeChannel');
+        Overlays::stop($shoutout['id'], $user);
+        $next = Overlays::state($key, $opened['version'], $opened['since']);
+
+        self::assertSame(['test', 'stop'], array_column($next['signals'], 'kind'));
+        self::assertSame('SomeChannel', $next['signals'][0]['payload']['user']);
+
+        $alert = Overlays::find(Overlays::create($user, 'alert'), $user);
+
+        try {
+            Overlays::test($alert['id'], $user, 'alert', 'someone');
+            self::fail('A name went to a type that does not take one');
+        } catch (UserError) {
+            self::assertTrue(true);
+        }
+
+        $this->expectException(UserError::class);
+        Overlays::test($shoutout['id'], $user, 'shoutout', 'two words');
+    }
+
     public function testSwitchesTurnTheOverlayOff(): void
     {
         $user    = $this->createUser('phpunit_overlay');

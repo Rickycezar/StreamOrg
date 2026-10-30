@@ -28,7 +28,7 @@ $images   = array_values(array_filter($media, static fn (array $m): bool => $m['
     <p class="notice"><?= e(__('ui.message.overlay_type_off')) ?></p>
 <?php endif; ?>
 
-<div class="overlay-editor" data-overlay-editor data-id="<?= $overlay['id'] ?>">
+<div class="overlay-editor" data-overlay-editor data-id="<?= $overlay['id'] ?>" data-type="<?= e($overlay['type']) ?>">
     <form method="post" action="<?= e(url('/overlays/update')) ?>" class="card overlay-form" data-overlay-form>
         <?= Csrf::field() ?>
         <input type="hidden" name="id" value="<?= $overlay['id'] ?>">
@@ -128,6 +128,16 @@ $images   = array_values(array_filter($media, static fn (array $m): bool => $m['
             <div class="overlay-preview" style="aspect-ratio: <?= (int) $width ?> / <?= (int) $height ?>" data-preview-box data-width="<?= (int) $width ?>" data-height="<?= (int) $height ?>">
                 <iframe src="<?= e(url('/overlay/' . rawurlencode($overlay['type']))) ?>" title="<?= e(__('ui.overlay.preview')) ?>" allow="autoplay" data-preview width="<?= (int) $width ?>" height="<?= (int) $height ?>"></iframe>
             </div>
+            <?php if (in_array($overlay['type'], Overlays::NAMED_TESTS, true)): ?>
+                <label class="overlay-test-name">
+                    <span><?= e(__('ui.overlay.test_name')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                    <span class="input-prefix"><span>@</span>
+                        <input type="text" maxlength="25" pattern="@?[A-Za-z0-9_]{1,25}" autocomplete="off" spellcheck="false"
+                               placeholder="<?= e($sampleUser) ?>" data-test-user>
+                    </span>
+                    <small class="muted"><?= e(__('ui.overlay.test_name_hint_' . $overlay['type'])) ?></small>
+                </label>
+            <?php endif; ?>
             <div class="overlay-tests">
                 <?php foreach ($definition['tests'] as $test): ?>
                     <div class="overlay-test">
@@ -136,6 +146,10 @@ $images   = array_values(array_filter($media, static fn (array $m): bool => $m['
                         <button type="button" class="btn small" data-test-live="<?= e($test) ?>" <?= $overlay['enabled'] && $typeOn ? '' : 'disabled' ?>><?= e(__('ui.overlay.test_live')) ?></button>
                     </div>
                 <?php endforeach; ?>
+                <div class="overlay-test overlay-test-stop">
+                    <span class="muted small"><?= e(__('ui.overlay.test_stop_hint')) ?></span>
+                    <button type="button" class="btn small danger-outline" data-test-stop data-live="<?= $overlay['enabled'] && $typeOn ? '1' : '0' ?>"><?= icon_label('stop', __('ui.overlay.test_stop')) ?></button>
+                </div>
             </div>
             <p class="muted small" data-test-result hidden></p>
         </section>
@@ -162,6 +176,8 @@ $images   = array_values(array_filter($media, static fn (array $m): bool => $m['
     <script type="application/json" data-overlay-strings><?= json_encode([
         'whole'      => __('ui.overlay.whole_sound'),
         'sent'       => __('ui.overlay.test_sent'),
+        'stopped'    => __('ui.overlay.test_stopped'),
+        'name_first' => __('ui.overlay.rule_test_needs_name'),
         'sample'     => $sampleUser,
         'test_label' => __('ui.overlay.test_tag'),
         'channel'    => $channel,

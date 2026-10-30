@@ -354,6 +354,17 @@ final class Giveaways
         return ['login' => (string) $pick['twitch_login'], 'token' => $token];
     }
 
+    /**
+     * Records a winner a game drew (GameDraws), with the Twitch account
+     * already looked up; inside the caller's transaction.
+     *
+     * @param array{ref:string, login:string, name:string} $account
+     */
+    public static function addDrawnWinner(array $giveaway, array $account): string
+    {
+        return self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], 'draw', null);
+    }
+
     /** Withdraws a winner whose prize was not claimed; an assigned prize is freed. */
     public static function cancelWinner(int $userId, int $winnerId): bool
     {

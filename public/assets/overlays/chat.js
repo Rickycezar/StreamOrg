@@ -156,6 +156,7 @@
     }
 
     overlay.on('raw', raw);
+    overlay.on('stop', function () { container.replaceChildren(); });
 
     overlay.on('test', function (payload) {
         const settings = s();

@@ -1,0 +1,69 @@
+{
+  "name": "boss-draw",
+  "version": "1.0.2",
+  "contract": 1,
+  "entry": "index.html",
+  "languages": [
+    "pt-BR",
+    "en"
+  ],
+  "built": "2026-10-30T15:53:29Z",
+  "changes": "Embedded mode: channel field hidden (only the status stays); fix: hidden panel parts (language picker) showed anyway.",
+  "options": [
+    {
+      "key": "hearts",
+      "type": "int",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "default": 2,
+      "group": "battle"
+    },
+    {
+      "key": "showdown",
+      "type": "bool",
+      "default": false,
+      "group": "draw"
+    },
+    {
+      "key": "showdown_seconds",
+      "type": "int",
+      "min": 10,
+      "max": 300,
+      "step": 5,
+      "default": 60,
+      "group": "draw"
+    },
+    {
+      "key": "entry_from",
+      "type": "select",
+      "choices": [
+        "everyone",
+        "subs",
+        "subs_vips"
+      ],
+      "default": "everyone",
+      "group": "rules"
+    },
+    {
+      "key": "sub_bonus",
+      "type": "select",
+      "choices": [
+        "none",
+        "flat",
+        "tier"
+      ],
+      "default": "none",
+      "group": "rules"
+    },
+    {
+      "key": "sub_bonus_hearts",
+      "type": "int",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 1,
+      "group": "rules"
+    }
+  ]
+}

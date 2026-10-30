@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Resolves language keys against lang/<locale>.php.
+ * Resolves language keys against lang/<locale>.php, with the edits made in
+ * Administration → Languages (LangOverrides) laid over the file.
  *
  * Two kinds of key are used across the app:
  *   Lang::t('ui.nav.games')                interface string
@@ -26,6 +27,13 @@ final class Lang
 
     /** @var array<string, array<string, mixed>> */
     private static array $loaded = [];
+
+    /** Forgets the texts read so far (after an edit in Administration → Languages). */
+    public static function reload(): void
+    {
+        self::$loaded = [];
+        LangOverrides::forget();
+    }
 
     public static function setLocale(string $locale): void
     {
@@ -302,6 +310,6 @@ final class Lang
 
         $data = require $path;
 
-        return self::$loaded[$locale] = is_array($data) ? $data : [];
+        return self::$loaded[$locale] = LangOverrides::apply(is_array($data) ? $data : [], $locale);
     }
 }

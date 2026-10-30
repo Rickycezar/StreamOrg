@@ -3,6 +3,10 @@ Required Notice: Copyright 2026 Henrique Barros (https://streamorg.com)
 The StreamOrg name, logo and domains are not licensed under these terms; see
 TRADEMARKS.md.
 
+The games in public/games/ (such as the boss battle draw) are not licensed
+under these terms: their art, music and sounds are all rights reserved, and
+nothing here grants any right to copy, reuse or sell them.
+
 ---
 
 # PolyForm Noncommercial License 1.0.0

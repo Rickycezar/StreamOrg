@@ -5016,6 +5016,164 @@
         draw();
     });
 
+    /**
+     * A giveaway's draw by a hosted game ([data-game-draw]): speaks the
+     * integration contract with the sandboxed frame (config on ready,
+     * commands, settings), records the confirmed result as the giveaway's
+     * winners and answers it with bossdraw:saved, and warns before leaving
+     * while a draw is under way.
+     */
+    onPage(function () {
+        const root = document.querySelector('[data-game-draw]');
+        if (!root) return;
+
+        const frame = root.querySelector('[data-game-frame]');
+        const S = readJson(root, '[data-game-draw-strings]', {});
+        const contract = Number(root.dataset.contract);
+        const badge = root.querySelector('[data-game-draw-phase]');
+        const message = root.querySelector('[data-game-draw-message]');
+        const form = root.querySelector('[data-game-draw-options]');
+        const commands = root.querySelectorAll('[data-game-command]');
+        const UNDER_WAY = ['open', 'running', 'showdown', 'result'];
+        const COMMANDS = { open: ['idle', 'done'], start: ['open'], reset: ['open', 'running', 'showdown', 'result', 'done'] };
+
+        let config = readJson(root, '[data-game-draw-config]', {});
+        let phase = null;
+        let configured = false;
+        let applying = false;
+        let refreshed = null;
+
+        const say = function (text, error) {
+            message.textContent = text || '';
+            message.hidden = !text;
+            message.classList.toggle('error', !!error);
+        };
+
+        const send = function (data) {
+            if (frame.contentWindow) frame.contentWindow.postMessage(Object.assign({ contract: contract }, data), '*');
+        };
+
+        const sendConfig = function () {
+            send({ type: 'bossdraw:config', config: config });
+        };
+
+        const showPhase = function () {
+            badge.textContent = configured ? ((S.phase || {})[phase || 'idle'] || phase) : S.waiting;
+            commands.forEach(function (button) {
+                button.disabled = !configured || (COMMANDS[button.dataset.gameCommand] || []).indexOf(phase || 'idle') === -1;
+            });
+        };
+
+        const saveResult = async function (data) {
+            if (typeof data.id !== 'string' || data.id.length > 64 || !data.result || typeof data.result !== 'object') return;
+
+            let answer;
+            try {
+                answer = await postJson('/giveaways/battle/result', { id: root.dataset.id, result: JSON.stringify(data.result) });
+            } catch (e) {
+                answer = { ok: false, message: S.unreachable };
+            }
+
+            const text = answer.message || answer.error || S.unreachable;
+            send({ type: 'bossdraw:saved', id: data.id, ok: !!answer.ok, message: text });
+            say(text, !answer.ok);
+
+            if (answer.ok && answer.config) refreshed = answer.config;
+        };
+
+        window.addEventListener('message', function (event) {
+            if (event.source !== frame.contentWindow || !event.data || typeof event.data !== 'object') return;
+
+            const data = event.data;
+            if (typeof data.type !== 'string' || data.type.indexOf('bossdraw:') !== 0 || data.contract !== contract) return;
+
+            switch (data.type) {
+                case 'bossdraw:ready':
+                    sendConfig();
+                    break;
+                case 'bossdraw:configured':
+                    configured = true;
+                    if (applying) say(S.applied);
+                    applying = false;
+                    showPhase();
+                    break;
+                case 'bossdraw:error':
+                    say(data.detail === 'busy' ? S.busy : S.refused + (typeof data.detail === 'string' ? ' (' + data.detail.slice(0, 40) + ')' : ''), true);
+                    applying = false;
+                    break;
+                case 'bossdraw:state':
+                    if (!Object.prototype.hasOwnProperty.call(S.phase || {}, data.phase)) return;
+                    phase = data.phase;
+                    if (phase === 'idle' && refreshed) {
+                        config = refreshed;
+                        refreshed = null;
+                        sendConfig();
+                    }
+                    showPhase();
+                    break;
+                case 'bossdraw:result':
+                    saveResult(data);
+                    break;
+                case 'bossdraw:settings':
+                    if (data.settings && typeof data.settings === 'object') {
+                        postJson('/giveaways/battle/settings', { settings: JSON.stringify(data.settings) });
+                    }
+                    break;
+            }
+        });
+
+        setTimeout(function () {
+            if (!configured && document.body.contains(root)) say(S.noAnswer, true);
+        }, 15000);
+
+        commands.forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (button.dataset.confirmText && !window.confirm(button.dataset.confirmText)) return;
+                send({ type: 'bossdraw:command', action: button.dataset.gameCommand });
+            });
+        });
+
+        root.querySelector('[data-game-fullscreen]').addEventListener('click', function () {
+            if (frame.requestFullscreen) frame.requestFullscreen().catch(function () { });
+            else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+        });
+
+        if (form) {
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                const data = new FormData(form);
+                data.set('id', root.dataset.id);
+                const answer = await postJson('/giveaways/battle/options', data);
+
+                if (!answer.ok || !answer.config) {
+                    say(answer.message || answer.error || S.unreachable, true);
+                    return;
+                }
+
+                config = answer.config;
+                refreshed = null;
+                applying = true;
+                sendConfig();
+            });
+        }
+
+        const underWay = function () {
+            return document.body.contains(root) && UNDER_WAY.indexOf(phase) !== -1;
+        };
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!underWay()) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+
+        document.addEventListener('turbo:before-visit', function (event) {
+            if (underWay() && !window.confirm(S.leave)) event.preventDefault();
+        });
+
+        showPhase();
+    });
+
     /** Error pages: "Back" shows only when there is a page of this site to go back to. */
     onPage(function () {
         document.querySelectorAll('[data-history-back]').forEach(function (button) {
@@ -5546,8 +5704,9 @@
 
     /** Plays a sound (or a part of it) through the shared SoundLib, stopping the one before. */
     function studioPlay(src, options) {
-        if (typeof window.SoundLib !== 'function') return null;
-        if (!studioSound) studioSound = new window.SoundLib('');
+        const Lib = typeof SoundLib === 'function' ? SoundLib : window.SoundLib;
+        if (typeof Lib !== 'function') return null;
+        if (!studioSound) studioSound = new Lib('');
         if (studioPlayback) studioPlayback.stop();
         studioPlayback = studioSound.play(src, options || {});
         return studioPlayback;
@@ -6098,21 +6257,66 @@
             send({ type: 'streamorg-preview-lookup-result', id: event.data.id, channel: channel });
         });
 
+        const nameField = editor.querySelector('[data-test-user]');
+        const testName = function () {
+            const name = nameField ? nameField.value.trim().replace(/^@/, '') : '';
+            return /^[A-Za-z0-9_]{1,25}$/.test(name) ? name : '';
+        };
+        const say = function (text) {
+            result.textContent = text;
+            result.hidden = !text;
+        };
+
+        /** A test in the preview, with the unsaved settings, for the name given (or the sample one). */
+        const previewTest = function (event, name) {
+            sendSettings();
+            send({ type: 'streamorg-preview-test', payload: { event: event, user: name || S.sample, label: S.test_label } });
+        };
+
         editor.querySelectorAll('[data-test-preview]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                sendSettings();
-                send({ type: 'streamorg-preview-test', payload: { event: button.dataset.testPreview, user: S.sample, label: S.test_label } });
-            });
+            button.addEventListener('click', function () { previewTest(button.dataset.testPreview, testName()); });
         });
 
         editor.querySelectorAll('[data-test-live]').forEach(function (button) {
             button.addEventListener('click', async function () {
                 button.disabled = true;
-                const answer = await postJson('/overlays/test', { id: editor.dataset.id, event: button.dataset.testLive });
+                const answer = await postJson('/overlays/test', { id: editor.dataset.id, event: button.dataset.testLive, user: testName() });
                 button.disabled = false;
-                result.textContent = answer.ok ? S.sent : answer.error;
-                result.hidden = false;
+                say(answer.ok ? S.sent : answer.error);
             });
+        });
+
+        const stop = editor.querySelector('[data-test-stop]');
+        if (stop) {
+            stop.addEventListener('click', async function () {
+                studioStop();
+                send({ type: 'streamorg-preview-stop' });
+                say(S.stopped);
+
+                if (stop.dataset.live === '1') {
+                    const answer = await postJson('/overlays/stop', { id: editor.dataset.id });
+                    if (!answer.ok) say(answer.error);
+                }
+            });
+        }
+
+        /** The per-viewer tab: "Test" shows that viewer's own alert in the preview. */
+        editor.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-rule-test]');
+            if (!button) return;
+
+            const field = button.closest('[data-rule-row]').querySelector('.rule-login input');
+            const name = field.value.trim().replace(/^@/, '');
+
+            if (!/^[A-Za-z0-9_]{1,25}$/.test(name)) {
+                say(S.name_first);
+                field.focus();
+                return;
+            }
+
+            if (nameField) nameField.value = name;
+            previewTest(editor.dataset.type === 'watch_streak' ? 'streak_big' : (editor.querySelector('[data-test-preview]') || {}).dataset.testPreview, name);
+            frame.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         });
     });
 

@@ -276,6 +276,16 @@ $arts = [
         . $dot(44, 86, 10, 'ha-twitchbg') . $bar(62, 80, 70, 'ha-text') . $bar(62, 90, 40) . $r(170, 78, 36, 16, 'ha-soft', 8) . $bar(176, 83.5, 24, 'ha-accent')
         . $r(36, 106, 70, 12, 'ha-bg', 6),
 
+    'giveaways.battle' =>
+        $r(14, 30, 132, 76, 'ha-bg', 8)
+        . $dot(124, 62, 16, 'ha-warn') . $dot(118, 58, 2.5, 'ha-white-fill') . $dot(130, 58, 2.5, 'ha-white-fill')
+        . $dot(36, 50, 6, 'ha-twitchbg') . $dot(44, 74, 6, 'ha-twitchbg') . $dot(62, 60, 6, 'ha-twitchbg') . $dot(34, 92, 6, 'ha-soft')
+        . $path('M70 60h30', 'ha-stroke-accent-dash')
+        . $r(14, 112, 132, 14, 'ha-panel', 7) . $bar(22, 116.5, 70, 'ha-accent')
+        . $path('M152 68h14', 'ha-stroke-accent') . $path('M160 62l7 6-7 6', 'ha-stroke-accent')
+        . $r(174, 30, 54, 96, 'ha-panel', 8)
+        . implode('', array_map(static fn (int $i): string => sprintf('<circle cx="188" cy="%d" r="6" class="%s"/><rect x="198" y="%d" width="22" height="5" rx="2.5" class="ha-text"/>', 50 + $i * 24, $i === 0 ? 'ha-okbg' : 'ha-twitchbg', 47.5 + $i * 24), range(0, 2))),
+
     'giveaways.claim' =>
         $r(14, 36, 96, 60, 'ha-panel', 8) . $r(24, 46, 76, 14, 'ha-soft', 7) . $path('M32 53h0', 'ha-stroke-accent') . $bar(40, 50.5, 52, 'ha-accent')
         . $r(24, 68, 50, 16, 'ha-twitch', 8) . $bar(32, 73.5, 34, 'ha-white-fill')

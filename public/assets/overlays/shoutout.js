@@ -13,6 +13,7 @@
     const stage = document.getElementById('overlay-stage');
     const queue = [];
     let busy = false;
+    let run = 0;
 
     const widget = document.createElement('div');
     widget.className = 'amorph-container';
@@ -66,7 +67,10 @@
 
     async function show(login) {
         const settings = s();
+        const mine = run;
         const channel = await overlay.lookup(login);
+
+        if (mine !== run) return;
 
         if (!channel) {
             setTimeout(done, 500);
@@ -92,10 +96,11 @@
         if (sound) overlay.playSound(sound);
 
         setTimeout(function () {
+            if (mine !== run) return;
             overlay.sound.stop(sound && sound.fade_out ? sound.fade_out : 0);
             widget.classList.remove('in');
             widget.classList.add('out');
-            setTimeout(done, (settings.queue_gap ?? 2) * 1000 + 1400);
+            setTimeout(function () { if (mine === run) done(); }, (settings.queue_gap ?? 2) * 1000 + 1400);
         }, (settings.show_seconds || 13) * 1000);
     }
 
@@ -118,6 +123,13 @@
     }
 
     overlay.on('settings', next);
+    overlay.on('stop', function () {
+        queue.length = 0;
+        run++;
+        busy = false;
+        widget.classList.remove('in');
+        widget.classList.add('out');
+    });
 
     overlay.on('test', function (payload) { add(payload.user || overlay.channel); });
 

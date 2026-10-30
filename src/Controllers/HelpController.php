@@ -17,7 +17,7 @@ final class HelpController
         'keys'      => ['vault', 'add', 'hidden', 'status', 'dates', 'content', 'giveaways'],
         'content'   => ['what', 'calendar', 'resize', 'statuses', 'title', 'warnings', 'twitch'],
         'defaults'  => ['schedule', 'length', 'prefixes', 'counters', 'numbers', 'limit'],
-        'giveaways' => ['setup', 'prizes', 'chat', 'page', 'winners', 'claim', 'private', 'finish'],
+        'giveaways' => ['setup', 'prizes', 'chat', 'page', 'winners', 'battle', 'claim', 'private', 'finish'],
         'embargoes' => ['what', 'kinds', 'several', 'release', 'warnings', 'uncovered'],
         'collabs'   => ['streamers', 'idea', 'cast', 'plan', 'together', 'title'],
         'together'  => ['invite', 'join', 'own', 'time', 'agree', 'leave'],

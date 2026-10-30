@@ -1,7 +1,8 @@
 <?php
 /** @var array $locales @var string $locale @var ?string $reference
  *  @var array $groups @var string $group @var array $entries @var array $refRows
- *  @var string $search @var array $codeRows @var int $missingTotal @var array $counts */
+ *  @var string $search @var array $codeRows @var int $missingTotal @var array $counts
+ *  @var array $defaults the file's texts for the group @var list<string> $edited keys changed here @var int $editTotal */
 ?>
 <h1><?= e(__('ui.nav.languages')) ?></h1>
 <p class="muted"><?= e(__('ui.message.lang_intro')) ?></p>
@@ -17,6 +18,10 @@
             </span>
         </a>
     <?php endforeach; ?>
+    <span class="tile" title="<?= e(__('ui.label.lang_edited_hint')) ?>">
+        <span class="tile-value"><?= (int) $editTotal ?></span>
+        <span class="tile-label"><?= e(__('ui.label.lang_edited')) ?></span>
+    </span>
     <span class="tile" title="<?= e(__('ui.label.lang_missing_hint')) ?>">
         <span class="tile-value <?= $missingTotal > 0 ? 'warn' : '' ?>"><?= $missingTotal ?></span>
         <span class="tile-label"><?= e(__('ui.label.lang_missing')) ?></span>
@@ -84,7 +89,12 @@
 
     <div class="card-head">
         <h2><?= e($group) ?> · <?= e($locale) ?> (<?= count($entries) ?>)</h2>
-        <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
+        <span class="page-head-actions">
+            <?php if ($editTotal > 0): ?>
+                <a class="btn small" href="<?= e(url('/admin/lang/edits')) ?>" title="<?= e(__('ui.label.lang_export_hint')) ?>"><?= e(__('ui.action.lang_export')) ?></a>
+            <?php endif; ?>
+            <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
+        </span>
     </div>
 
     <?php if ($entries === []): ?>
@@ -102,12 +112,18 @@
             </tr>
             </thead>
             <tbody>
-            <?php foreach ($entries as $key => $value): ?>
+            <?php foreach ($entries as $key => $value):
+                $isEdited = in_array((string) $key, $edited, true);
+                $default  = (string) ($defaults[$key] ?? ''); ?>
                 <tr>
-                    <td class="nowrap"><code><?= e((string) $key) ?></code></td>
+                    <td class="nowrap">
+                        <code><?= e((string) $key) ?></code>
+                        <?php if ($isEdited): ?><span class="badge warn" title="<?= e(__('ui.label.lang_default') . ': ' . $default) ?>"><?= e(__('ui.label.lang_edited_one')) ?></span><?php endif; ?>
+                    </td>
                     <td>
                         <input type="text" name="values[<?= e((string) $key) ?>]"
-                               value="<?= e((string) $value) ?>" autocomplete="off" spellcheck="true">
+                               value="<?= e((string) $value) ?>" placeholder="<?= e($default) ?>" autocomplete="off" spellcheck="true">
+                        <?php if ($isEdited): ?><small class="muted lang-default"><?= e(__('ui.label.lang_default')) ?>: <?= e($default) ?></small><?php endif; ?>
                     </td>
                     <?php if ($reference !== null): ?>
                         <td class="muted refcell"><?= e((string) ($refRows[$key] ?? '—')) ?></td>

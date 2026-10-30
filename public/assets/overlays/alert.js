@@ -11,6 +11,7 @@
     const stage = document.getElementById('overlay-stage');
     const queue = [];
     let busy = false;
+    let run = 0;
 
     function style(settings) {
         const root = document.documentElement.style;
@@ -22,6 +23,7 @@
 
     function show(item) {
         const settings = overlay.settings || {};
+        const mine = ++run;
         busy = true;
 
         const card = document.createElement('div');
@@ -47,10 +49,12 @@
         if (settings.sound) overlay.playSound(settings.sound);
 
         setTimeout(function () {
+            if (mine !== run) return;
             card.classList.remove('in');
             card.classList.add('out');
             overlay.sound.stop(0.6);
             setTimeout(function () {
+                if (mine !== run) return;
                 card.remove();
                 busy = false;
                 next();
@@ -70,6 +74,12 @@
     }
 
     overlay.on('settings', style);
+    overlay.on('stop', function () {
+        queue.length = 0;
+        run++;
+        busy = false;
+        stage.replaceChildren();
+    });
     overlay.on('test', function (payload) { fire({ user: payload.user || 'StreamOrg' }); });
     overlay.chat(function (user, command, message, flags) {
         const settings = overlay.settings || {};

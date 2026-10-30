@@ -149,6 +149,11 @@ private preview. Preview access: streamorg@outlook.com.
   link the chat bot gives), with its rules, the
   prizes still to win and the ones already won, never a code. *Post in
   chat* makes the bot announce the giveaway with that link.
+- **Draw with a battle**: the boss battle game draws the winners live on
+  the stream, inside the giveaway. Viewers enter through the chat, the
+  confirmed winners are recorded in the battle's order (prizes follow it),
+  and every result is kept so the draw can be replayed. The same game has
+  a public page with no sign-in that only shows the winners.
 - **Direct gifts**: a key given straight to one person, from the vault or
   from *Given keys*, without a giveaway; they claim it the same way.
 - **Given keys**: everyone a key was given or promised to, with the key,
@@ -297,7 +302,11 @@ private preview. Preview access: streamorg@outlook.com.
   provider credentials with a connection test, and application settings such
   as session lifetime.
 - **Languages**: the interface strings, and labels per language for key
-  sites, platforms and genres added at runtime.
+  sites, platforms and genres added at runtime. Edits are kept in the
+  database over the texts that ship with the code, so deploys keep them.
+- **Game texts**: the hosted games' texts in each language, or in a new
+  one, apart from StreamOrg's own; a text must keep the game's
+  {placeholders}.
 - **Notifications**: write one in each language — with light formatting
   (bold, italic, links, lists, headings, highlights) from a toolbar or
   shortcuts, and a preview — choose its kind and an optional link, send it to everyone or to chosen users, see how many read
@@ -356,8 +365,12 @@ cp config/config.example.php config/config.php   # then fill it in
 php bin/setup_db.php                             # creates the role + database (needs a superuser)
 php bin/migrate.php                              # creates the tables
 php bin/create_user.php yourname --admin         # prints a generated password once
-php -S 127.0.0.1:8099 -t public                  # http://127.0.0.1:8099
+php -S 127.0.0.1:8099 -t public public/index.php # http://127.0.0.1:8099
 ```
+
+The development server goes through `public/index.php` as its router so the
+hosted games (`public/games/`) get the same headers Apache gives them in
+production.
 
 For the Twitch integration you need HTTPS even locally (Twitch only accepts
 `https` redirect addresses). A reverse proxy such as Caddy does it in one line:
@@ -396,6 +409,8 @@ variables, which is how the container is configured:
 | `php bin/sync_images.php [--all] [--force] [--game=ID]` | Download artwork for games that have none |
 | `php bin/encrypt_keys.php [--status]` | Encrypt key codes stored before the vault existed |
 | `php bin/check_lang.php` | Check that the locales agree with each other and with the database |
+| `php bin/lang_overrides.php apply <edits.json>` | Write the texts edited in Administration → Languages into `lang/` |
+| `php bin/update_game.php <dist folder>` | Check a game package against the integration contract and copy it into `public/games/` |
 | `composer test` | Run the PHPUnit suite (`--testsuite unit` skips the database) |
 | `npm install` / `npm run vendor` | Fetch / re-copy the browser libraries into `public/assets/vendor/` |
 
@@ -713,6 +728,7 @@ the schema.
 public/index.php        front controller and routes; the only PHP file served
 public/assets/          app.css, app.js, theme.js, the landing page and pop-up assets,
                         and vendor/ (browser libraries and the landing font)
+public/games/           hosted games, each a static package (bin/update_game.php)
 src/                    Config, Database, Auth, sessions, vault, catalogue, helpers
 src/Api/                catalogue providers, Twitch, HTTP client
 src/Controllers/        one class per area
@@ -753,6 +769,9 @@ must be rebranded.
 
 Contributions are welcome under the Contributor License Agreement in
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The games in `public/games/` (the boss battle draw) are not covered by the
+license: their art, music and sounds are all rights reserved.
 
 Bundled browser libraries keep their own licenses: Turbo and FullCalendar
 (MIT), Tom Select (Apache 2.0), and the Plus Jakarta Sans font (SIL Open Font

@@ -2,12 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Editing the language files from the interface.
+ * Editing the interface texts from the interface.
  *
- * The files stay the single source of truth for interface strings —
- * bin/check_lang.php keeps working. Labels for codes added at runtime
- * (key sites, platforms, genres) are kept in the database instead
- * (CodeLabels), since edits to files would be lost at the next deploy.
+ * The lang/<locale>.php files are the defaults that ship with the code
+ * (bin/check_lang.php checks them); edits made here are kept in the
+ * database (LangOverrides) and laid over the files, since the files are
+ * replaced on every deploy. Labels for codes added at runtime (key sites,
+ * platforms, genres) are kept in the database too (CodeLabels).
  */
 final class LangController
 {
@@ -42,7 +43,10 @@ final class LangController
             $group = $groups[0] ?? '';
         }
 
-        $entries = LangFile::group($data, $group);
+        $defaults = LangFile::group($data, $group);
+        $edits    = LangOverrides::forLocale($locale);
+        $entries  = LangFile::group(LangOverrides::apply($data, $locale), $group);
+        $edited   = array_values(array_filter(array_keys($entries), static fn ($key): bool => isset($edits[$group . '.' . $key])));
         $refRows = $reference !== null ? LangFile::group($refData, $group) : [];
 
         $search = trim((string) ($_GET['q'] ?? ''));
@@ -63,6 +67,9 @@ final class LangController
             'groups'    => $groups,
             'group'     => $group,
             'entries'   => $entries,
+            'defaults'  => $defaults,
+            'edited'    => array_map('strval', $edited),
+            'editTotal' => LangOverrides::count($locale),
             'refRows'   => $refRows,
             'search'    => $search,
             'codeRows'  => $codeRows = self::codeRows($locales),
@@ -208,38 +215,25 @@ final class LangController
             redirect('/admin/lang');
         }
 
-        $merged = $existing;
-
-        foreach ($values as $key => $value) {
-            $key = (string) $key;
-
-            if (!preg_match('/^[A-Za-z0-9_]{1,60}$/', $key)) {
-                continue;
-            }
-
-            $value = trim((string) $value);
-
-            if ($value === '') {
-                unset($merged[$key]);
-                continue;
-            }
-
-            $merged[ctype_digit($key) ? (int) $key : $key] = $value;
-        }
-
-        if ($merged !== [] && array_filter(array_keys($merged), 'is_int') === array_keys($merged)) {
-            ksort($merged);
-        }
-
         try {
-            $result = LangFile::saveGroup($locale, $group, $merged);
+            $edited = LangOverrides::saveGroup($locale, $group, array_intersect_key($values, $existing), $existing, (int) Auth::id());
         } catch (Throwable $e) {
             ErrorLog::note('lang save: ' . $e->getMessage());
             flash('error', __('ui.message.lang_write_failed') . ' ' . $e->getMessage());
             redirect('/admin/lang?locale=' . urlencode($locale) . '&group=' . urlencode($group));
         }
 
-        flash('success', sprintf(__('ui.message.lang_saved'), $result['count'], $result['backup']));
+        Lang::reload();
+        flash('success', sprintf(__('ui.message.lang_edits_saved'), $edited));
         redirect('/admin/lang?locale=' . urlencode($locale) . '&group=' . urlencode($group));
+    }
+
+    /** GET /admin/lang/edits — every edited text, to make them the files' defaults (bin/lang_overrides.php). */
+    public static function exportEdits(): void
+    {
+        Auth::requireAdmin();
+
+        header('Content-Disposition: attachment; filename="streamorg-lang-edits.json"');
+        json_response(['edits' => LangOverrides::all()]);
     }
 }

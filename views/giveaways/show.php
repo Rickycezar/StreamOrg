@@ -250,6 +250,9 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                     <button type="submit" class="btn primary"><?= e(__('ui.action.draw_winner')) ?></button>
                 </form>
             <?php endif; ?>
+            <?php if ($open && Games::manifest(GameDrawController::GAME) !== null): ?>
+                <a class="btn game-draw-link" href="<?= e(url('/giveaways/battle?id=' . $id)) ?>"><?= icon_label('swords', __('ui.label.game_draw')) ?></a>
+            <?php endif; ?>
             <?php if ($g['status'] !== 'cancelled' && $twitchReady): ?>
                 <button type="button" class="btn" data-modal-form="#add-winner" data-modal-title="<?= e(__('ui.action.add_winner')) ?>">+ <?= e(__('ui.action.add_winner')) ?></button>
             <?php endif; ?>

@@ -15,6 +15,7 @@
     const queue = [];
     let busy = false;
     let hideTimer = null;
+    let run = 0;
 
     const container = document.createElement('div');
     container.className = 'alertContainer';
@@ -213,6 +214,7 @@
     }
 
     function hide() {
+        const mine = run;
         const widget = container.querySelector('.streak-alert');
         overlay.sound.stop(s().music_fade || 0);
 
@@ -225,8 +227,10 @@
         widget.classList.remove('in');
         widget.classList.add('out');
         setTimeout(function () {
+            if (mine !== run) return;
             container.replaceChildren();
             setTimeout(function () {
+                if (mine !== run) return;
                 busy = false;
                 next();
             }, (s().queue_gap || 0) * 1000);
@@ -260,6 +264,14 @@
         root.setProperty('--streak-highlight', settings.highlight_color || '#f8d830');
         root.setProperty('--streak-bottom', (settings.bottom ?? 48) + 'px');
         next();
+    });
+
+    overlay.on('stop', function () {
+        queue.length = 0;
+        run++;
+        clearTimeout(hideTimer);
+        busy = false;
+        container.replaceChildren();
     });
 
     overlay.on('test', function (payload) {

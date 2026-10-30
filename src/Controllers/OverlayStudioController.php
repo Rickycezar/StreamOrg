@@ -199,7 +199,22 @@ final class OverlayStudioController
         Csrf::verify(json: true);
 
         try {
-            Overlays::test(filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0, (int) Auth::id(), (string) ($_POST['event'] ?? ''));
+            Overlays::test(filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0, (int) Auth::id(), (string) ($_POST['event'] ?? ''), (string) ($_POST['user'] ?? ''));
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+        }
+
+        json_response(['ok' => true]);
+    }
+
+    /** POST /overlays/stop — interrupts what the open overlays are showing. */
+    public static function stop(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(json: true);
+
+        try {
+            Overlays::stop(filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0, (int) Auth::id());
         } catch (UserError $e) {
             json_response(['ok' => false, 'error' => $e->getMessage()], 400);
         }

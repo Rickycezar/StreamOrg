@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batalha do Chefão</title>
+    <link rel="stylesheet" href="js_libs/vendor/fonts/fonts.css">
+    <link rel="stylesheet" href="js_libs/draw.css">
+    <script src="js_libs/draw_meta.js"></script>
+    <script src="js_libs/img_sprites.js"></script>
+    <script src="js_libs/draw_sim.js"></script>
+    <script src="js_libs/draw_sprites_data.js"></script>
+    <script src="js_libs/draw_lang.js"></script>
+    <script src="js_libs/draw_view.js"></script>
+    <script src="js_libs/vendor/comfyjs/comfy-1.1.29.min.js"></script>
+    <script type="module" src="js_libs/draw_page.js"></script>
+    <style>
+        :root {
+            --ui-bg: #1d1724;
+            --ui-bg-2: #2a2133;
+            --ui-ink: #f3ead7;
+            --ui-dim: #b3a58e;
+            --ui-line: #4a3b52;
+            --ui-gold: #f5c542;
+            --ui-gold-dark: #9c6f12;
+            --ui-red: #d8443a;
+            --ui-green: #5bc46a;
+            --ui-font: 'Pixelify Sans', monospace;
+            --outline: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000;
+        }
+
+        * { box-sizing: border-box; font-variant-ligatures: none; }
+        [hidden] { display: none !important; }
+
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            color: var(--ui-ink);
+            font: 16px/1.35 var(--ui-font);
+        }
+
+        .viewport { position: fixed; inset: 0; overflow: hidden; background: #000; }
+
+        .stage {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 1280px;
+            height: 720px;
+            transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+        }
+
+        #arena-host, #arena-host .draw-arena { width: 1280px; height: 720px; border: 0; }
+        #arena-host .draw-banner { top: 76px; }
+
+        .too-small {
+            position: absolute;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: #0d0a10;
+            color: var(--ui-gold);
+            font: 700 18px/1.3 var(--ui-font);
+            text-align: center;
+        }
+
+        .too-small[hidden] { display: none; }
+
+        .pixel-box {
+            background: var(--ui-bg);
+            border: 3px solid #0d0a10;
+            box-shadow: inset 0 0 0 2px var(--ui-line), 0 4px 0 #0d0a10;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 36px;
+            padding: 4px 14px 6px;
+            border: 3px solid #0d0a10;
+            border-radius: 0;
+            background: var(--ui-bg-2);
+            box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .35), inset 0 2px 0 rgba(255, 255, 255, .08);
+            color: var(--ui-ink);
+            font: 700 16px/1 var(--ui-font);
+            text-shadow: var(--outline);
+            cursor: pointer;
+        }
+
+        .btn:hover { filter: brightness(1.15); }
+        .btn:active { box-shadow: inset 0 3px 0 rgba(0, 0, 0, .35); transform: translateY(1px); }
+        .btn:disabled { opacity: .45; cursor: default; filter: none; }
+        .btn.gold { background: var(--ui-gold); color: #2b1c02; text-shadow: none; }
+        .btn.green { background: var(--ui-green); color: #0e2a12; text-shadow: none; }
+        .btn.small { min-height: 28px; padding: 2px 10px 4px; font-size: 14px; }
+
+        .topbar {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 60;
+            display: flex;
+            gap: 8px;
+        }
+
+        .speeds { display: flex; }
+        .speeds .btn { min-width: 46px; }
+        .speeds .btn + .btn { margin-left: -3px; }
+        .speeds .btn[aria-pressed="true"] { background: var(--ui-gold); color: #2b1c02; text-shadow: none; }
+        .topbar .btn.has-result { background: var(--ui-gold); color: #2b1c02; text-shadow: none; animation: ping 1.2s ease-in-out infinite; }
+        @keyframes ping { 50% { filter: brightness(1.3); } }
+
+        .prize {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            z-index: 30;
+            max-width: 760px;
+            transform: translateX(-50%);
+            padding: 6px 26px 8px;
+            background: linear-gradient(#3a2614, #22160b);
+            border: 3px solid #0d0a10;
+            box-shadow: inset 0 0 0 2px var(--ui-gold-dark), 0 4px 0 rgba(0, 0, 0, .5);
+            color: var(--ui-gold);
+            font: 700 26px/1.2 var(--ui-font);
+            text-align: center;
+            text-shadow: var(--outline), 0 2px 0 #000;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .prize:empty { display: none; }
+
+        .panel {
+            position: fixed;
+            top: 64px;
+            right: 12px;
+            bottom: 12px;
+            z-index: 55;
+            width: min(520px, calc(100vw - 24px));
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel[hidden] { display: none; }
+
+        .tabs { display: flex; gap: 4px; padding: 10px 10px 0; }
+
+        .tab {
+            padding: 6px 16px 8px;
+            border: 3px solid #0d0a10;
+            border-bottom: 0;
+            background: var(--ui-bg-2);
+            color: var(--ui-dim);
+            font: 700 16px/1 var(--ui-font);
+            cursor: pointer;
+        }
+
+        .tab[aria-selected="true"] { background: var(--ui-line); color: var(--ui-gold); }
+
+        .tab-body {
+            flex: 1;
+            overflow: auto;
+            margin: 0 10px 10px;
+            padding: 6px 14px 16px;
+            border: 3px solid #0d0a10;
+            background: #241c2c;
+        }
+
+        .tab-body[hidden] { display: none; }
+
+        h2 {
+            margin: 16px 0 8px;
+            color: var(--ui-gold);
+            font: 700 18px/1 var(--ui-font);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-shadow: var(--outline);
+        }
+
+        h2:first-child { margin-top: 10px; }
+
+        .field { display: grid; gap: 4px; margin-bottom: 10px; }
+        .field > span { color: var(--ui-dim); font-size: 14px; }
+        .field small { color: var(--ui-dim); font-size: 13px; }
+
+        .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .row + .row { margin-top: 8px; }
+        .grow { flex: 1; min-width: 0; }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            min-height: 34px;
+            padding: 4px 8px;
+            border: 3px solid #0d0a10;
+            border-radius: 0;
+            background: #120e16;
+            box-shadow: inset 0 2px 0 rgba(0, 0, 0, .5);
+            color: var(--ui-ink);
+            font: 16px var(--ui-font);
+        }
+
+        input[type="number"] { width: 90px; }
+        textarea { min-height: 110px; font-size: 14px; }
+        input[type="range"] { accent-color: var(--ui-gold); }
+        input[type="color"] { width: 44px; height: 34px; padding: 0; border: 3px solid #0d0a10; background: none; }
+        label.check { display: inline-flex; gap: 6px; align-items: center; }
+
+        .status { display: inline-flex; align-items: center; gap: 6px; color: var(--ui-dim); font-size: 14px; }
+        .dot { width: 10px; height: 10px; background: #6b6070; box-shadow: 0 0 0 2px #0d0a10; }
+        .dot.on { background: var(--ui-green); }
+
+        .counts { margin: 0 0 10px; color: var(--ui-dim); }
+        .winner-line { margin: 4px 0 10px; font-size: 22px; font-weight: 700; text-shadow: var(--outline); }
+
+        .params { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+        .params label { display: grid; gap: 3px; color: var(--ui-dim); font-size: 13px; }
+        .params input[type="number"], .params select { width: 100%; }
+
+        details { margin-top: 10px; }
+        summary { cursor: pointer; color: var(--ui-gold); font-weight: 700; }
+        .hint-text { color: var(--ui-dim); font-size: 13px; margin: 6px 0; }
+
+        .sound-row { display: grid; grid-template-columns: 110px auto 1fr; gap: 6px; align-items: center; margin: 4px 0; }
+        .sound-row code { font-size: 13px; color: var(--ui-dim); }
+        .sound-row input { font: 12px monospace; min-height: 28px; }
+        .sound-row input.bad { border-color: var(--ui-red); }
+
+        pre.json { max-height: 180px; overflow: auto; padding: 8px; background: #120e16; border: 3px solid #0d0a10; font-size: 11px; }
+
+        .hint {
+            position: absolute;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            z-index: 40;
+            padding: 8px 18px;
+            background: rgba(0, 0, 0, .72);
+            border: 3px solid #0d0a10;
+            box-shadow: inset 0 0 0 2px var(--ui-gold-dark);
+            color: var(--ui-gold);
+            font: 700 22px/1.3 var(--ui-font);
+            text-align: center;
+            text-shadow: var(--outline);
+            white-space: nowrap;
+        }
+
+        .hint:empty { display: none; }
+        .hint small { display: block; color: var(--ui-ink); font-size: 15px; font-weight: 600; }
+
+        .gate {
+            position: fixed;
+            inset: 0;
+            z-index: 58;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 8, 16, .8);
+            color: #fff;
+            font: 700 28px var(--ui-font);
+            cursor: pointer;
+        }
+
+        .gate[hidden] { display: none; }
+
+        input:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
+        #fullscreen[hidden] { display: none; }
+    </style>
+</head>
+<body>
+<div class="viewport">
+    <div id="stage" class="stage">
+        <div id="arena-host"></div>
+        <div id="prize" class="prize"></div>
+        <div id="hint" class="hint"></div>
+    </div>
+    <div id="too-small" class="too-small" data-t="page.too_small" hidden></div>
+</div>
+<div id="gate" class="gate" data-t="page.sound_gate" hidden></div>
+
+<div class="topbar">
+    <div class="speeds" role="group" data-t-title="page.speed">
+        <button class="btn" type="button" data-speed="1" aria-pressed="true">1×</button>
+        <button class="btn" type="button" data-speed="2" aria-pressed="false">2×</button>
+        <button class="btn" type="button" data-speed="3" aria-pressed="false">3×</button>
+    </div>
+    <button id="fullscreen" class="btn" type="button" data-t-title="page.fullscreen">⛶</button>
+    <button id="panel-toggle" class="btn" type="button" data-t="page.panel"></button>
+</div>
+
+<aside id="panel" class="panel pixel-box" hidden>
+    <div class="tabs" role="tablist">
+        <button class="tab" type="button" role="tab" data-tab="main" aria-selected="true" data-t="tab.main"></button>
+        <button class="tab" type="button" role="tab" data-tab="rules" aria-selected="false" data-t="tab.rules"></button>
+        <button class="tab" type="button" role="tab" data-tab="advanced" aria-selected="false" data-t="tab.advanced"></button>
+    </div>
+
+    <section class="tab-body" data-body="main">
+        <p id="giveaway" class="hint-text" hidden></p>
+        <label id="language-field" class="field">
+            <span data-t="page.language"></span>
+            <select id="language"></select>
+        </label>
+
+        <h2 data-t="stream.title"></h2>
+        <div class="field">
+            <span id="channel-label" data-t="stream.channel"></span>
+            <div id="channel-row" class="row">
+                <input id="channel" class="grow" type="text" data-t-placeholder="stream.channel_hint" autocomplete="off" spellcheck="false">
+                <button id="connect" class="btn" type="button" data-t="stream.connect"></button>
+            </div>
+            <span class="status"><span id="chat-dot" class="dot"></span><span id="chat-status" data-t="stream.disconnected"></span></span>
+        </div>
+
+        <h2 data-t="draw.title"></h2>
+        <label class="field">
+            <span data-t="draw.prize"></span>
+            <input id="prize-text" type="text" maxlength="120" data-t-placeholder="draw.prize_hint">
+        </label>
+        <label class="field">
+            <span data-t="draw.entry"></span>
+            <input id="entry-command" type="text" maxlength="25" placeholder="!join" spellcheck="false">
+            <small data-t="draw.entry_help"></small>
+        </label>
+        <div class="row">
+            <label class="field"><span data-t="draw.winners"></span><input id="main-winners" type="number" min="1" max="10"></label>
+            <label class="field"><span data-t="draw.hearts"></span><input id="main-hits" type="number" min="1" max="5"></label>
+        </div>
+        <div class="row">
+            <label class="check grow"><input id="showdown-on" type="checkbox"> <span data-t="draw.showdown"></span></label>
+            <label class="check"><input id="showdown-seconds" type="number" min="10" max="300" step="5" style="width: 70px"> <span data-t="draw.showdown_seconds"></span></label>
+        </div>
+        <small class="hint-text" data-t="draw.showdown_help"></small>
+
+        <h2 data-t="entries.title"></h2>
+        <p id="counts" class="counts"></p>
+        <div class="row">
+            <button id="open" class="btn green" type="button" data-t="entries.open_button"></button>
+            <button id="run" class="btn gold" type="button" data-t="entries.start_button"></button>
+            <button id="reset" class="btn" type="button" data-t="entries.reset_button"></button>
+        </div>
+        <div class="row">
+            <button id="skip" class="btn small" type="button" data-t="entries.skip" disabled></button>
+            <button id="back" class="btn small" type="button" data-t="entries.back" disabled></button>
+        </div>
+
+        <div id="result-box" hidden>
+            <h2 data-t="result.title"></h2>
+            <div id="winner-line" class="winner-line"></div>
+            <div id="lost-line" class="hint-text" hidden></div>
+            <div id="fewer-line" class="hint-text" hidden></div>
+            <div class="row">
+                <button id="confirm" class="btn gold" type="button" data-t="result.confirm"></button>
+                <button id="rerun" class="btn" type="button" data-t="result.rerun"></button>
+                <button id="redraw" class="btn" type="button" data-t="showdown.redraw" hidden></button>
+            </div>
+            <p id="confirm-status" class="hint-text"></p>
+        </div>
+
+        <h2 data-t="sound.title"></h2>
+        <div class="row">
+            <label class="check"><input id="mute" type="checkbox"> <span data-t="sound.mute"></span></label>
+            <label class="check"><span data-t="sound.effects"></span> <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+            <label class="check"><span data-t="sound.music"></span> <input id="music-volume" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+        </div>
+    </section>
+
+    <section class="tab-body" data-body="rules" hidden>
+        <h2 data-t="tab.rules"></h2>
+        <label class="field">
+            <span data-t="option.entry_from"></span>
+            <select id="rule-entry-from" data-option="entry_from"></select>
+            <small data-t="option.entry_from.hint"></small>
+        </label>
+        <label class="field">
+            <span data-t="option.sub_bonus"></span>
+            <select id="rule-sub-bonus" data-option="sub_bonus"></select>
+            <small data-t="option.sub_bonus.hint"></small>
+        </label>
+        <label class="field">
+            <span data-t="option.sub_bonus_hearts"></span>
+            <input id="rule-sub-hearts" type="number" min="1" max="3" step="1">
+            <small data-t="option.sub_bonus_hearts.hint"></small>
+        </label>
+    </section>
+
+    <section class="tab-body" data-body="advanced" hidden>
+        <h2 data-t="adv.battle"></h2>
+        <div id="params" class="params"></div>
+        <div class="row">
+            <label class="field grow"><span data-t="adv.seed"></span><input id="seed" type="text" data-t-placeholder="adv.seed_hint"></label>
+            <button id="reset-params" class="btn small" type="button" data-t="adv.reset_params"></button>
+        </div>
+
+        <h2 data-t="adv.tests"></h2>
+        <div class="row">
+            <input id="join-name" class="grow" type="text" data-t-placeholder="adv.name_hint">
+            <input id="join-color" type="color" value="#9147ff" data-t-title="adv.color">
+            <select id="join-side" style="width: auto">
+                <option value="" data-t="adv.no_side"></option>
+                <option value="melee" data-t="side.melee"></option>
+                <option value="ranged" data-t="side.ranged"></option>
+            </select>
+            <select id="join-tier" style="width: auto">
+                <option value="0" data-t="adv.not_sub"></option>
+                <option value="1">Tier 1</option>
+                <option value="2">Tier 2</option>
+                <option value="3">Tier 3</option>
+                <option value="vip" data-t="adv.vip"></option>
+            </select>
+            <button id="join" class="btn small" type="button" data-t="adv.join"></button>
+        </div>
+        <div class="row">
+            <input id="fake-count" type="number" value="20" min="1" max="2000">
+            <button id="fake" class="btn small" type="button" data-t="adv.fakes"></button>
+            <button id="simulate" class="btn small" type="button" data-t="adv.simulate"></button>
+            <span id="fps" class="status"></span>
+        </div>
+        <div id="showdown-box" class="row" hidden>
+            <span data-t="showdown.test"></span>
+            <span id="showdown-buttons" class="row"></span>
+        </div>
+        <details>
+            <summary data-t="adv.paste"></summary>
+            <textarea id="entrants" data-t-placeholder="adv.paste_hint"></textarea>
+            <div class="row"><button id="add-list" class="btn small" type="button" data-t="adv.paste_add"></button></div>
+        </details>
+        <details>
+            <summary data-t="adv.sounds"></summary>
+            <p class="hint-text"><span data-t="adv.sounds_help"></span>
+                <a href="https://killedbyapixel.github.io/ZzFX/" target="_blank" rel="noopener">ZzFX</a></p>
+            <div id="sounds"></div>
+            <div class="row">
+                <button id="music-test" class="btn small" type="button" data-t="adv.music_play"></button>
+                <button id="reset-sounds" class="btn small" type="button" data-t="adv.reset_sounds"></button>
+            </div>
+        </details>
+        <details>
+            <summary data-t="adv.last_result"></summary>
+            <pre id="result-json" class="json"></pre>
+        </details>
+    </section>
+</aside>
+</body>
+</html>
