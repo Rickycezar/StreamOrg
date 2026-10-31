@@ -306,16 +306,23 @@ final class Games
         return ['saved' => $saved, 'refused' => $refused];
     }
 
-    /** @return array{options: array<string, mixed>, settings: ?array} a creator's last options and the game's saved settings */
+    /**
+     * A creator's last options, the game's saved settings, and StreamOrg's
+     * own draw rules (GameDraws::saveRules), off until chosen.
+     *
+     * @return array{options: array<string, mixed>, settings: ?array, sync_winners: bool, exclude_winners: bool}
+     */
     public static function preferences(int $userId, string $game): array
     {
-        $stmt = Database::connection()->prepare('SELECT options, settings FROM game_preferences WHERE user_id = ? AND game = ?');
+        $stmt = Database::connection()->prepare('SELECT options, settings, sync_winners, exclude_winners FROM game_preferences WHERE user_id = ? AND game = ?');
         $stmt->execute([$userId, $game]);
         $row = $stmt->fetch();
 
         return [
             'options'  => self::cleanOptions($game, $row ? (array) json_decode((string) $row['options'], true) : []),
             'settings' => $row && $row['settings'] !== null ? (json_decode((string) $row['settings'], true) ?: null) : null,
+            'sync_winners'    => $row !== false && (bool) $row['sync_winners'],
+            'exclude_winners' => $row !== false && (bool) $row['exclude_winners'],
         ];
     }
 

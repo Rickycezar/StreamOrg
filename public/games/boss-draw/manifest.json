@@ -1,14 +1,14 @@
 {
   "name": "boss-draw",
-  "version": "1.1.5",
+  "version": "1.1.7",
   "contract": 1,
   "entry": "index.html",
   "languages": [
     "pt-BR",
     "en"
   ],
-  "built": "2026-10-30T19:29:37Z",
-  "changes": "Public page: no confirm step (the result is only shown). Inside StreamOrg: the confirm button moved from the panel to the winner screen, under the winners' names, with StreamOrg's answer below it. The prize ribbon (and the showdown countdown) moves below the top buttons when they would cover it.",
+  "built": "2026-10-31T02:21:10Z",
+  "changes": "Winners are listed in the order they joined (first to join gets the first prize; switching sides keeps the place); players[].joined in the result.",
   "options": [
     {
       "key": "hearts",

@@ -359,13 +359,14 @@ final class Giveaways
 
     /**
      * Records a winner a game drew (GameDraws), with the Twitch account
-     * already looked up; inside the caller's transaction.
+     * already looked up; inside the caller's transaction. With $again, a
+     * past winner of the giveaway may win once more (another prize).
      *
      * @param array{ref:string, login:string, name:string} $account
      */
-    public static function addDrawnWinner(array $giveaway, array $account): string
+    public static function addDrawnWinner(array $giveaway, array $account, bool $again = false): string
     {
-        return self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], 'draw', null);
+        return self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], 'draw', null, $again);
     }
 
     /** Withdraws a winner whose prize was not claimed; an assigned prize is freed. */
@@ -1005,17 +1006,17 @@ final class Giveaways
         }
     }
 
-    private static function recordWinner(array $giveaway, ?string $twitchId, string $login, ?string $name, string $method, ?int $prizeId): string
+    private static function recordWinner(array $giveaway, ?string $twitchId, string $login, ?string $name, string $method, ?int $prizeId, bool $again = false): string
     {
         if (!in_array($method, ['draw', 'external', 'manual'], true)) {
             $method = 'manual';
         }
 
-        return Database::transaction(static function (PDO $pdo) use ($giveaway, $twitchId, $login, $name, $method, $prizeId): string {
+        return Database::transaction(static function (PDO $pdo) use ($giveaway, $twitchId, $login, $name, $method, $prizeId, $again): string {
             $dupe = $pdo->prepare('SELECT 1 FROM giveaway_winners WHERE giveaway_id = ? AND twitch_user_id = ? AND cancelled_at IS NULL');
             $dupe->execute([$giveaway['id'], $twitchId]);
 
-            if ($dupe->fetchColumn()) {
+            if (!$again && $dupe->fetchColumn()) {
                 throw new UserError(sprintf(__('ui.message.winner_already'), $login));
             }
 

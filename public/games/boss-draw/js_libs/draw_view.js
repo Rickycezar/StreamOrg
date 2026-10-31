@@ -584,6 +584,8 @@ class DrawLobby {
         this.kicked = new Set();
         this.kickedNames = new Map();
         this.order = { melee: [], ranged: [] };
+        /** Join counter: each new entrant's place in line (kept when they switch sides). */
+        this.joinSeq = 0;
         this.walkPxPerSecond = 240;
         this.slotWidth = DRAW_PLAYER_W;
         this.slotHeight = null;
@@ -644,6 +646,8 @@ class DrawLobby {
         const state = this.arena.addPlayer({ id, name: entry.name.trim(), color: entry.color, kind, hero: entry.hero, bonus: entry.bonus },
             this.hitsPerPlayer);
         state.picked = !!side;
+        state.joined = Number.isFinite(entry.joined) ? entry.joined : ++this.joinSeq;
+        this.joinSeq = Math.max(this.joinSeq, state.joined);
         state.tier = Math.max(0, Math.min(3, Math.floor(Number(entry.tier) || 0)));
         state.vip = !!entry.vip;
         state.extra = entry.extra || 0;
@@ -679,14 +683,14 @@ class DrawLobby {
      * The entrants in the order they stand on the field, ready for simulateDraw().
      *
      * @returns {Array<{id: string, name: string, color: string|null, kind: string, picked: boolean, hero: string, tier: number,
-     *     vip: boolean, bonus: number}>}
+     *     vip: boolean, bonus: number, joined: number}>}
      */
     entrants() {
         const out = [];
         for (const [kind] of DRAW_SIDES) {
             for (const p of this.order[kind]) {
                 out.push({ id: p.id, name: p.name, color: p.rawColor, kind: p.kind, picked: p.picked, hero: p.hero,
-                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList });
+                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList, joined: p.joined });
             }
         }
         return out;

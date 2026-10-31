@@ -153,7 +153,7 @@ private preview. Preview access: streamorg@outlook.com.
   chat* makes the bot announce the giveaway with that link.
 - **Draw with a battle**: the boss battle game draws the winners live on
   the stream, inside the giveaway. Viewers enter through the chat, the
-  confirmed winners are recorded in the battle's order (prizes follow it),
+  confirmed winners are recorded in the order they entered (prizes follow it),
   and every result is kept so the draw can be replayed. The same game has
   a public page with no sign-in that only shows the winners.
 - **Direct gifts**: a key given straight to one person, from the vault or

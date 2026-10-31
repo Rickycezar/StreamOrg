@@ -72,9 +72,12 @@ final class GameDraws
      * What the game is told for a giveaway's draw (the contract's
      * bossdraw:config). Only the channel is locked (the creator's own);
      * the chat command, prize text and number of winners are starting
-     * values the creator may change in the game, the winners up to the
-     * free prizes (at most MAX_WINNERS), which recording checks again.
-     * The options start from the creator's last ones.
+     * values the creator may change in the game, the winners up to
+     * maxWinners: the free prizes (at most MAX_WINNERS), which recording
+     * checks again. The winners start at 1, or at that most when the
+     * creator syncs them with the prizes; past winners of the giveaway
+     * are left out only when the creator asks for it. The options start
+     * from the creator's last ones.
      *
      * @param ?array $options the options chosen on the page, or null for the creator's last ones
      */
@@ -86,13 +89,15 @@ final class GameDraws
         $join     = ChatBot::commandsFor($userId)['join']['trigger'] ?? 'join';
         $channel  = strtolower((string) (TwitchUser::connection($userId)['twitch_login'] ?? ''));
         $texts    = Games::overrides($game, $locale);
+        $most     = max(1, min(self::MAX_WINNERS, $slots ?? self::MAX_WINNERS));
         $config   = [
             'lang'     => $locale,
             'channel'  => $channel,
             'entry'    => mb_substr('!' . $join, 0, 25),
             'prize'    => mb_substr((string) $giveaway['title'], 0, 120),
-            'winners'  => max(1, min(self::MAX_WINNERS, $slots ?? self::MAX_WINNERS)),
-            'exclude'  => self::winnerLogins((int) $giveaway['id']),
+            'winners'  => $prefs['sync_winners'] ? $most : 1,
+            'maxWinners' => $most,
+            'exclude'  => $prefs['exclude_winners'] ? self::winnerLogins((int) $giveaway['id']) : [],
             'lock'     => ['channel'],
             'giveaway' => mb_substr((string) $giveaway['title'], 0, 120),
             'options'  => (object) ($options !== null ? Games::cleanOptions($game, $options) : $prefs['options']),
@@ -148,11 +153,12 @@ final class GameDraws
             $accounts[] = $account;
         }
 
-        $tokens = Database::transaction(static function (PDO $pdo) use ($giveaway, $game, $result, $accounts): array {
+        $again  = !Games::preferences($userId, $game)['exclude_winners'];
+        $tokens = Database::transaction(static function (PDO $pdo) use ($giveaway, $game, $result, $accounts, $again): array {
             $tokens = [];
 
             foreach ($accounts as $account) {
-                $tokens[] = Giveaways::addDrawnWinner($giveaway, $account);
+                $tokens[] = Giveaways::addDrawnWinner($giveaway, $account, $again);
             }
 
             $pdo->prepare('INSERT INTO giveaway_game_draws (giveaway_id, game, version, winners, result) VALUES (?, ?, ?, ?, CAST(? AS jsonb))')
@@ -167,6 +173,19 @@ final class GameDraws
         }
 
         return ['count' => count($accounts), 'posted' => Giveaways::postWinnerLinks($giveaway, $tokens)];
+    }
+
+    /**
+     * Keeps a creator's StreamOrg rules for a game's draws: whether the
+     * winners start synced with the free prizes, and whether past winners
+     * of a giveaway are left out of its later draws.
+     */
+    public static function saveRules(int $userId, string $game, bool $syncWinners, bool $excludeWinners): void
+    {
+        Database::connection()->prepare(
+            'INSERT INTO game_preferences (user_id, game, sync_winners, exclude_winners) VALUES (?, ?, ?, ?)
+             ON CONFLICT (user_id, game) DO UPDATE SET sync_winners = excluded.sync_winners, exclude_winners = excluded.exclude_winners, updated_at = now()'
+        )->execute([$userId, $game, $syncWinners ? 'true' : 'false', $excludeWinners ? 'true' : 'false']);
     }
 
     /**

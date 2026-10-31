@@ -16,7 +16,7 @@
  */
 const DRAW_GAME = {
     name: 'boss-draw',
-    version: '1.1.5',
+    version: '1.1.7',
     contract: 1,
     options: [
         { key: 'hearts', type: 'int', min: 1, max: 5, step: 1, default: 2, group: 'battle' },

@@ -438,7 +438,7 @@ function entryInfo() {
 
 /** The number of winners asked for (1–10, and no more than StreamOrg's while embedded). */
 function wantedWinners() {
-    const most = embedded && embedConfig ? embedConfig.winners : DRAW_PAGE.maxWinners;
+    const most = embedded && embedConfig ? embedConfig.maxWinners : DRAW_PAGE.maxWinners;
     return Math.min(most, Math.max(1, Math.round(Number($('main-winners').value) || DRAW_DEFAULTS.winners)));
 }
 
@@ -471,7 +471,9 @@ function buildParams(values) {
         wrap.appendChild(input);
         box.appendChild(wrap);
     }
-    $('main-winners').value = embedded && embedConfig ? embedConfig.winners : values.winners ?? DRAW_DEFAULTS.winners;
+    $('main-winners').value = embedded && embedConfig
+        ? Math.min(embedConfig.maxWinners, Number($('main-winners').value) || embedConfig.winners)
+        : values.winners ?? DRAW_DEFAULTS.winners;
     $('main-hits').value = values.hitsPerPlayer ?? DRAW_DEFAULTS.hitsPerPlayer;
 }
 
@@ -628,7 +630,7 @@ function openLobby(restore = [], kicks = []) {
     }
     for (const e of restore) {
         joinByRules({ login: e.id, name: e.name, color: e.color, side: e.kind, hero: e.hero, tier: e.tier, vip: e.vip,
-            extra: e.extra, fromList: e.fromList }, { instant: true });
+            extra: e.extra, fromList: e.fromList, joined: e.joined }, { instant: true });
         const p = lobby.players.get(e.id);
         if (p) {
             p.picked = e.picked;
@@ -885,7 +887,7 @@ function roundRecord(round) {
         players: r.players.map(p => {
             const entry = lockedEntrants.find(e => e.id === p.id) || {};
             return { login: p.id, name: p.name, side: p.kind, color: p.color, hero: p.hero, picked: p.picked,
-                tier: entry.tier || 0, vip: !!entry.vip, bonus: p.bonus || 0 };
+                tier: entry.tier || 0, vip: !!entry.vip, bonus: p.bonus || 0, joined: p.joined };
         }),
         winners: round.kept.map(person),
         forfeited: round.forfeited.map(person),
@@ -1513,6 +1515,9 @@ function checkConfig(c) {
     if (!Number.isInteger(c.winners) || c.winners < 1 || c.winners > DRAW_PAGE.maxWinners) {
         return { ok: false, detail: 'winners' };
     }
+    if (c.maxWinners !== undefined && !(Number.isInteger(c.maxWinners) && c.maxWinners >= c.winners && c.maxWinners <= DRAW_PAGE.maxWinners)) {
+        return { ok: false, detail: 'maxWinners' };
+    }
     if (c.lang !== undefined && !drawIsLanguageTag(c.lang)) {
         return { ok: false, detail: 'lang' };
     }
@@ -1544,6 +1549,7 @@ function checkConfig(c) {
             entry: c.entry,
             prize: c.prize || '',
             winners: c.winners,
+            maxWinners: c.maxWinners || c.winners,
             exclude: (c.exclude || []).map(v => v.toLowerCase()),
             lock: (c.lock || []).filter(v => DRAW_PAGE.lockable.includes(v)
                 || DRAW_GAME.options.some(o => v === `options.${o.key}`)),
@@ -1573,27 +1579,47 @@ function applyConfig(raw) {
         return;
     }
     const c = check.config;
+    const before = embedConfig;
+    const kept = before ? {
+        entry: settings.entry,
+        prize: settings.prize,
+        winners: Number($('main-winners').value),
+        options: optionValues()
+    } : null;
+    /** A refreshed config keeps the streamer's own change of a field StreamOrg neither changed nor locks. */
+    const keep = (lockKey, oldValue, newValue) => kept && !c.lock.includes(lockKey) && JSON.stringify(oldValue) === JSON.stringify(newValue);
     clearInterval(handshakeTimer);
     embedded = true;
     embedConfig = c;
     memory = c.settings;
     excluded = new Set(c.exclude);
     locks = new Set(c.lock);
-    Object.assign(settings, { channel: c.channel, entry: c.entry, prize: c.prize });
+    Object.assign(settings, {
+        channel: c.channel,
+        entry: keep('entry', before && before.entry, c.entry) ? kept.entry : c.entry,
+        prize: keep('prize', before && before.prize, c.prize) ? kept.prize : c.prize
+    });
     textsFromConfig = c.texts;
     setLanguage(c.lang);
     loadAudio();
     sound.setSounds(soundDefs());
     buildSounds();
     buildParams(stored(DRAW_PAGE.storageKey, {}));
-    applyOptions(c.options);
+    $('main-winners').value = keep('winners', before && before.winners, c.winners) ? Math.min(c.maxWinners, kept.winners) : c.winners;
+    const options = Object.assign({}, c.options);
+    for (const option of DRAW_GAME.options) {
+        if (keep(`options.${option.key}`, before && before.options[option.key], c.options[option.key])) {
+            options[option.key] = kept.options[option.key];
+        }
+    }
+    applyOptions(options);
     fillFields();
     $('language-field').hidden = true;
     $('channel-label').hidden = true;
     $('channel-row').hidden = true;
     $('giveaway').textContent = c.giveaway ? drawT('page.giveaway', { name: c.giveaway }) : '';
     $('giveaway').hidden = !c.giveaway;
-    $('main-winners').max = String(c.winners);
+    $('main-winners').max = String(c.maxWinners);
     const lockable = { channel: ['channel', 'connect'], entry: ['entry-command'], prize: ['prize-text'], winners: ['main-winners'] };
     for (const [key, id] of Object.entries(OPTION_FIELDS)) {
         lockable[`options.${key}`] = [id];

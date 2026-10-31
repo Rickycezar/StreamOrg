@@ -37,11 +37,12 @@ final class GameDrawController
             'slots'    => GameDraws::openSlots((int) $giveaway['id']),
             'canDraw'  => GameDraws::canDraw($giveaway),
             'options'  => Games::options(self::GAME),
+            'rules'    => Games::preferences($userId, self::GAME),
             'texts'    => Games::texts(self::GAME, $locale),
         ], __('ui.label.game_draw') . ' · ' . $giveaway['title']);
     }
 
-    /** POST /giveaways/battle/options — keeps the options and answers the config to send the game. */
+    /** POST /giveaways/battle/options — keeps the options and StreamOrg's draw rules, and answers the config to send the game. */
     public static function options(): void
     {
         Auth::requireLogin();
@@ -50,6 +51,7 @@ final class GameDrawController
         $userId   = (int) Auth::id();
         $giveaway = self::giveaway($userId);
         $options  = Games::saveOptions($userId, self::GAME, (array) ($_POST['options'] ?? []));
+        GameDraws::saveRules($userId, self::GAME, !empty($_POST['sync_winners']), !empty($_POST['exclude_winners']));
 
         json_response(['ok' => true, 'config' => GameDraws::config($userId, $giveaway, self::GAME, $options)]);
     }

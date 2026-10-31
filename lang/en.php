@@ -752,7 +752,7 @@ return [
                 'winners_title' => 'Winners',
                 'winners_text' => "Search for each winner by their Twitch name and pick them from the results: the prize is tied to that account and nobody else.\nEach winner has a few days to claim; you can extend the time, or withdraw a prize and choose someone else.",
                 'battle_title' => 'Draw with a battle',
-                'battle_text' => "With \"Draw with a battle\", a battle against bosses decides the winners, live on your screen: viewers enter through your chat with the join command, and each becomes a hero.\nThe battle's options (hearts, time to speak, who may enter…) start from your last draw. When you confirm the result in the game, the winners join this giveaway in the battle's order, and with a prize set per winner the first one gets the first prize.\nThe game also has a public page, no sign-in needed, at /games/boss-draw/: it only shows the winners on screen and records nothing.",
+                'battle_text' => "With \"Draw with a battle\", a battle against bosses decides the winners, live on your screen: viewers enter through your chat with the join command, and each becomes a hero.\nThe battle's options (hearts, time to speak, who may enter…) start from your last draw. When you confirm the result in the game, the winners join this giveaway in the order they entered the battle, and with a prize set per winner whoever entered first gets the first prize.\nThe game also has a public page, no sign-in needed, at /games/boss-draw/: it only shows the winners on screen and records nothing.",
                 'claim_title' => 'The claim link',
                 'claim_text' => "Each winner gets a link to send privately or post in the chat. Turn on \"Post the winner's link in chat\" on the giveaway and the chat bot tags each new winner with their link as soon as they are recorded.\nIt asks them to sign in with Twitch and only opens for the winner's own account, so a leaked link is useless to anyone else.\nOnce claimed, the key stays in the winner's \"My prizes\".",
                 'private_title' => 'If your vault is private',
@@ -2956,7 +2956,7 @@ return [
         ],
 
         'game_draw' => [
-            'intro' => 'Viewers enter by typing %s in your chat (you can change the command in the game\'s panel). The battle draws up to %s winner(s); when you confirm the result in the game, they are recorded in this giveaway in the order the battle placed them, and the prizes follow that order.',
+            'intro' => 'Viewers enter by typing %s in your chat (you can change the command in the game\'s panel). The battle draws up to %s winner(s), as many as you set in the game; when you confirm the result in the game, they are recorded in this giveaway in the order they entered, and the prizes follow that order: whoever entered first gets the first prize.',
             'no_prizes' => 'This giveaway has no prizes, so you choose how many winners in the game, up to 10.',
             'ended' => 'This giveaway is over: no more winners can be drawn.',
             'no_channel' => 'The game reads your Twitch chat, so connect your Twitch account first.',
@@ -2987,6 +2987,11 @@ return [
             'public_hint' => 'The same game for anyone, with no sign-in: it shows the winners on screen and records nothing.',
             'cmd_reopen' => 'Reopen entries',
             'cmd_reopen_hint' => 'Takes entries again keeping who already entered; after a battle, the players who fought come back.',
+            'rules' => 'StreamOrg',
+            'sync_winners' => 'Start with one winner per prize left',
+            'sync_winners_hint' => 'Off: the game starts at 1 winner and you raise it, up to the prizes left (at most 10).',
+            'exclude_winners' => 'Leave out who already won this giveaway',
+            'exclude_winners_hint' => 'Off: past winners may enter and win another prize.',
         ],
 
         'game_texts' => [

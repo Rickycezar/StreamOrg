@@ -5,6 +5,23 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.2 — 2026-10-30
+
+This release has a database migration (055: the battle draw's
+StreamOrg rules).
+
+### Changed
+- The battle draw (boss-draw 1.1.7) starts at 1 winner, and you raise it
+  in the game up to the prizes left (at most 10); "Start with one winner
+  per prize left" brings back the old start. Recording a result no
+  longer resets the winners, prize or options you set in the game.
+- Battle winners are recorded in the order they entered the draw, so
+  whoever entered first gets the first prize (before, the most hearts
+  kept came first).
+- Who already won a giveaway may enter its later battle draws and win
+  another prize; "Leave out who already won this giveaway" keeps them
+  out, as before. Both rules are on the battle page, off by default.
+
 ## 0.11.1 — 2026-10-30
 
 This release has a database migration (054: posting winners' links in

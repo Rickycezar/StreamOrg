@@ -138,6 +138,7 @@ final class GameDrawsTest extends DatabaseTestCase
     public function testAResultIsRecordedWholeOrNotAtAll(): void
     {
         $g = $this->giveaway('pick', 3);
+        GameDraws::saveRules($this->user, self::GAME, false, true);
         GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['already_won']));
 
         try {
@@ -148,6 +149,22 @@ final class GameDrawsTest extends DatabaseTestCase
 
         self::assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM giveaway_winners WHERE giveaway_id = {$g}")->fetchColumn());
         self::assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM giveaway_game_draws WHERE giveaway_id = {$g}")->fetchColumn());
+    }
+
+    public function testPastWinnersMayWinAgainUnlessLeftOut(): void
+    {
+        $g = $this->giveaway('pick', 3);
+        GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['lucky_one']));
+
+        self::assertSame([], GameDraws::config($this->user, Giveaways::find($this->user, $g), self::GAME)['exclude'], 'Off by default: past winners may enter.');
+        self::assertSame(1, GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['lucky_one']))['count']);
+        self::assertSame(2, (int) $this->pdo->query("SELECT count(*) FROM giveaway_winners WHERE giveaway_id = {$g} AND twitch_login = 'lucky_one'")->fetchColumn(), 'A second prize for the same viewer.');
+
+        GameDraws::saveRules($this->user, self::GAME, false, true);
+        self::assertSame(['lucky_one'], GameDraws::config($this->user, Giveaways::find($this->user, $g), self::GAME)['exclude']);
+
+        $this->expectException(UserError::class);
+        GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['lucky_one']));
     }
 
     public function testMoreWinnersThanPrizesLeftIsRefused(): void
@@ -199,7 +216,8 @@ final class GameDrawsTest extends DatabaseTestCase
 
         $config = GameDraws::config($this->user, Giveaways::find($this->user, $g), self::GAME);
 
-        self::assertSame(2, $config['winners']);
+        self::assertSame(1, $config['winners'], 'The winners start at 1 unless synced with the prizes.');
+        self::assertSame(2, $config['maxWinners']);
         self::assertSame(['channel'], $config['lock']);
         self::assertStringStartsWith('!', $config['entry']);
         self::assertSame(3, $config['options']->hearts);
@@ -207,7 +225,12 @@ final class GameDrawsTest extends DatabaseTestCase
         self::assertSame('none', $config['options']->sub_bonus, 'An invalid value takes the default.');
 
         $free = GameDraws::config($this->user, Giveaways::find($this->user, $this->giveaway('pick', 0)), self::GAME);
-        self::assertSame(GameDraws::MAX_WINNERS, $free['winners'], 'Without prizes, up to the game\'s most.');
+        self::assertSame(1, $free['winners']);
+        self::assertSame(GameDraws::MAX_WINNERS, $free['maxWinners'], 'Without prizes, up to the game\'s most.');
+
+        GameDraws::saveRules($this->user, self::GAME, true, false);
+        self::assertSame(2, GameDraws::config($this->user, Giveaways::find($this->user, $g), self::GAME)['winners'], 'Synced: one winner per free prize.');
+        self::assertSame(3, Games::preferences($this->user, self::GAME)['options']['hearts'], 'Saving the rules keeps the options.');
     }
 
     public function testATextChangeMustKeepItsPlaceholders(): void

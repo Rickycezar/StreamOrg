@@ -9,6 +9,7 @@
  * @var array $giveaway @var string $game @var array $manifest @var string $gameUrl
  * @var array $config the first bossdraw:config @var ?int $slots winners the prizes allow, null without prizes
  * @var bool $canDraw @var list<array> $options the options the game declares @var array<string, string> $texts the game's texts
+ * @var array $rules the creator's preferences, with StreamOrg's draw rules (sync_winners, exclude_winners)
  */
 $id      = (int) $giveaway['id'];
 $ready   = $canDraw && $config['channel'] !== '' && $slots !== 0;
@@ -51,7 +52,7 @@ $current = (array) $config['options'];
 
     <section class="card game-draw-info">
         <p>
-            <?= sprintf(e(__('ui.game_draw.intro')), '<code>' . e($config['entry']) . '</code>', '<strong>' . (int) $config['winners'] . '</strong>') ?>
+            <?= sprintf(e(__('ui.game_draw.intro')), '<code>' . e($config['entry']) . '</code>', '<strong>' . (int) $config['maxWinners'] . '</strong>') ?>
             <?php if ($slots === null): ?><span class="muted"><?= e(__('ui.game_draw.no_prizes')) ?></span><?php endif; ?>
         </p>
         <div class="card-actions game-draw-controls">
@@ -70,12 +71,30 @@ $current = (array) $config['options'];
                 sandbox="allow-scripts allow-popups" allow="autoplay; fullscreen" referrerpolicy="no-referrer"></iframe>
     </div>
 
-    <?php if ($options !== []): ?>
         <form class="card game-draw-options" data-game-draw-options autocomplete="off">
             <div class="card-head">
                 <h2><?= e(__('ui.game_draw.options')) ?></h2>
             </div>
             <p class="muted small"><?= e(__('ui.game_draw.options_hint')) ?></p>
+            <fieldset class="inset">
+                <legend><?= e(__('ui.game_draw.rules')) ?></legend>
+                <div class="grid">
+                    <div>
+                        <label class="inline">
+                            <input type="checkbox" name="sync_winners" value="1" <?= $rules['sync_winners'] ? 'checked' : '' ?>>
+                            <span><?= e(__('ui.game_draw.sync_winners')) ?></span>
+                        </label>
+                        <small class="muted"><?= e(__('ui.game_draw.sync_winners_hint')) ?></small>
+                    </div>
+                    <div>
+                        <label class="inline">
+                            <input type="checkbox" name="exclude_winners" value="1" <?= $rules['exclude_winners'] ? 'checked' : '' ?>>
+                            <span><?= e(__('ui.game_draw.exclude_winners')) ?></span>
+                        </label>
+                        <small class="muted"><?= e(__('ui.game_draw.exclude_winners_hint')) ?></small>
+                    </div>
+                </div>
+            </fieldset>
             <?php foreach ($groups as $group => $list): ?>
                 <fieldset class="inset">
                     <?php if ($group !== ''): ?><legend><?= e($text('group.' . $group, $group)) ?></legend><?php endif; ?>
@@ -130,6 +149,5 @@ $current = (array) $config['options'];
                 <button type="submit" class="btn primary"><?= e(__('ui.game_draw.apply')) ?></button>
             </div>
         </form>
-    <?php endif; ?>
 </div>
 <?php endif; ?>

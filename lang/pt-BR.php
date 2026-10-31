@@ -751,7 +751,7 @@ return [
                 'winners_title' => 'Vencedores',
                 'winners_text' => "Busque cada vencedor pelo nome na Twitch e escolha nos resultados: o prêmio fica ligado àquela conta e a mais ninguém.\nCada vencedor tem alguns dias para resgatar; você pode prorrogar, ou retirar um prêmio e escolher outra pessoa.",
                 'battle_title' => 'Sortear com batalha',
-                'battle_text' => "Com \"Sortear com batalha\", quem decide os vencedores é uma batalha contra chefes, ao vivo na sua tela: os espectadores entram pelo seu chat com o comando de participar, e cada um vira um herói.\nAs opções da batalha (corações, hora de falar, quem pode entrar…) começam pelas do seu último sorteio. Ao confirmar o resultado no jogo, os vencedores entram neste sorteio na ordem da batalha, e com um prêmio por vencedor o primeiro fica com o primeiro prêmio.\nO jogo também tem uma página pública, sem login, em /games/boss-draw/: ela só mostra os vencedores na tela e não registra nada.",
+                'battle_text' => "Com \"Sortear com batalha\", quem decide os vencedores é uma batalha contra chefes, ao vivo na sua tela: os espectadores entram pelo seu chat com o comando de participar, e cada um vira um herói.\nAs opções da batalha (corações, hora de falar, quem pode entrar…) começam pelas do seu último sorteio. Ao confirmar o resultado no jogo, os vencedores entram neste sorteio na ordem em que entraram na batalha, e com um prêmio por vencedor quem entrou primeiro fica com o primeiro prêmio.\nO jogo também tem uma página pública, sem login, em /games/boss-draw/: ela só mostra os vencedores na tela e não registra nada.",
                 'claim_title' => 'O link de resgate',
                 'claim_text' => "Cada vencedor recebe um link para mandar no privado ou postar no chat. Ligue \"Postar o link do vencedor no chat\" no sorteio e o bot do chat marca cada novo vencedor com o link assim que ele é registrado.\nEle pede para entrar com a Twitch e só abre para a conta do próprio vencedor, então um link vazado não serve para mais ninguém.\nDepois de resgatada, a chave fica em \"Meus prêmios\" do vencedor.",
                 'private_title' => 'Se o seu cofre é privado',
@@ -2955,7 +2955,7 @@ return [
         ],
 
         'game_draw' => [
-            'intro' => 'Os espectadores entram digitando %s no seu chat (dá para trocar o comando no painel do jogo). A batalha sorteia até %s vencedor(es); ao confirmar o resultado no jogo, eles são registrados neste sorteio na ordem em que a batalha os colocou, e os prêmios seguem essa ordem.',
+            'intro' => 'Os espectadores entram digitando %s no seu chat (dá para trocar o comando no painel do jogo). A batalha sorteia até %s vencedor(es), quantos você definir no jogo; ao confirmar o resultado no jogo, eles são registrados neste sorteio na ordem em que entraram, e os prêmios seguem essa ordem: quem entrou primeiro fica com o primeiro prêmio.',
             'no_prizes' => 'Este sorteio não tem prêmios, então você escolhe no jogo quantos vencedores, até 10.',
             'ended' => 'Este sorteio terminou: não dá mais para sortear vencedores.',
             'no_channel' => 'O jogo lê o seu chat da Twitch, então conecte sua conta da Twitch primeiro.',
@@ -2986,6 +2986,11 @@ return [
             'public_hint' => 'O mesmo jogo para qualquer pessoa, sem login: mostra os vencedores na tela e não registra nada.',
             'cmd_reopen' => 'Reabrir inscrições',
             'cmd_reopen_hint' => 'Volta a aceitar inscrições mantendo quem já entrou; depois de uma batalha, quem lutou volta.',
+            'rules' => 'StreamOrg',
+            'sync_winners' => 'Começar com um vencedor por prêmio restante',
+            'sync_winners_hint' => 'Desligado: o jogo começa com 1 vencedor e você aumenta, até os prêmios restantes (no máximo 10).',
+            'exclude_winners' => 'Deixar de fora quem já ganhou neste sorteio',
+            'exclude_winners_hint' => 'Desligado: quem já ganhou pode entrar e ganhar outro prêmio.',
         ],
 
         'game_texts' => [

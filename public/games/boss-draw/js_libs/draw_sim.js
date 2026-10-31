@@ -14,8 +14,9 @@
  * every member of a side while the other side still has players (the ratio
  * alone still can). When the boss dies the survivors heal to full and a
  * stronger boss spawns (extra hearts from the rules come back only with
- * extraRegen; otherwise survivors heal up to the normal hearts). The last `winners` players standing win, ranked by
- * the hearts they kept (ties drawn): the first gets the first prize.
+ * extraRegen; otherwise survivors heal up to the normal hearts). The last `winners` players standing win, in the
+ * order they joined (`joined`, else their place in the list): the first
+ * gets the first prize.
  *
  * @author Henrique Cezar
  * @license MIT
@@ -152,6 +153,7 @@ function simulateDraw(entrants, overrides = {}, seed) {
         name: e.name,
         color: e.color || null,
         picked: !!e.picked,
+        joined: Number.isFinite(e.joined) ? e.joined : entrants.indexOf(e),
         hero: e.hero || null,
         kind: hasSide(e) ? e.kind : (rangedIds.has(e.id) ? 'ranged' : 'melee'),
         bonus: Math.max(1 - params.hitsPerPlayer, Math.floor(Number(e.bonus) || 0)),
@@ -176,14 +178,15 @@ function simulateDraw(entrants, overrides = {}, seed) {
 
     const finish = (reason) => {
         const winners = living()
-            .map(p => ({ p, roll: rng() }))
-            .sort((a, b) => b.p.hp - a.p.hp || a.roll - b.roll)
-            .map(x => x.p.id);
+            .slice()
+            .sort((a, b) => a.joined - b.joined)
+            .map(p => p.id);
         events.push({ t, type: 'end', winners, reason });
         return {
             seed,
             params,
-            players: players.map(p => ({ id: p.id, name: p.name, color: p.color, picked: p.picked, hero: p.hero, kind: p.kind, bonus: p.bonus })),
+            players: players.map(p => ({ id: p.id, name: p.name, color: p.color, picked: p.picked, hero: p.hero, kind: p.kind, bonus: p.bonus,
+                joined: p.joined })),
             events,
             winners,
             eliminated,
