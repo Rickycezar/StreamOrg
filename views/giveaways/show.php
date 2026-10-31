@@ -17,6 +17,9 @@ $ready     = count(array_filter($unclaimed, static fn (array $p): bool => (bool)
 $pendingWinners = count(array_filter($winners, static fn (array $w): bool => $w['state'] === 'waiting'));
 $waiting = array_values(array_filter($prizes, static fn (array $p): bool => $p['claimed_at'] === null && $p['winner_id'] === null));
 $next    = GiveawayController::NEXT[$g['status']] ?? [];
+$battle  = $open && Games::manifest(GameDrawController::GAME) !== null;
+$rounds  = $battle && $g['winner_mode'] === 'assigned' && $waiting !== [];
+$orderable = $open && count($prizes) > 1;
 ?>
 <p class="muted small"><a href="<?= e(url('/giveaways')) ?>">← <?= e(__('ui.nav.giveaways')) ?></a></p>
 
@@ -116,7 +119,7 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
     <?php endif; ?>
 </section>
 
-<section class="card">
+<section class="card" id="prizes">
     <div class="card-head">
         <h2><?= e(__('ui.label.prizes')) ?> (<?= count($prizes) ?>)</h2>
         <?php if ($open && $available !== []): ?>
@@ -191,10 +194,15 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
     <?php if ($prizes === []): ?>
         <p class="empty"><?= e($available === [] ? __('ui.message.giveaway_no_keys_for_giveaway') : __('ui.message.giveaway_no_prizes')) ?></p>
     <?php else: ?>
+        <?php if ($g['winner_mode'] === 'assigned' && ($orderable || $rounds)): ?>
+            <p class="muted small prize-order-hint"><?= e(__($rounds ? 'ui.label.prize_order_round_hint' : 'ui.label.prize_order_hint')) ?></p>
+        <?php endif; ?>
         <div class="table-wrap">
-            <table data-sortable>
+            <table class="prize-table">
                 <thead>
                 <tr>
+                    <th class="col-order"><span class="visually-hidden"><?= e(__('ui.label.prize_order')) ?></span>#</th>
+                    <?php if ($rounds): ?><th class="col-round"><?= e(__('ui.label.prize_round')) ?></th><?php endif; ?>
                     <th class="col-actions"><span class="visually-hidden"><?= e(__('ui.label.actions')) ?></span></th>
                     <th><?= e(__('ui.field.game')) ?></th>
                     <th><?= e(__('ui.field.platform')) ?></th>
@@ -202,9 +210,25 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                     <th><?= e(__('ui.field.status')) ?></th>
                 </tr>
                 </thead>
-                <tbody>
-                <?php foreach ($prizes as $p): ?>
-                    <tr<?= row_art($p['art_path'], $p['art_version']) ?>>
+                <tbody<?= $orderable ? ' data-prize-order data-id="' . $id . '"' : '' ?>>
+                <?php foreach ($prizes as $i => $p): $free = !$p['claimed_at'] && !$p['winner_id']; ?>
+                    <tr<?= row_art($p['art_path'], $p['art_version']) ?> data-prize="<?= (int) $p['id'] ?>">
+                        <td class="col-order no-art nowrap">
+                            <?php if ($orderable): ?>
+                                <button type="button" class="drag-handle" data-drag-handle aria-label="<?= e(__('ui.label.prize_drag')) ?>" title="<?= e(__('ui.label.prize_drag')) ?>"><?= Icons::svg('grip') ?></button>
+                            <?php endif; ?>
+                            <span class="prize-pos" data-prize-pos><?= $i + 1 ?></span>
+                        </td>
+                        <?php if ($rounds): ?>
+                            <td class="col-round no-art" data-label="<?= e(__('ui.label.prize_round')) ?>">
+                                <?php if ($free): ?>
+                                    <label class="round-pick">
+                                        <input type="checkbox" value="<?= (int) $p['id'] ?>" data-round-prize aria-label="<?= e(sprintf(__('ui.label.prize_round_pick'), $p['game_title'])) ?>">
+                                        <span aria-hidden="true"><?= e(__('ui.label.prize_round')) ?></span>
+                                    </label>
+                                <?php endif; ?>
+                            </td>
+                        <?php endif; ?>
                         <td class="rowactions">
                             <?php if (!$p['claimed_at']): ?>
                                 <form method="post" action="<?= e(url('/giveaways/prizes/remove')) ?>">
@@ -215,7 +239,11 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                                 </form>
                             <?php endif; ?>
                         </td>
-                        <td data-card-title data-label="<?= e(__('ui.field.game')) ?>"><?= e($p['game_title']) ?></td>
+                        <td data-card-title data-label="<?= e(__('ui.field.game')) ?>">
+                            <img class="card-cover" loading="lazy" alt=""
+                                 src="<?= e($p['art_path'] ? GameImages::publicUrl($p['art_path'], (string) $p['art_version']) : url('/assets/game-missing.svg')) ?>">
+                            <?= e($p['game_title']) ?>
+                        </td>
                         <td data-label="<?= e(__('ui.field.platform')) ?>"><?= e(code_label('game_platform', $p['platform_code'])) ?></td>
                         <td class="nowrap" data-sort="<?= e(sort_key($p['expires_at'])) ?>" data-label="<?= e(__('ui.field.redeem_by')) ?>"><?= e($p['expires_at'] ? fmt_date($p['expires_at']) : '—') ?></td>
                         <td data-label="<?= e(__('ui.field.status')) ?>">
@@ -250,8 +278,9 @@ $next    = GiveawayController::NEXT[$g['status']] ?? [];
                     <button type="submit" class="btn primary"><?= e(__('ui.action.draw_winner')) ?></button>
                 </form>
             <?php endif; ?>
-            <?php if ($open && Games::manifest(GameDrawController::GAME) !== null): ?>
-                <a class="btn game-draw-link" href="<?= e(url('/giveaways/battle?id=' . $id)) ?>"><?= icon_label('swords', __('ui.label.game_draw')) ?></a>
+            <?php if ($battle): ?>
+                <a class="btn game-draw-link" href="<?= e(url('/giveaways/battle?id=' . $id)) ?>"
+                    <?php if ($rounds): ?>data-battle-round data-confirm-title="<?= e(__('ui.label.game_draw')) ?>" data-confirm-text="<?= e(__('ui.message.game_round_follows_list')) ?>"<?php endif; ?>><?= icon_label('swords', __('ui.label.game_draw')) ?></a>
             <?php endif; ?>
             <?php if ($g['status'] !== 'cancelled' && $twitchReady): ?>
                 <button type="button" class="btn" data-modal-form="#add-winner" data-modal-title="<?= e(__('ui.action.add_winner')) ?>">+ <?= e(__('ui.action.add_winner')) ?></button>

@@ -10,6 +10,7 @@
  * @var array $config the first bossdraw:config @var ?int $slots winners the prizes allow, null without prizes
  * @var bool $canDraw @var list<array> $options the options the game declares @var array<string, string> $texts the game's texts
  * @var array $rules the creator's preferences, with StreamOrg's draw rules (sync_winners, exclude_winners)
+ * @var list<int> $round the round's prizes chosen on the giveaway page @var list<array> $prizes the prizes this draw gives, in order (prize set per winner only)
  */
 $id      = (int) $giveaway['id'];
 $ready   = $canDraw && $config['channel'] !== '' && $slots !== 0;
@@ -37,7 +38,7 @@ $current = (array) $config['options'];
 <?php elseif ($slots === 0): ?>
     <p class="notice"><?= e(__('ui.game_draw.no_slots')) ?></p>
 <?php else: ?>
-<div class="game-draw" data-game-draw data-id="<?= $id ?>" data-contract="<?= Games::CONTRACT ?>">
+<div class="game-draw" data-game-draw data-id="<?= $id ?>" data-contract="<?= Games::CONTRACT ?>" data-prizes="<?= e(implode(',', $round)) ?>" data-round="<?= e(implode(',', $round)) ?>">
     <script type="application/json" data-game-draw-config><?= json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
     <script type="application/json" data-game-draw-strings><?= json_encode([
         'phase'    => array_combine(['idle', 'open', 'running', 'showdown', 'result', 'done'], array_map(static fn (string $p): string => __('ui.game_draw.phase_' . $p), ['idle', 'open', 'running', 'showdown', 'result', 'done'])),
@@ -64,6 +65,22 @@ $current = (array) $config['options'];
             <button type="button" class="btn" data-game-fullscreen><?= icon_label('maximize', __('ui.game_draw.fullscreen')) ?></button>
         </div>
         <p class="game-draw-message" data-game-draw-message role="status" hidden></p>
+        <?php if ($prizes !== []): ?>
+            <div class="game-draw-round" data-game-round>
+                <p class="small"><strong data-round-title data-chosen="<?= e(__('ui.game_draw.round_chosen')) ?>"><?= e(__($round !== [] ? 'ui.game_draw.round_chosen' : 'ui.game_draw.round_list')) ?></strong>
+                    <a href="<?= e(url('/giveaways/show?id=' . $id . '#prizes')) ?>"><?= e(__('ui.game_draw.round_change')) ?></a></p>
+                <ol data-round-list>
+                    <?php foreach ($prizes as $prize): ?>
+                        <li data-round-item="<?= (int) $prize['id'] ?>">
+                            <button type="button" class="drag-handle" data-drag-handle aria-label="<?= e(__('ui.label.prize_drag')) ?>" title="<?= e(__('ui.label.prize_drag')) ?>"><?= Icons::svg('grip') ?></button>
+                            <span class="prize-pos" data-round-pos></span>
+                            <span><?= e($prize['game_title']) ?> <small class="muted"><?= e(code_label('game_platform', $prize['platform_code'])) ?></small></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+                <p class="muted small game-draw-round-hint"><?= e(__('ui.game_draw.round_drag')) ?></p>
+            </div>
+        <?php endif; ?>
     </section>
 
     <div class="game-draw-stage">

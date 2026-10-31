@@ -228,6 +228,7 @@ $routes = [
         '/giveaways/prizes'  => [GiveawayController::class, 'addPrizes'],
         '/giveaways/announce' => [GiveawayController::class, 'announce'],
         '/giveaways/prizes/remove' => [GiveawayController::class, 'removePrize'],
+        '/giveaways/prizes/order' => [GiveawayController::class, 'orderPrizes'],
         '/giveaways/claimable' => [GiveawayController::class, 'makeClaimable'],
         '/giveaways/take-back' => [GiveawayController::class, 'takeBack'],
         '/giveaways/nudge-later' => [GiveawayController::class, 'nudgeLater'],

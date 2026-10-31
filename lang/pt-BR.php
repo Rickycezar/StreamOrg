@@ -751,7 +751,7 @@ return [
                 'winners_title' => 'Vencedores',
                 'winners_text' => "Busque cada vencedor pelo nome na Twitch e escolha nos resultados: o prêmio fica ligado àquela conta e a mais ninguém.\nCada vencedor tem alguns dias para resgatar; você pode prorrogar, ou retirar um prêmio e escolher outra pessoa.",
                 'battle_title' => 'Sortear com batalha',
-                'battle_text' => "Com \"Sortear com batalha\", quem decide os vencedores é uma batalha contra chefes, ao vivo na sua tela: os espectadores entram pelo seu chat com o comando de participar, e cada um vira um herói.\nAs opções da batalha (corações, hora de falar, quem pode entrar…) começam pelas do seu último sorteio. Ao confirmar o resultado no jogo, os vencedores entram neste sorteio na ordem em que entraram na batalha, e com um prêmio por vencedor quem entrou primeiro fica com o primeiro prêmio.\nO jogo também tem uma página pública, sem login, em /games/boss-draw/: ela só mostra os vencedores na tela e não registra nada.",
+                'battle_text' => "Com \"Sortear com batalha\", quem decide os vencedores é uma batalha contra chefes, ao vivo na sua tela: os espectadores entram pelo seu chat com o comando de participar, e cada um vira um herói. Num sorteio com prêmio definido para cada vencedor, arraste os prêmios para a ordem de entrega e marque os de uma rodada antes de abrir a batalha: ela sorteia um vencedor por prêmio marcado.\nAs opções da batalha (corações, hora de falar, quem pode entrar…) começam pelas do seu último sorteio. Ao confirmar o resultado no jogo, os vencedores entram neste sorteio na ordem em que entraram na batalha, e com um prêmio por vencedor quem entrou primeiro fica com o primeiro prêmio.\nO jogo também tem uma página pública, sem login, em /games/boss-draw/: ela só mostra os vencedores na tela e não registra nada.",
                 'claim_title' => 'O link de resgate',
                 'claim_text' => "Cada vencedor recebe um link para mandar no privado ou postar no chat. Ligue \"Postar o link do vencedor no chat\" no sorteio e o bot do chat marca cada novo vencedor com o link assim que ele é registrado.\nEle pede para entrar com a Twitch e só abre para a conta do próprio vencedor, então um link vazado não serve para mais ninguém.\nDepois de resgatada, a chave fica em \"Meus prêmios\" do vencedor.",
                 'private_title' => 'Se o seu cofre é privado',
@@ -2462,6 +2462,12 @@ return [
             'lang_export_hint' => 'Baixa todos os textos alterados (todos os idiomas) em JSON, para virarem os padrões no código',
             'game_draw' => 'Sortear com batalha',
             'post_winner_link_hint' => 'o bot marca cada novo vencedor com o link de resgate',
+            'prize_order' => 'Ordem',
+            'prize_drag' => 'Arraste para mudar a ordem (ou use as setas do teclado)',
+            'prize_order_hint' => 'Os vencedores recebem os prêmios nesta ordem: o primeiro vencedor fica com o primeiro prêmio livre. Arraste para mudar.',
+            'prize_order_round_hint' => 'Os vencedores recebem os prêmios nesta ordem: arraste para mudar. Para uma batalha, marque os prêmios da rodada: ela sorteia um vencedor por prêmio marcado, nesta ordem. Sem nenhum marcado, segue a lista.',
+            'prize_round' => 'Rodada',
+            'prize_round_pick' => '%s nesta rodada',
         ],
 
         'message' => [
@@ -2919,6 +2925,8 @@ return [
             'game_texts_refused' => 'Não salvos, porque tiram ou inventam um {marcador} que o jogo preenche: %s.',
             'winner_link_posted' => 'O bot do chat está postando o link de resgate no seu chat.',
             'winner_link_not_posted' => 'O bot do chat não conseguiu postar o link de resgate (ele não está no seu chat): copie da lista de vencedores.',
+            'game_round_follows_list' => 'Nenhum prêmio foi marcado para esta rodada. Os prêmios vão seguir a ordem da lista: o primeiro vencedor fica com o primeiro prêmio livre, o segundo com o seguinte, e assim por diante.',
+            'game_round_too_small' => 'A batalha sorteou mais vencedores do que os prêmios desta rodada. Nada foi registrado.',
         ],
         'channel_event' => [
             'follow' => 'Follow',
@@ -2991,6 +2999,10 @@ return [
             'sync_winners_hint' => 'Desligado: o jogo começa com 1 vencedor e você aumenta, até os prêmios restantes (no máximo 10).',
             'exclude_winners' => 'Deixar de fora quem já ganhou neste sorteio',
             'exclude_winners_hint' => 'Desligado: quem já ganhou pode entrar e ganhar outro prêmio.',
+            'round_chosen' => 'Prêmios desta rodada, na ordem em que são entregues:',
+            'round_list' => 'Nenhuma rodada escolhida: os prêmios seguem a lista do sorteio, começando por:',
+            'round_change' => 'Mudar',
+            'round_drag' => 'Arraste para mudar a ordem nesta batalha: o primeiro vencedor fica com o primeiro prêmio. A lista do sorteio continua na ordem dela.',
         ],
 
         'game_texts' => [

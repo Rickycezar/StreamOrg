@@ -5,6 +5,28 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.3 — 2026-10-31
+
+This release has a database migration (056: the order of a giveaway's
+prizes).
+
+### Added
+- A giveaway's prizes have an order, changed by dragging them (or with
+  the arrow keys): with a prize set per winner, winners get them in that
+  order. Until now it was the order they were added in, which is where
+  the order starts.
+- Rounds for the battle draw, in giveaways with a prize set per winner:
+  tick the prizes of the round on the giveaway page; the battle draws one
+  winner per ticked prize and gives them in the list's order. The battle
+  page lists the round's prizes, which can be dragged into another order
+  for that battle. With none ticked, a confirmation says the prizes follow
+  the list.
+
+### Changed
+- The cards view of a giveaway's prizes: each card opens with the game's
+  art, its place in the order and the round checkbox on top, and the
+  remove button beside the status.
+
 ## 0.11.2 — 2026-10-30
 
 This release has a database migration (055: the battle draw's

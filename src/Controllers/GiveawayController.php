@@ -64,7 +64,7 @@ final class GiveawayController
           LEFT JOIN giveaway_winners w ON w.id = p.winner_id
           ' . GameImages::artJoin('k.game_id') . '
               WHERE p.giveaway_id = ?
-           ORDER BY p.claimed_at NULLS FIRST, g.title, p.id'
+           ORDER BY p.position, p.id'
         );
         $stmt->execute([$giveaway['id']]);
         $prizes = $stmt->fetchAll();
@@ -341,6 +341,17 @@ final class GiveawayController
 
         flash($ok ? 'success' : 'error', __($ok ? 'ui.message.giveaway_prize_removed' : 'ui.message.not_found'));
         redirect('/giveaways/show?id=' . (int) $giveaway['id']);
+    }
+
+    /** POST /giveaways/prizes/order — the prizes in the order dragged on the giveaway page (JSON). */
+    public static function orderPrizes(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(true);
+
+        $ok = Giveaways::orderPrizes((int) Auth::id(), (int) ($_POST['id'] ?? 0), array_map('intval', explode(',', (string) ($_POST['order'] ?? ''))));
+
+        json_response(['ok' => $ok], $ok ? 200 : 404);
     }
 
     /** Records a winner by Twitch name (external result or picked by hand). */

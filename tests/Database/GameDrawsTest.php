@@ -135,6 +135,61 @@ final class GameDrawsTest extends DatabaseTestCase
         self::assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM bot_outbox WHERE user_id = {$this->user}")->fetchColumn());
     }
 
+    private function prizesOf(int $giveawayId): array
+    {
+        return array_map('intval', $this->pdo->query("SELECT id FROM giveaway_prizes WHERE giveaway_id = {$giveawayId} ORDER BY position, id")->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    private function prizeOfWinner(int $giveawayId, string $login): int
+    {
+        return (int) $this->pdo->query(
+            "SELECT p.id FROM giveaway_prizes p JOIN giveaway_winners w ON w.id = p.winner_id WHERE w.giveaway_id = {$giveawayId} AND w.twitch_login = '{$login}'"
+        )->fetchColumn();
+    }
+
+    public function testPrizesAreGivenInTheOrderTheStreamerSet(): void
+    {
+        $g = $this->giveaway('assigned', 3);
+        [$a, $b, $c] = $this->prizesOf($g);
+
+        self::assertTrue(Giveaways::orderPrizes($this->user, $g, [$c, $a]));
+        self::assertSame([$c, $a, $b], $this->prizesOf($g), 'Prizes left out keep their place after the ones given.');
+        self::assertSame([$c, $a, $b], array_column(GameDraws::freePrizes($g), 'id'));
+
+        GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['first_in', 'second_in']));
+        self::assertSame($c, $this->prizeOfWinner($g, 'first_in'));
+        self::assertSame($a, $this->prizeOfWinner($g, 'second_in'));
+
+        self::assertFalse(Giveaways::orderPrizes($this->createUser('phpunit_stranger'), $g, [$b]), 'Only the giveaway\'s owner orders it.');
+    }
+
+    public function testARoundGivesItsChosenPrizesInItsOrder(): void
+    {
+        $g        = $this->giveaway('assigned', 4);
+        $giveaway = Giveaways::find($this->user, $g);
+        [$a, $b, $c, $d] = $this->prizesOf($g);
+
+        $round = GameDraws::roundOf($giveaway, "{$d},{$b},999999,{$d}");
+        self::assertSame([$d, $b], $round, 'Only free prizes of this giveaway, once each, in the order given.');
+
+        $config = GameDraws::config($this->user, $giveaway, self::GAME, null, $round);
+        self::assertSame(2, $config['winners']);
+        self::assertSame(2, $config['maxWinners']);
+
+        GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['round_one', 'round_two']), $round);
+        self::assertSame($d, $this->prizeOfWinner($g, 'round_one'));
+        self::assertSame($b, $this->prizeOfWinner($g, 'round_two'));
+        self::assertSame([], GameDraws::roundOf($giveaway, "{$d},{$b}"), 'A round\'s prizes, once won, are no longer free.');
+
+        try {
+            GameDraws::record($this->user, $g, self::GAME, $this->gameResult(['too', 'many']), [$c]);
+            self::fail('More winners than the round has prizes.');
+        } catch (UserError) {
+        }
+
+        self::assertSame([], GameDraws::roundOf(Giveaways::find($this->user, $this->giveaway('pick', 2)), "{$a}"), 'Rounds are for prizes set per winner.');
+    }
+
     public function testAResultIsRecordedWholeOrNotAtAll(): void
     {
         $g = $this->giveaway('pick', 3);

@@ -1456,7 +1456,7 @@ td.rowactions form + form { margin-left: .3rem; }
     background-size: var(--art-w) 100%, var(--art-w) auto;
     background-position: calc(var(--art-x, 0px) - var(--cell-x, -100000px) + 3px) 0, calc(var(--art-x, 0px) - var(--cell-x, -100000px) + 3px) center;
 }
-.table-wrap > table > tbody > tr[data-row-art] > td.rowactions { background-image: none; }
+.table-wrap > table > tbody > tr[data-row-art] > td:is(.rowactions, .no-art) { background-image: none; }
 
 :is(td.rowactions, .icon-actions) .btn:has(> .btn-label) {
     display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
@@ -1602,6 +1602,8 @@ label > .keyfield { display: flex; }
 label > .keyfield .key-field { flex: 1; }
 
 .confirm-message p { font-size: .92rem; line-height: 1.5; }
+.confirm-plain { margin-bottom: 1rem; }
+.confirm-plain p { margin: 0; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; }
 .btn.danger-btn { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
 .btn.danger-btn:hover { background: var(--danger-hover); border-color: var(--danger-hover); color: var(--on-danger); }
@@ -3804,3 +3806,53 @@ tr.page-hidden { display: none !important; }
 .game-texts-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; }
 .game-texts-add label { max-width: 14rem; margin: 0; }
 .game-text-needs { display: block; margin-top: .2rem; font-family: "Cascadia Mono", ui-monospace, Consolas, monospace; }
+.prize-table .col-order { width: 1px; white-space: nowrap; }
+.prize-table .col-round { text-align: center; white-space: nowrap; min-width: 5.5rem; }
+.prize-table .col-round input { width: 18px; height: 18px; }
+.drag-handle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 30px; padding: 0; margin-right: .2rem; border: 0; border-radius: var(--radius); background: none; color: var(--text-2); cursor: grab; touch-action: none; vertical-align: middle; }
+.drag-handle:hover, .drag-handle:focus-visible { background: var(--surface-2); color: var(--text); }
+.drag-handle .icon { width: 16px; height: 16px; }
+.prize-pos {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; padding: 0 .4rem;
+    border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent);
+    font-size: .95rem; font-weight: 700; font-variant-numeric: tabular-nums; vertical-align: middle;
+}
+.prize-table td.rowactions, .prize-table th.col-actions { position: static; }
+.prize-table td.rowactions::before, .prize-table td.rowactions::after,
+.prize-table th.col-actions::before, .prize-table th.col-actions::after { content: none; }
+.prize-table tr.dragging { opacity: .6; outline: 2px dashed var(--accent-border); outline-offset: -2px; }
+.prize-table tr.dragging .drag-handle { cursor: grabbing; }
+.prize-order-hint { margin: 0 0 .6rem; }
+.game-draw-round { margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--border-soft); }
+.game-draw-round p { margin: 0 0 .4rem; }
+.game-draw-round ol { margin: 0; padding: 0; list-style: none; display: grid; gap: .3rem; }
+.game-draw-round li { display: flex; align-items: center; gap: .45rem; padding: .3rem .5rem .3rem .2rem; border-radius: var(--radius); background: var(--surface-2); }
+.game-draw-round li .prize-pos { min-width: 26px; height: 26px; font-size: .85rem; }
+.game-draw-round li.dragging { opacity: .7; outline: 2px dashed var(--accent-border); }
+.game-draw-round li.done { color: var(--text-2); }
+.game-draw-round li.done > span:last-child { text-decoration: line-through; }
+.game-draw-round li.done .drag-handle { visibility: hidden; }
+.game-draw-round-hint { margin: .4rem 0 0; }
+.round-pick { display: inline-flex; align-items: center; gap: .4rem; margin: 0; cursor: pointer; }
+.round-pick > span { display: none; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr { position: relative; overflow: hidden; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) .card-cover { aspect-ratio: 460 / 160; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td:is(.col-order, .col-round) {
+    position: absolute; top: .6rem; z-index: 1; flex: none; width: auto; min-width: 0;
+    display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .4rem;
+    border-radius: 999px; background: color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter: blur(4px);
+    box-shadow: 0 1px 4px rgba(var(--shadow-rgb), .25);
+}
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td.col-order { left: .6rem; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td.col-round { right: .6rem; padding: .3rem .7rem; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td.col-round:not(:has(input)) { display: none; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td.col-round::before { content: none; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) .round-pick > span { display: inline; font-size: .78rem; font-weight: 600; color: var(--text); }
+:root[data-view="cards"] .prize-table:has(td[data-label]) .drag-handle { margin: 0; height: 26px; width: 22px; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) .prize-pos { min-width: 26px; height: 26px; font-size: .88rem; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td.cell-last { flex: 1 1 calc(100% - 3rem); }
+:root[data-view="cards"] .prize-table:has(td[data-label]) .badge { white-space: normal; overflow-wrap: anywhere; }
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr > td.rowactions {
+    order: 100; flex: none; align-self: flex-end; margin: 0 0 0 auto; padding: 0; border-top: 0;
+}
+:root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr.dragging { opacity: .7; outline: 2px dashed var(--accent-border); outline-offset: 2px; }

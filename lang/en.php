@@ -752,7 +752,7 @@ return [
                 'winners_title' => 'Winners',
                 'winners_text' => "Search for each winner by their Twitch name and pick them from the results: the prize is tied to that account and nobody else.\nEach winner has a few days to claim; you can extend the time, or withdraw a prize and choose someone else.",
                 'battle_title' => 'Draw with a battle',
-                'battle_text' => "With \"Draw with a battle\", a battle against bosses decides the winners, live on your screen: viewers enter through your chat with the join command, and each becomes a hero.\nThe battle's options (hearts, time to speak, who may enter…) start from your last draw. When you confirm the result in the game, the winners join this giveaway in the order they entered the battle, and with a prize set per winner whoever entered first gets the first prize.\nThe game also has a public page, no sign-in needed, at /games/boss-draw/: it only shows the winners on screen and records nothing.",
+                'battle_text' => "With \"Draw with a battle\", a battle against bosses decides the winners, live on your screen: viewers enter through your chat with the join command, and each becomes a hero. In a giveaway with a prize set per winner, drag the prizes into the order they are given in, and tick the ones of a round before opening the battle: it draws one winner per ticked prize.\nThe battle's options (hearts, time to speak, who may enter…) start from your last draw. When you confirm the result in the game, the winners join this giveaway in the order they entered the battle, and with a prize set per winner whoever entered first gets the first prize.\nThe game also has a public page, no sign-in needed, at /games/boss-draw/: it only shows the winners on screen and records nothing.",
                 'claim_title' => 'The claim link',
                 'claim_text' => "Each winner gets a link to send privately or post in the chat. Turn on \"Post the winner's link in chat\" on the giveaway and the chat bot tags each new winner with their link as soon as they are recorded.\nIt asks them to sign in with Twitch and only opens for the winner's own account, so a leaked link is useless to anyone else.\nOnce claimed, the key stays in the winner's \"My prizes\".",
                 'private_title' => 'If your vault is private',
@@ -2463,6 +2463,12 @@ return [
             'lang_export_hint' => 'Download every edited text (all languages) as JSON, to make them the defaults in the code',
             'game_draw' => 'Draw with a battle',
             'post_winner_link_hint' => 'the bot tags each new winner with their claim link',
+            'prize_order' => 'Order',
+            'prize_drag' => 'Drag to change the order (or use the arrow keys)',
+            'prize_order_hint' => 'Winners get the prizes in this order: the first winner, the first free prize. Drag to change it.',
+            'prize_order_round_hint' => 'Winners get the prizes in this order: drag to change it. For a battle, tick the prizes of the round: it draws one winner per ticked prize, in this order. With none ticked, it follows the list.',
+            'prize_round' => 'Round',
+            'prize_round_pick' => '%s in this round',
         ],
 
         'message' => [
@@ -2920,6 +2926,8 @@ return [
             'game_texts_refused' => 'Not saved, because they drop or invent a {placeholder} the game fills in: %s.',
             'winner_link_posted' => 'The chat bot is posting the claim link in your chat.',
             'winner_link_not_posted' => 'The chat bot could not post the claim link (it is not in your chat): copy it from the winners list.',
+            'game_round_follows_list' => 'No prize is ticked for this round. The prizes will follow the list\'s order: the first winner gets the first free prize, the second the next one, and so on.',
+            'game_round_too_small' => 'The battle drew more winners than the prizes of this round. Nothing was recorded.',
         ],
         'channel_event' => [
             'follow' => 'Follow',
@@ -2992,6 +3000,10 @@ return [
             'sync_winners_hint' => 'Off: the game starts at 1 winner and you raise it, up to the prizes left (at most 10).',
             'exclude_winners' => 'Leave out who already won this giveaway',
             'exclude_winners_hint' => 'Off: past winners may enter and win another prize.',
+            'round_chosen' => 'Prizes of this round, in the order they are given:',
+            'round_list' => 'No round chosen: the prizes follow the giveaway\'s list, starting with:',
+            'round_change' => 'Change',
+            'round_drag' => 'Drag to change the order for this battle: the first winner gets the first prize. The giveaway\'s own list keeps its order.',
         ],
 
         'game_texts' => [

@@ -2451,15 +2451,19 @@
     }
 
 
-    /** Blocking confirmation in the modal. Resolves true only on confirm. */
-    function confirmModal(title, message) {
+    /**
+     * Blocking confirmation in the modal. Resolves true only on confirm.
+     * A plain one is a heads-up rather than a warning: neutral colours
+     * and a primary button.
+     */
+    function confirmModal(title, message, plain) {
         return new Promise(function (resolve) {
             const body = openModal(title);
 
             if (!body) { resolve(window.confirm(message)); return; }
 
             const warn = document.createElement('div');
-            warn.className = 'detail-problems confirm-message';
+            warn.className = plain ? 'confirm-message confirm-plain' : 'detail-problems confirm-message';
             message.split('\n').forEach(function (line) {
                 const p = document.createElement('p');
                 p.textContent = line;
@@ -2477,7 +2481,7 @@
 
             const yes = document.createElement('button');
             yes.type = 'button';
-            yes.className = 'btn danger-btn';
+            yes.className = plain ? 'btn primary' : 'btn danger-btn';
             yes.textContent = (window.STREAMORG_L || {}).confirm_anyway || 'Confirm';
 
             let settled = false;
@@ -2952,7 +2956,7 @@
             xs.push(cell.offsetLeft);
             if (!visible) return;
             lastShown = i;
-            if (artX === null && !cell.classList.contains('rowactions')) artX = cell.offsetLeft;
+            if (artX === null && !cell.classList.contains('rowactions') && !cell.classList.contains('no-art')) artX = cell.offsetLeft;
         });
 
         table.style.setProperty('--art-x', (artX || 0) + 'px');
@@ -5017,11 +5021,120 @@
     });
 
     /**
+     * Items of a list put in another order by dragging their handle
+     * ([data-drag-handle], mouse or touch), or with the arrow keys on it;
+     * rows of a table, or cards of a grid. onChange runs after each move.
+     */
+    function dragSort(list, onChange) {
+        let dragged = null;
+
+        list.addEventListener('pointerdown', function (event) {
+            const handle = event.target.closest('[data-drag-handle]');
+            if (!handle || event.button > 0) return;
+            dragged = Array.from(list.children).find(function (item) { return item.contains(handle); }) || null;
+            if (!dragged) return;
+            event.preventDefault();
+            dragged.classList.add('dragging');
+            handle.setPointerCapture(event.pointerId);
+        });
+
+        list.addEventListener('pointermove', function (event) {
+            if (!dragged) return;
+            const over = document.elementFromPoint(event.clientX, event.clientY);
+            const item = over ? Array.from(list.children).find(function (child) { return child.contains(over); }) : null;
+            if (!item || item === dragged) return;
+            const box = item.getBoundingClientRect();
+            const grid = getComputedStyle(list).display === 'grid';
+            const after = grid ? event.clientX > box.left + box.width / 2 : event.clientY > box.top + box.height / 2;
+            list.insertBefore(dragged, after ? item.nextSibling : item);
+        });
+
+        const drop = function () {
+            if (!dragged) return;
+            dragged.classList.remove('dragging');
+            dragged = null;
+            onChange();
+        };
+
+        list.addEventListener('pointerup', drop);
+        list.addEventListener('pointercancel', drop);
+
+        list.addEventListener('keydown', function (event) {
+            const handle = event.target.closest('[data-drag-handle]');
+            const earlier = event.key === 'ArrowUp' || event.key === 'ArrowLeft';
+            const later = event.key === 'ArrowDown' || event.key === 'ArrowRight';
+            if (!handle || (!earlier && !later)) return;
+            event.preventDefault();
+            const item = Array.from(list.children).find(function (child) { return child.contains(handle); });
+            if (!item) return;
+
+            if (earlier && item.previousElementSibling) list.insertBefore(item, item.previousElementSibling);
+            if (later && item.nextElementSibling) list.insertBefore(item.nextElementSibling, item);
+            handle.focus();
+            onChange();
+        });
+    }
+
+    /** A giveaway's prize order ([data-prize-order]): each change is saved, and the numbers follow. */
+    onPage(function () {
+        const body = document.querySelector('[data-prize-order]');
+        if (!body) return;
+
+        let saved = Array.from(body.rows).map(function (row) { return row.dataset.prize; }).join(',');
+
+        dragSort(body, async function () {
+            Array.from(body.rows).forEach(function (row, i) {
+                const pos = row.querySelector('[data-prize-pos]');
+                if (pos) pos.textContent = String(i + 1);
+            });
+
+            const order = Array.from(body.rows).map(function (row) { return row.dataset.prize; }).join(',');
+            if (order === saved) return;
+
+            const answer = await postJson('/giveaways/prizes/order', { id: body.dataset.id, order: order });
+            if (answer.ok) {
+                saved = order;
+            } else if (window.Turbo) {
+                window.Turbo.visit(window.location.href, { action: 'replace' });
+            } else {
+                window.location.reload();
+            }
+        });
+    });
+
+    /**
+     * "Draw with a battle" in a giveaway with a prize set per winner
+     * ([data-battle-round]): the prizes ticked for the round go along, in
+     * the list's order; with none ticked, a confirmation that the prizes
+     * follow the list.
+     */
+    document.addEventListener('click', async function (event) {
+        const link = event.target.closest('[data-battle-round]');
+        if (!link || event.button > 0 || event.ctrlKey || event.metaKey) return;
+        event.preventDefault();
+
+        const ids = Array.from(document.querySelectorAll('[data-round-prize]:checked')).map(function (box) { return box.value; });
+        let href = link.href;
+
+        if (ids.length > 0) {
+            href += '&prizes=' + ids.join(',');
+        } else if (!(await confirmModal(link.dataset.confirmTitle, link.dataset.confirmText, true))) {
+            return;
+        }
+
+        if (window.Turbo) window.Turbo.visit(href);
+        else window.location.href = href;
+    });
+
+    /**
      * A giveaway's draw by a hosted game ([data-game-draw]): speaks the
      * integration contract with the sandboxed frame (config on ready,
      * commands, settings), records the confirmed result as the giveaway's
      * winners and answers it with bossdraw:saved, and warns before leaving
-     * while a draw is under way.
+     * while a draw is under way. The prizes listed can be dragged into the
+     * order this battle gives them in (data-prizes, sent with the result);
+     * a round chosen on the giveaway page (data-round) also sets the
+     * number of winners.
      */
     onPage(function () {
         const root = document.querySelector('[data-game-draw]');
@@ -5069,7 +5182,7 @@
 
             let answer;
             try {
-                answer = await postJson('/giveaways/battle/result', { id: root.dataset.id, result: JSON.stringify(data.result) });
+                answer = await postJson('/giveaways/battle/result', { id: root.dataset.id, prizes: root.dataset.prizes || '', result: JSON.stringify(data.result) });
             } catch (e) {
                 answer = { ok: false, message: S.unreachable };
             }
@@ -5079,6 +5192,15 @@
             say(text, !answer.ok);
 
             if (answer.ok && answer.config) refreshed = answer.config;
+            if (answer.ok && Array.isArray(answer.round) && root.dataset.prizes) {
+                const left = answer.round.map(String);
+                root.querySelectorAll('[data-round-item]').forEach(function (item) {
+                    item.classList.toggle('done', left.indexOf(item.dataset.roundItem) === -1);
+                });
+                root.dataset.prizes = left.join(',');
+                if (root.dataset.round) root.dataset.round = left.join(',');
+                numberRound();
+            }
         };
 
         window.addEventListener('message', function (event) {
@@ -5126,6 +5248,28 @@
             if (!configured && document.body.contains(root)) say(S.noAnswer, true);
         }, 15000);
 
+        const roundList = root.querySelector('[data-round-list]');
+
+        const numberRound = function () {
+            let n = 0;
+            root.querySelectorAll('[data-round-item]').forEach(function (item) {
+                const pos = item.querySelector('[data-round-pos]');
+                if (pos) pos.textContent = item.classList.contains('done') ? '✓' : String(++n);
+            });
+        };
+
+        if (roundList) {
+            numberRound();
+            dragSort(roundList, function () {
+                const ids = Array.from(roundList.children).filter(function (item) { return !item.classList.contains('done'); })
+                    .map(function (item) { return item.dataset.roundItem; });
+                root.dataset.prizes = ids.join(',');
+                const title = root.querySelector('[data-round-title]');
+                if (title) title.textContent = title.dataset.chosen;
+                numberRound();
+            });
+        }
+
         commands.forEach(function (button) {
             button.addEventListener('click', function () {
                 if (button.dataset.confirmText && !window.confirm(button.dataset.confirmText)) return;
@@ -5144,6 +5288,7 @@
                 event.preventDefault();
                 const data = new FormData(form);
                 data.set('id', root.dataset.id);
+                data.set('prizes', root.dataset.round || '');
                 const answer = await postJson('/giveaways/battle/options', data);
 
                 if (!answer.ok || !answer.config) {

@@ -48,6 +48,62 @@ final class GameDraws
         return (int) $row['prizes'] === 0 ? null : max(0, (int) $row['free'] - (int) $row['picking']);
     }
 
+    /**
+     * The free prizes of a giveaway (no winner, not claimed), in its
+     * order; only those in $ids, in the order given, when $ids is not
+     * empty: a round's prizes. At most MAX_WINNERS.
+     *
+     * @param list<int> $ids
+     * @return list<array{id:int, game_title:string, platform_code:?string}>
+     */
+    public static function freePrizes(int $giveawayId, array $ids = []): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT p.id, g.title AS game_title, gp.code AS platform_code
+               FROM giveaway_prizes p
+               JOIN game_keys k ON k.id = p.game_key_id
+               JOIN games g ON g.id = k.game_id
+          LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
+              WHERE p.giveaway_id = ? AND p.winner_id IS NULL AND p.claimed_at IS NULL
+           ORDER BY p.position, p.id'
+        );
+        $stmt->execute([$giveawayId]);
+        $free = [];
+
+        foreach ($stmt->fetchAll() as $row) {
+            $free[(int) $row['id']] = ['id' => (int) $row['id'], 'game_title' => (string) $row['game_title'], 'platform_code' => $row['platform_code']];
+        }
+
+        if ($ids === []) {
+            return array_slice(array_values($free), 0, self::MAX_WINNERS);
+        }
+
+        $round = [];
+
+        foreach (array_unique(array_map('intval', $ids)) as $id) {
+            if (isset($free[$id])) {
+                $round[] = $free[$id];
+            }
+        }
+
+        return array_slice($round, 0, self::MAX_WINNERS);
+    }
+
+    /**
+     * A round's prizes as asked for (prize ids, comma-separated): only in
+     * a giveaway with a prize set per winner, only free ones.
+     *
+     * @return list<int>
+     */
+    public static function roundOf(array $giveaway, string $ids): array
+    {
+        if ($giveaway['winner_mode'] !== 'assigned' || trim($ids) === '') {
+            return [];
+        }
+
+        return array_column(self::freePrizes((int) $giveaway['id'], array_map('intval', explode(',', $ids))), 'id');
+    }
+
     /** @return list<string> the logins already winning this giveaway, who cannot enter again */
     public static function winnerLogins(int $giveawayId): array
     {
@@ -77,11 +133,13 @@ final class GameDraws
      * checks again. The winners start at 1, or at that most when the
      * creator syncs them with the prizes; past winners of the giveaway
      * are left out only when the creator asks for it. The options start
-     * from the creator's last ones.
+     * from the creator's last ones. A round of chosen prizes (roundOf)
+     * sets the winners to its size.
      *
      * @param ?array $options the options chosen on the page, or null for the creator's last ones
+     * @param list<int> $round the round's prizes, in the order they are given
      */
-    public static function config(int $userId, array $giveaway, string $game, ?array $options = null): array
+    public static function config(int $userId, array $giveaway, string $game, ?array $options = null, array $round = []): array
     {
         $locale   = self::locale($game);
         $prefs    = Games::preferences($userId, $game);
@@ -89,13 +147,13 @@ final class GameDraws
         $join     = ChatBot::commandsFor($userId)['join']['trigger'] ?? 'join';
         $channel  = strtolower((string) (TwitchUser::connection($userId)['twitch_login'] ?? ''));
         $texts    = Games::overrides($game, $locale);
-        $most     = max(1, min(self::MAX_WINNERS, $slots ?? self::MAX_WINNERS));
+        $most     = $round !== [] ? count($round) : max(1, min(self::MAX_WINNERS, $slots ?? self::MAX_WINNERS));
         $config   = [
             'lang'     => $locale,
             'channel'  => $channel,
             'entry'    => mb_substr('!' . $join, 0, 25),
             'prize'    => mb_substr((string) $giveaway['title'], 0, 120),
-            'winners'  => $prefs['sync_winners'] ? $most : 1,
+            'winners'  => $prefs['sync_winners'] || $round !== [] ? $most : 1,
             'maxWinners' => $most,
             'exclude'  => $prefs['exclude_winners'] ? self::winnerLogins((int) $giveaway['id']) : [],
             'lock'     => ['channel'],
@@ -116,17 +174,19 @@ final class GameDraws
     /**
      * Records a game's result as the giveaway's winners, in its order (in
      * a giveaway with a prize set per winner, the first winner gets the
-     * first prize), all or none, and keeps the result. The options it was
+     * first prize, or with a round of chosen prizes the first of the
+     * round), all or none, and keeps the result. The options it was
      * played with become the creator's next ones.
      *
      * Then the bot posts the winners' claim links in the chat, when the
      * giveaway asks for it.
      *
+     * @param list<int> $round the round's prizes (roundOf), in the order they are given
      * @return array{count:int, posted:?bool} how many winners were recorded, and whether
      *         the bot took their links for the chat (null: not asked to)
      * @throws UserError when the result does not fit this giveaway or a winner cannot be recorded
      */
-    public static function record(int $userId, int $giveawayId, string $game, mixed $result): array
+    public static function record(int $userId, int $giveawayId, string $game, mixed $result, array $round = []): array
     {
         $giveaway = Giveaways::find($userId, $giveawayId);
 
@@ -139,6 +199,12 @@ final class GameDraws
 
         if ($slots !== null && count($winners) > $slots) {
             throw new UserError(__('ui.message.giveaway_no_prizes_left'));
+        }
+
+        $round = $giveaway['winner_mode'] === 'assigned' ? array_column(self::freePrizes($giveawayId, $round), 'id') : [];
+
+        if ($round !== [] && count($winners) > count($round)) {
+            throw new UserError(__('ui.message.game_round_too_small'));
         }
 
         $accounts = [];
@@ -154,11 +220,11 @@ final class GameDraws
         }
 
         $again  = !Games::preferences($userId, $game)['exclude_winners'];
-        $tokens = Database::transaction(static function (PDO $pdo) use ($giveaway, $game, $result, $accounts, $again): array {
+        $tokens = Database::transaction(static function (PDO $pdo) use ($giveaway, $game, $result, $accounts, $again, $round): array {
             $tokens = [];
 
-            foreach ($accounts as $account) {
-                $tokens[] = Giveaways::addDrawnWinner($giveaway, $account, $again);
+            foreach ($accounts as $i => $account) {
+                $tokens[] = Giveaways::addDrawnWinner($giveaway, $account, $again, $round[$i] ?? null);
             }
 
             $pdo->prepare('INSERT INTO giveaway_game_draws (giveaway_id, game, version, winners, result) VALUES (?, ?, ?, ?, CAST(? AS jsonb))')

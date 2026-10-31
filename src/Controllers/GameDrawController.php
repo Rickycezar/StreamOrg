@@ -26,7 +26,8 @@ final class GameDrawController
         }
 
         $locale = GameDraws::locale(self::GAME);
-        $config = GameDraws::config($userId, $giveaway, self::GAME);
+        $round  = GameDraws::roundOf($giveaway, (string) ($_GET['prizes'] ?? ''));
+        $config = GameDraws::config($userId, $giveaway, self::GAME, null, $round);
 
         View::render('giveaways/battle', [
             'giveaway' => $giveaway,
@@ -38,6 +39,9 @@ final class GameDrawController
             'canDraw'  => GameDraws::canDraw($giveaway),
             'options'  => Games::options(self::GAME),
             'rules'    => Games::preferences($userId, self::GAME),
+            'round'    => $round,
+            'prizes'   => $giveaway['winner_mode'] === 'assigned'
+                ? GameDraws::freePrizes((int) $giveaway['id'], $round) : [],
             'texts'    => Games::texts(self::GAME, $locale),
         ], __('ui.label.game_draw') . ' · ' . $giveaway['title']);
     }
@@ -52,8 +56,9 @@ final class GameDrawController
         $giveaway = self::giveaway($userId);
         $options  = Games::saveOptions($userId, self::GAME, (array) ($_POST['options'] ?? []));
         GameDraws::saveRules($userId, self::GAME, !empty($_POST['sync_winners']), !empty($_POST['exclude_winners']));
+        $round = GameDraws::roundOf($giveaway, (string) ($_POST['prizes'] ?? ''));
 
-        json_response(['ok' => true, 'config' => GameDraws::config($userId, $giveaway, self::GAME, $options)]);
+        json_response(['ok' => true, 'config' => GameDraws::config($userId, $giveaway, self::GAME, $options, $round)]);
     }
 
     /** POST /giveaways/battle/settings — keeps the settings the game asked to save. */
@@ -80,9 +85,10 @@ final class GameDrawController
         $userId   = (int) Auth::id();
         $giveaway = self::giveaway($userId);
         $result   = json_decode((string) ($_POST['result'] ?? ''), true);
+        $round    = GameDraws::roundOf($giveaway, (string) ($_POST['prizes'] ?? ''));
 
         try {
-            $recorded = GameDraws::record($userId, (int) $giveaway['id'], self::GAME, $result);
+            $recorded = GameDraws::record($userId, (int) $giveaway['id'], self::GAME, $result, $round);
         } catch (UserError $e) {
             json_response(['ok' => false, 'message' => $e->getMessage()], 422);
         } catch (Throwable $e) {
@@ -94,7 +100,8 @@ final class GameDrawController
             'ok'      => true,
             'message' => sprintf(__('ui.message.game_winners_recorded'), $recorded['count'])
                 . match ($recorded['posted']) { true => ' ' . __('ui.message.winner_link_posted'), false => ' ' . __('ui.message.winner_link_not_posted'), null => '' },
-            'config'  => GameDraws::config($userId, Giveaways::find($userId, (int) $giveaway['id']) ?? $giveaway, self::GAME),
+            'round'   => $left = GameDraws::roundOf($giveaway, implode(',', $round)),
+            'config'  => GameDraws::config($userId, Giveaways::find($userId, (int) $giveaway['id']) ?? $giveaway, self::GAME, null, $left),
         ]);
     }
 

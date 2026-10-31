@@ -118,7 +118,10 @@ final class Giveaways
                FROM game_keys k JOIN games g ON g.id = k.game_id
               WHERE k.id = ? AND k.user_id = ?"
         );
-        $insert = $pdo->prepare('INSERT INTO giveaway_prizes (giveaway_id, game_key_id) VALUES (?, ?)');
+        $insert = $pdo->prepare(
+            'INSERT INTO giveaway_prizes (giveaway_id, game_key_id, position)
+             VALUES (?, ?, (SELECT coalesce(max(position), 0) + 1 FROM giveaway_prizes WHERE giveaway_id = ?))'
+        );
 
         $added   = 0;
         $skipped = [];
@@ -136,7 +139,7 @@ final class Giveaways
                 continue;
             }
 
-            $insert->execute([$giveawayId, $keyId]);
+            $insert->execute([$giveawayId, $keyId, $giveawayId]);
             $pdo->prepare("UPDATE game_keys SET status = 'for_giveaway', updated_at = now() WHERE id = ? AND status = 'available'")->execute([$keyId]);
             $added++;
         }
@@ -360,13 +363,44 @@ final class Giveaways
     /**
      * Records a winner a game drew (GameDraws), with the Twitch account
      * already looked up; inside the caller's transaction. With $again, a
-     * past winner of the giveaway may win once more (another prize).
+     * past winner of the giveaway may win once more (another prize). With
+     * $prizeId, in a giveaway with a prize set per winner, that prize is
+     * theirs (it must still be free) instead of the next in order.
      *
      * @param array{ref:string, login:string, name:string} $account
      */
-    public static function addDrawnWinner(array $giveaway, array $account, bool $again = false): string
+    public static function addDrawnWinner(array $giveaway, array $account, bool $again = false, ?int $prizeId = null): string
     {
-        return self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], 'draw', null, $again);
+        return self::recordWinner($giveaway, $account['ref'], $account['login'], $account['name'], 'draw', $prizeId, $again);
+    }
+
+    /**
+     * Puts a giveaway's prizes in the order given (prize ids, as dragged
+     * on the giveaway page): the order a giveaway with a prize set per
+     * winner gives them in. Prizes left out keep their order after them.
+     *
+     * @param list<int> $prizeIds
+     */
+    public static function orderPrizes(int $userId, int $giveawayId, array $prizeIds): bool
+    {
+        if (self::find($userId, $giveawayId) === null) {
+            return false;
+        }
+
+        return Database::transaction(static function (PDO $pdo) use ($giveawayId, $prizeIds): bool {
+            $stmt = $pdo->prepare('SELECT id FROM giveaway_prizes WHERE giveaway_id = ? ORDER BY position, id FOR UPDATE');
+            $stmt->execute([$giveawayId]);
+            $current = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+            $given   = array_values(array_intersect(array_unique(array_map('intval', $prizeIds)), $current));
+            $order   = array_merge($given, array_values(array_diff($current, $given)));
+            $set     = $pdo->prepare('UPDATE giveaway_prizes SET position = ? WHERE id = ?');
+
+            foreach ($order as $i => $id) {
+                $set->execute([$i + 1, $id]);
+            }
+
+            return true;
+        });
     }
 
     /** Withdraws a winner whose prize was not claimed; an assigned prize is freed. */
@@ -1036,7 +1070,7 @@ final class Giveaways
                       WHERE id = (SELECT id FROM giveaway_prizes
                                    WHERE giveaway_id = ? AND winner_id IS NULL AND claimed_at IS NULL'
                     . ($prizeId !== null ? ' AND id = ?' : '') . '
-                                ORDER BY id LIMIT 1 FOR UPDATE)'
+                                ORDER BY position, id LIMIT 1 FOR UPDATE)'
                 );
                 $assign->execute($prizeId !== null ? [$winnerId, $giveaway['id'], $prizeId] : [$winnerId, $giveaway['id']]);
 
