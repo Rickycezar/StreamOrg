@@ -1893,6 +1893,7 @@ return [
             'together_discard' => 'Discard the draft',
             'together_finish_draft' => 'Set the time and invite',
             'lang_export' => 'Download edits',
+            'badges_load' => 'Load my channel\'s badges',
         ],
 
         'field' => [
@@ -2028,6 +2029,7 @@ return [
             'duration' => 'Length',
             'title_order' => 'Order of the title',
             'post_winner_link' => 'Post the winner\'s link in chat',
+            'badge_gate' => 'Prizes only for badge holders',
         ],
 
         'label' => [
@@ -2469,6 +2471,11 @@ return [
             'prize_order_round_hint' => 'Winners get the prizes in this order: drag to change it. For a battle, tick the prizes of the round: it draws one winner per ticked prize, in this order. With none ticked, it follows the list.',
             'prize_round' => 'Round',
             'prize_round_pick' => '%s in this round',
+            'badge_gate_hint' => 'only viewers showing one of the badges you choose can enter the battle draw',
+            'badges_loading' => 'Loading your channel\'s badges…',
+            'badges_none' => 'Your channel has no campaign badges on Twitch.',
+            'badges_showing_hint' => 'Twitch only shows the badge a viewer is displaying in chat.',
+            'badges_only' => 'Only for badge holders',
         ],
 
         'message' => [
@@ -2928,6 +2935,9 @@ return [
             'winner_link_not_posted' => 'The chat bot could not post the claim link (it is not in your chat): copy it from the winners list.',
             'game_round_follows_list' => 'No prize is ticked for this round. The prizes will follow the list\'s order: the first winner gets the first free prize, the second the next one, and so on.',
             'game_round_too_small' => 'The battle drew more winners than the prizes of this round. Nothing was recorded.',
+            'badges_no_channel' => 'Connect your Twitch account to use your channel\'s badges.',
+            'badges_unknown' => 'That badge is not one of your channel\'s campaign badges any more. Load the list again.',
+            'badges_choose' => 'Choose at least one badge, or switch off "Prizes only for badge holders".',
         ],
         'channel_event' => [
             'follow' => 'Follow',

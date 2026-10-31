@@ -127,6 +127,7 @@ $routes = [
         '/giveaways/show'    => [GiveawayController::class, 'show'],
         '/giveaways/battle'  => [GameDrawController::class, 'show'],
         '/giveaways/winners/search' => [GiveawayController::class, 'searchWinner'],
+        '/giveaways/badges'  => [GiveawayController::class, 'badges'],
         '/negotiations'      => [NegotiationController::class, 'index'],
         '/content'           => [ContentController::class, 'index'],
         '/catalog'           => [CatalogController::class, 'index'],

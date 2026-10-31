@@ -268,7 +268,10 @@
         }
 
         .hint:empty { display: none; }
-        .hint small { display: block; color: var(--ui-ink); font-size: 15px; font-weight: 600; }
+        .hint { max-width: 1180px; }
+        .hint-badge { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--ui-gold); }
+        .hint-badge img { width: 18px; height: 18px; image-rendering: pixelated; }
+        .hint small { display: block; color: var(--ui-ink); font-size: 15px; font-weight: 600; white-space: normal; }
 
         .gate {
             position: fixed;

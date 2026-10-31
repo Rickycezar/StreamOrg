@@ -56,6 +56,13 @@ $current = (array) $config['options'];
             <?= sprintf(e(__('ui.game_draw.intro')), '<code>' . e($config['entry']) . '</code>', '<strong>' . (int) $config['maxWinners'] . '</strong>') ?>
             <?php if ($slots === null): ?><span class="muted"><?= e(__('ui.game_draw.no_prizes')) ?></span><?php endif; ?>
         </p>
+        <?php if (($badges = GiveawayBadges::of($giveaway)) !== []): ?>
+            <p class="giveaway-badges small"><strong><?= e(__('ui.label.badges_only')) ?>:</strong>
+                <?php foreach ($badges as $badge): ?>
+                    <span class="badge-chip"><?php if (($badge['image'] ?? '') !== ''): ?><img src="<?= e((string) $badge['image']) ?>" alt="" width="18" height="18"><?php endif; ?><?= e((string) $badge['title']) ?></span>
+                <?php endforeach; ?>
+            </p>
+        <?php endif; ?>
         <div class="card-actions game-draw-controls">
             <span class="badge" data-game-draw-phase><?= e(__('ui.game_draw.waiting')) ?></span>
             <button type="button" class="btn" data-game-command="open" disabled><?= e(__('ui.game_draw.cmd_open')) ?></button>

@@ -34,6 +34,7 @@
   "entries.closed_wait": "Waiting for the streamer to open them",
   "entries.only_subs": "Subscribers only",
   "entries.only_subs_vips": "Subscribers and VIPs only",
+  "entries.badges_only": "Only with the badge:",
   "page.title": "Boss Battle",
   "page.sound_gate": "Click to enable sound",
   "page.speed": "Speed",

@@ -1892,6 +1892,7 @@ return [
             'together_discard' => 'Descartar rascunho',
             'together_finish_draft' => 'Definir horário e convidar',
             'lang_export' => 'Baixar alterações',
+            'badges_load' => 'Carregar as insígnias do canal',
         ],
 
         'field' => [
@@ -2027,6 +2028,7 @@ return [
             'duration' => 'Duração',
             'title_order' => 'Ordem do título',
             'post_winner_link' => 'Postar o link do vencedor no chat',
+            'badge_gate' => 'Prêmios só para quem tem insígnia',
         ],
 
         'label' => [
@@ -2468,6 +2470,11 @@ return [
             'prize_order_round_hint' => 'Os vencedores recebem os prêmios nesta ordem: arraste para mudar. Para uma batalha, marque os prêmios da rodada: ela sorteia um vencedor por prêmio marcado, nesta ordem. Sem nenhum marcado, segue a lista.',
             'prize_round' => 'Rodada',
             'prize_round_pick' => '%s nesta rodada',
+            'badge_gate_hint' => 'só quem estiver exibindo uma das insígnias escolhidas entra no sorteio com batalha',
+            'badges_loading' => 'Carregando as insígnias do seu canal…',
+            'badges_none' => 'Seu canal não tem insígnias de campanha na Twitch.',
+            'badges_showing_hint' => 'A Twitch só mostra a insígnia que a pessoa está exibindo no chat.',
+            'badges_only' => 'Só para quem tem a insígnia',
         ],
 
         'message' => [
@@ -2927,6 +2934,9 @@ return [
             'winner_link_not_posted' => 'O bot do chat não conseguiu postar o link de resgate (ele não está no seu chat): copie da lista de vencedores.',
             'game_round_follows_list' => 'Nenhum prêmio foi marcado para esta rodada. Os prêmios vão seguir a ordem da lista: o primeiro vencedor fica com o primeiro prêmio livre, o segundo com o seguinte, e assim por diante.',
             'game_round_too_small' => 'A batalha sorteou mais vencedores do que os prêmios desta rodada. Nada foi registrado.',
+            'badges_no_channel' => 'Conecte sua conta da Twitch para usar as insígnias do seu canal.',
+            'badges_unknown' => 'Essa insígnia não é mais uma das insígnias de campanha do seu canal. Carregue a lista de novo.',
+            'badges_choose' => 'Escolha pelo menos uma insígnia, ou desligue "Prêmios só para quem tem insígnia".',
         ],
         'channel_event' => [
             'follow' => 'Follow',

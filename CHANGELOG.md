@@ -5,6 +5,17 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.4 — 2026-10-31
+
+This release has a database migration (057: badge-gated giveaways).
+
+### Added
+- Badge-gated giveaways: "Prizes only for badge holders" in the giveaway
+  form lists the campaign badges of the streamer's Twitch channel, by
+  name and icon, to choose one or more. Only viewers showing one of them
+  can enter the giveaway's battle draws (boss-draw 1.3.0); the giveaway
+  page shows them, with a link to change them.
+
 ## 0.11.3 — 2026-10-31
 
 This release has a database migration (056: the order of a giveaway's

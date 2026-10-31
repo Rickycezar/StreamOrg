@@ -3856,3 +3856,19 @@ tr.page-hidden { display: none !important; }
     order: 100; flex: none; align-self: flex-end; margin: 0 0 0 auto; padding: 0; border-top: 0;
 }
 :root[data-view="cards"] .prize-table:has(td[data-label]) > tbody > tr.dragging { opacity: .7; outline: 2px dashed var(--accent-border); outline-offset: 2px; }
+.badge-picker { margin: -.3rem 0 1rem 1.6rem; padding: .7rem .8rem; border: 1px solid var(--border-soft); border-radius: var(--radius); background: var(--surface-2); }
+.badge-options { display: flex; flex-wrap: wrap; gap: .4rem; }
+.badge-options:empty { display: none; }
+.badge-option { display: inline-flex; align-items: center; gap: .4rem; margin: 0; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); cursor: pointer; font-size: .88rem; }
+.badge-option:has(input:checked) { border-color: var(--accent-border); background: var(--accent-soft); color: var(--text); }
+.badge-option img, .badge-chip img { width: 18px; height: 18px; image-rendering: auto; }
+.badge-status { margin: .4rem 0 0; }
+.badge-picker-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; margin-top: .6rem; }
+.badge-picker-foot .btn { display: inline-flex; align-items: center; gap: .35rem; }
+.badge-picker-foot .btn .icon { width: 13px; height: 13px; }
+.giveaway-badges dd { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.badge-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem .15rem .35rem; border: 1px solid var(--accent-border); border-radius: 999px; background: var(--accent-soft); font-size: .85rem; }
+p.giveaway-badges { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: -.3rem 0 .9rem; }
+label.badge-option > span { display: inline; margin: 0; font-size: .88rem; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text); }
+.giveaway-summary .giveaway-badges { grid-column: 1 / -1; }
+.badge-chip { white-space: nowrap; }

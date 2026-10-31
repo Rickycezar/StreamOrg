@@ -83,6 +83,28 @@ $local = static fn (?string $at): string => $at ? substr(str_replace(' ', 'T', $
         <input type="checkbox" name="post_winner_link" value="1" <?= !$g || !empty($g['post_winner_link']) ? 'checked' : '' ?>>
         <span><?= e(__('ui.field.post_winner_link')) ?> <small class="muted"><?= e(__('ui.label.post_winner_link_hint')) ?></small></span>
     </label>
+    <?php $gate = !empty($g['badge_gate']); $chosen = $g !== null ? GiveawayBadges::of(['badge_gate' => true] + $g) : []; ?>
+    <label class="inline">
+        <input type="checkbox" name="badge_gate" value="1" data-badge-gate <?= $gate ? 'checked' : '' ?>>
+        <span><?= e(__('ui.field.badge_gate')) ?> <small class="muted"><?= e(__('ui.label.badge_gate_hint')) ?></small></span>
+    </label>
+    <div class="badge-picker" data-badge-picker data-url="<?= e(url('/giveaways/badges')) ?>"
+         data-loading="<?= e(__('ui.label.badges_loading')) ?>" data-none="<?= e(__('ui.label.badges_none')) ?>"<?= $gate ? '' : ' hidden' ?>>
+        <div class="badge-options" data-badge-options>
+            <?php foreach ($chosen as $badge): ?>
+                <label class="badge-option">
+                    <input type="checkbox" name="badges[]" value="<?= e((string) $badge['id']) ?>" checked>
+                    <?php if (($badge['image'] ?? '') !== ''): ?><img src="<?= e((string) $badge['image']) ?>" alt="" width="18" height="18"><?php endif; ?>
+                    <span><?= e((string) $badge['title']) ?></span>
+                </label>
+            <?php endforeach; ?>
+        </div>
+        <p class="muted small badge-status" data-badge-status hidden></p>
+        <div class="badge-picker-foot">
+            <button type="button" class="btn small" data-badge-load><?= icon_label('refresh', __('ui.action.badges_load')) ?></button>
+            <small class="muted"><?= e(__('ui.label.badges_showing_hint')) ?></small>
+        </div>
+    </div>
     <label>
         <span><?= e(__('ui.field.notes')) ?> <small class="muted"><?= e(__('ui.label.private_notes')) ?></small></span>
         <input type="text" name="notes" value="<?= e($v('notes')) ?>" maxlength="500">

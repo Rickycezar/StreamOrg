@@ -1,14 +1,14 @@
 {
   "name": "boss-draw",
-  "version": "1.1.7",
+  "version": "1.3.0",
   "contract": 1,
   "entry": "index.html",
   "languages": [
     "pt-BR",
     "en"
   ],
-  "built": "2026-10-31T02:21:10Z",
-  "changes": "Winners are listed in the order they joined (first to join gets the first prize; switching sides keeps the place); players[].joined in the result.",
+  "built": "2026-10-31T16:22:10Z",
+  "changes": "Badge rule now comes only from StreamOrg (config.badges with title and icon); the game's badge fields, badge finder and the badge_only/badge_names options are removed.",
   "options": [
     {
       "key": "hearts",

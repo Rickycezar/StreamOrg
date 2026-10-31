@@ -300,7 +300,33 @@ function showBossName() {
  */
 function mayEnter(who) {
     const rule = settings.entryFrom;
-    return rule === 'everyone' || who.tier > 0 || (rule === 'subs_vips' && who.vip);
+    const role = rule === 'everyone' || who.tier > 0 || (rule === 'subs_vips' && who.vip);
+    return role && hasRequiredBadge(who.badges || {});
+}
+
+/**
+ * The badges StreamOrg asks for (config.badges): only chatters showing one
+ * of them may join. None outside StreamOrg, or when it sends none.
+ *
+ * @returns {Array<{id: string, name: string, level: string|null, title: string, image: string}>}
+ */
+function requiredBadges() {
+    return embedded && embedConfig ? embedConfig.badges : [];
+}
+
+/**
+ * Whether a chatter shows one of the badges StreamOrg asks for (always true without them).
+ *
+ * @param {Object<string, string>} badges - Badge name → level, as the chat sends them.
+ * @returns {boolean}
+ */
+function hasRequiredBadge(badges) {
+    const wanted = requiredBadges();
+    if (!wanted.length) {
+        return true;
+    }
+    const shown = Object.fromEntries(Object.entries(badges).map(([k, v]) => [String(k).toLowerCase(), String(v)]));
+    return wanted.some(w => w.name in shown && (!w.level || shown[w.name] === w.level));
 }
 
 /**
@@ -341,7 +367,7 @@ function chatStatus(flags, extra) {
         const m = info.match(/(?:subscriber|founder)\/(\d+)/);
         months = m ? Number(m[1]) : 0;
     }
-    return { tier, months, vip: badges.vip !== undefined || !!(flags && flags.vip) };
+    return { tier, months, vip: badges.vip !== undefined || !!(flags && flags.vip), badges: Object.assign({}, badges) };
 }
 
 /**
@@ -356,7 +382,7 @@ function joinByRules(entry, options) {
         return;
     }
     const tier = Math.max(0, Math.min(3, Math.floor(Number(entry.tier) || 0)));
-    const who = { tier, vip: !!entry.vip };
+    const who = { tier, vip: !!entry.vip, badges: entry.badges || {} };
     if (!mayEnter(who)) {
         return;
     }
@@ -544,12 +570,28 @@ function placePrize() {
  * @param {string} text
  * @param {string} [small]
  */
-function setHint(text, small) {
+function setHint(text, small, badges = []) {
     const hint = $('hint');
     hint.textContent = text;
     if (small) {
         const line = document.createElement('small');
-        line.textContent = small;
+        if (badges.length) {
+            line.appendChild(document.createTextNode(`${drawT('entries.badges_only')} `));
+            for (const badge of badges) {
+                const chip = document.createElement('span');
+                chip.className = 'hint-badge';
+                if (badge.image) {
+                    const icon = document.createElement('img');
+                    icon.src = badge.image;
+                    icon.alt = '';
+                    chip.appendChild(icon);
+                }
+                chip.appendChild(document.createTextNode(badge.title || badge.id));
+                line.appendChild(chip);
+            }
+            line.appendChild(document.createTextNode(' · '));
+        }
+        line.appendChild(document.createTextNode(small));
         hint.appendChild(line);
     }
 }
@@ -586,7 +628,7 @@ function refreshHint() {
     const entry = entryInfo();
     const how = entry.picksSide ? drawT('entries.open_pick', { command: entry.raw }) : drawT('entries.open_phrase', { phrase: entry.raw });
     const only = { subs: 'entries.only_subs', subs_vips: 'entries.only_subs_vips' }[settings.entryFrom];
-    setHint(drawT('entries.open'), only ? `${drawT(only)} · ${how}` : how);
+    setHint(drawT('entries.open'), only ? `${drawT(only)} · ${how}` : how, requiredBadges());
 }
 
 /** Forgets the current draw: rounds, kept and forfeited winners. */
@@ -630,7 +672,7 @@ function openLobby(restore = [], kicks = []) {
     }
     for (const e of restore) {
         joinByRules({ login: e.id, name: e.name, color: e.color, side: e.kind, hero: e.hero, tier: e.tier, vip: e.vip,
-            extra: e.extra, fromList: e.fromList, joined: e.joined }, { instant: true });
+            extra: e.extra, fromList: e.fromList, joined: e.joined, badges: e.badges }, { instant: true });
         const p = lobby.players.get(e.id);
         if (p) {
             p.picked = e.picked;
@@ -923,6 +965,9 @@ function resultPayload() {
     };
     if (embedConfig && embedConfig.giveaway) {
         out.giveaway = embedConfig.giveaway;
+    }
+    if (requiredBadges().length) {
+        out.badges = requiredBadges().map(b => b.id);
     }
     return out;
 }
@@ -1534,6 +1579,12 @@ function checkConfig(c) {
     if (c.lock !== undefined && !(Array.isArray(c.lock) && c.lock.every(v => typeof v === 'string'))) {
         return { ok: false, detail: 'lock' };
     }
+    if (c.badges !== undefined && !(Array.isArray(c.badges) && c.badges.length <= 20 && c.badges.every(b => b && typeof b === 'object'
+        && typeof b.id === 'string' && /^[a-z0-9_-]{1,64}(\/[a-z0-9_-]{1,32})?$/i.test(b.id)
+        && (b.title === undefined || (typeof b.title === 'string' && b.title.length <= 60))
+        && (b.image === undefined || (typeof b.image === 'string' && b.image.length <= 30000 && /^(data:image\/(png|gif|webp);base64,|\/|https:\/\/)/.test(b.image)))))) {
+        return { ok: false, detail: 'badges' };
+    }
     if (c.options !== undefined && !(c.options && typeof c.options === 'object' && !Array.isArray(c.options))) {
         return { ok: false, detail: 'options' };
     }
@@ -1554,6 +1605,10 @@ function checkConfig(c) {
             lock: (c.lock || []).filter(v => DRAW_PAGE.lockable.includes(v)
                 || DRAW_GAME.options.some(o => v === `options.${o.key}`)),
             options: c.options || {},
+            badges: (c.badges || []).map((b) => {
+                const [name, level] = b.id.toLowerCase().split('/');
+                return { id: b.id.toLowerCase(), name, level: level || null, title: b.title || '', image: b.image || '' };
+            }),
             giveaway: c.giveaway || '',
             texts: c.texts ? drawCleanTexts(c.texts) : null,
             settings: cleanSettings(c.settings)

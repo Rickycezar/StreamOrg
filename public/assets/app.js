@@ -5021,6 +5021,76 @@
     });
 
     /**
+     * A giveaway form's badge gate ([data-badge-gate]): switching it on
+     * shows the picker and loads the campaign badges of the user's Twitch
+     * channel, by name and icon; the badges already chosen stay ticked.
+     */
+    async function loadBadges(picker) {
+        const box = picker.querySelector('[data-badge-options]');
+        const status = picker.querySelector('[data-badge-status]');
+        const ticked = Array.from(box.querySelectorAll('input:checked')).map(function (input) { return input.value; });
+        const kept = {};
+        box.querySelectorAll('.badge-option').forEach(function (option) { kept[option.querySelector('input').value] = option; });
+
+        status.hidden = false;
+        status.textContent = picker.dataset.loading;
+
+        let answer;
+        try {
+            answer = await (await fetch(picker.dataset.url, { headers: { 'Accept': 'application/json' } })).json();
+        } catch (e) {
+            answer = { ok: false };
+        }
+
+        if (!answer.ok) {
+            status.textContent = answer.error || 'Error';
+            return;
+        }
+
+        const seen = {};
+        answer.badges.forEach(function (badge) {
+            seen[badge.id] = true;
+            if (kept[badge.id]) return;
+            const option = el('label', 'badge-option');
+            const input = el('input');
+            input.type = 'checkbox';
+            input.name = 'badges[]';
+            input.value = badge.id;
+            input.checked = ticked.indexOf(badge.id) !== -1;
+            option.append(input);
+            if (badge.image) {
+                const img = el('img');
+                img.src = badge.image;
+                img.alt = '';
+                img.width = 18;
+                img.height = 18;
+                option.append(img);
+            }
+            option.append(el('span', null, badge.title));
+            box.append(option);
+        });
+
+        status.textContent = answer.badges.length === 0 ? picker.dataset.none : '';
+        status.hidden = answer.badges.length !== 0;
+        picker.dataset.loaded = '1';
+    }
+
+    document.addEventListener('change', function (event) {
+        const gate = event.target.closest('[data-badge-gate]');
+        if (!gate) return;
+        const picker = gate.closest('form').querySelector('[data-badge-picker]');
+        if (!picker) return;
+        picker.hidden = !gate.checked;
+        if (gate.checked && !picker.dataset.loaded) loadBadges(picker);
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-badge-load]');
+        if (!button) return;
+        loadBadges(button.closest('[data-badge-picker]'));
+    });
+
+    /**
      * Items of a list put in another order by dragging their handle
      * ([data-drag-handle], mouse or touch), or with the arrow keys on it;
      * rows of a table, or cards of a grid. onChange runs after each move.

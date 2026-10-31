@@ -113,6 +113,17 @@ $orderable = $open && count($prizes) > 1;
         <div><dt><?= e(__('ui.field.entries_open')) ?></dt><dd><?= e($g['starts_at'] ? fmt_datetime($g['starts_at']) : '—') ?></dd></div>
         <div><dt><?= e(__('ui.field.entries_close')) ?></dt><dd><?= e($g['ends_at'] ? fmt_datetime($g['ends_at']) : '—') ?></dd></div>
         <div><dt><?= e(__('ui.field.claim_days')) ?></dt><dd><?= (int) $g['claim_days'] ?></dd></div>
+        <?php if (($badges = GiveawayBadges::of($g)) !== []): ?>
+            <div class="giveaway-badges">
+                <dt><?= e(__('ui.label.badges_only')) ?></dt>
+                <dd>
+                    <?php foreach ($badges as $badge): ?>
+                        <span class="badge-chip"><?php if (($badge['image'] ?? '') !== ''): ?><img src="<?= e((string) $badge['image']) ?>" alt="" width="18" height="18"><?php endif; ?><?= e((string) $badge['title']) ?></span>
+                    <?php endforeach; ?>
+                    <button type="button" class="btn small ghost" data-modal-form="#edit-giveaway" data-modal-title="<?= e($g['title']) ?>"><?= e(__('ui.action.edit')) ?></button>
+                </dd>
+            </div>
+        <?php endif; ?>
     </dl>
     <?php if ($g['rules_note']): ?>
         <p class="giveaway-rules"><?= nl2br(e($g['rules_note'])) ?></p>

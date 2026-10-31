@@ -128,9 +128,9 @@ final class GiveawayController
         $input = self::input('/giveaways');
 
         $stmt = Database::connection()->prepare(
-            'INSERT INTO giveaways (user_id, title, keyword, rules_note, starts_at, ends_at, is_surprise, post_winner_link,
+            'INSERT INTO giveaways (user_id, title, keyword, rules_note, starts_at, ends_at, is_surprise, post_winner_link, badge_gate, badges,
                                     winner_mode, entry_method, claim_days, stream_id, notes, streaming_platform_id)
-             VALUES (:user, :title, :keyword, :rules, :starts, :ends, :surprise, :postlink, :mode, :method, :days, :stream, :notes,
+             VALUES (:user, :title, :keyword, :rules, :starts, :ends, :surprise, :postlink, :gate, CAST(:badges AS jsonb), :mode, :method, :days, :stream, :notes,
                      (SELECT id FROM streaming_platforms WHERE code = \'twitch\'))
              RETURNING id'
         );
@@ -156,7 +156,8 @@ final class GiveawayController
 
         Database::connection()->prepare(
             'UPDATE giveaways SET title = :title, keyword = :keyword, rules_note = :rules, starts_at = :starts,
-                    ends_at = :ends, is_surprise = :surprise, post_winner_link = :postlink, winner_mode = :mode, entry_method = :method,
+                    ends_at = :ends, is_surprise = :surprise, post_winner_link = :postlink, badge_gate = :gate, badges = CAST(:badges AS jsonb),
+                    winner_mode = :mode, entry_method = :method,
                     claim_days = :days, stream_id = :stream, notes = :notes, updated_at = now()
               WHERE id = :id'
         )->execute(['id' => $giveaway['id']] + $input);
@@ -352,6 +353,18 @@ final class GiveawayController
         $ok = Giveaways::orderPrizes((int) Auth::id(), (int) ($_POST['id'] ?? 0), array_map('intval', explode(',', (string) ($_POST['order'] ?? ''))));
 
         json_response(['ok' => $ok], $ok ? 200 : 404);
+    }
+
+    /** GET /giveaways/badges — the campaign badges of the user's Twitch channel, for the giveaway form (JSON). */
+    public static function badges(): void
+    {
+        Auth::requireLogin();
+
+        try {
+            json_response(['ok' => true, 'badges' => GiveawayBadges::campaign((int) Auth::id())]);
+        } catch (UserError $e) {
+            json_response(['ok' => false, 'error' => $e->getMessage()], 422);
+        }
     }
 
     /** Records a winner by Twitch name (external result or picked by hand). */
@@ -557,6 +570,24 @@ final class GiveawayController
             $stream = $stmt->fetchColumn() ? $stream : null;
         }
 
+        $gate   = !empty($_POST['badge_gate']);
+        $badges = [];
+
+        if ($error === null) {
+            $kept = $giveawayId !== null ? GiveawayBadges::of(['badge_gate' => true] + (Giveaways::find((int) Auth::id(), $giveawayId) ?? [])) : [];
+
+            try {
+                $badges = GiveawayBadges::choose((int) Auth::id(), array_map('strval', (array) ($_POST['badges'] ?? [])), $kept);
+            } catch (UserError $e) {
+                flash('error', $e->getMessage());
+                redirect($back);
+            }
+
+            if ($gate && $badges === []) {
+                $error = 'ui.message.badges_choose';
+            }
+        }
+
         if ($error !== null) {
             flash('error', __($error));
             redirect($back);
@@ -570,6 +601,8 @@ final class GiveawayController
             'ends'     => $ends,
             'surprise' => !empty($_POST['is_surprise']) ? 'true' : 'false',
             'postlink' => !empty($_POST['post_winner_link']) ? 'true' : 'false',
+            'gate'     => $gate ? 'true' : 'false',
+            'badges'   => json_encode($badges, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'mode'     => $_POST['winner_mode'],
             'method'   => $_POST['entry_method'],
             'days'     => $days,
