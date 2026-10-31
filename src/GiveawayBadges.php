@@ -9,10 +9,17 @@ declare(strict_types=1);
  * with their name and icon, the icon copied as a data: URI, since the
  * battle draw (Games) runs under a policy that cannot load Twitch's
  * images. The battle draw receives them and lets only their holders in.
+ *
+ * The streamer may let the channel's subscribers, VIPs or moderators in
+ * without a badge (ROLES): the battle draw checks their status in chat,
+ * whatever badge they show.
  */
 final class GiveawayBadges
 {
     public const MAX = 20;
+
+    /** The roles that may be let into a badge-gated giveaway without a badge. */
+    public const ROLES = ['subscriber', 'vip', 'moderator'];
 
     private const ICON_MAX = 30000;
 
@@ -132,6 +139,44 @@ final class GiveawayBadges
             ['id' => (string) $b['id'], 'title' => mb_substr((string) ($b['title'] ?? ''), 0, 60), 'image' => (string) ($b['image'] ?? '')],
             static fn (string $v): bool => $v !== ''
         ), self::of($giveaway));
+    }
+
+    /**
+     * The roles a badge-gated giveaway lets in without a badge (none when
+     * it is not gated).
+     *
+     * @return list<string> among ROLES
+     */
+    public static function rolesOf(array $giveaway): array
+    {
+        return self::of($giveaway) === [] ? [] : self::chosenRoles($giveaway);
+    }
+
+    /** @return list<string> the roles chosen on a giveaway, whether or not it is gated now */
+    public static function chosenRoles(array $giveaway): array
+    {
+        $roles = $giveaway['badge_roles'] ?? [];
+        $roles = is_array($roles) ? $roles : explode(',', trim((string) $roles, '{}'));
+
+        return array_values(array_intersect(self::ROLES, array_map('strval', $roles)));
+    }
+
+    /** As a Postgres text[] literal, the roles among ROLES in $values. */
+    public static function rolesLiteral(array $values): string
+    {
+        return '{' . implode(',', array_values(array_intersect(self::ROLES, array_map('strval', $values)))) . '}';
+    }
+
+    /** @return array<string, string> the roles that may be let in without a badge, id => name */
+    public static function roles(): array
+    {
+        $roles = [];
+
+        foreach (self::ROLES as $id) {
+            $roles[$id] = __('ui.label.badge_role_' . $id);
+        }
+
+        return $roles;
     }
 
     /** @return list<array> the channel's badge sets, from Twitch */

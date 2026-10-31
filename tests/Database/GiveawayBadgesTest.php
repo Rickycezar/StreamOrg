@@ -62,7 +62,22 @@ final class GiveawayBadgesTest extends DatabaseTestCase
         self::assertSame($before, $this->fetched, 'Badges already kept are not fetched again.');
 
         $this->expectException(UserError::class);
-        GiveawayBadges::choose($this->user, ['subscriber']);
+        GiveawayBadges::choose($this->user, ['campaign-999-someone-else']);
+    }
+
+    public function testRolesLetInWithoutABadgeOnlyWhenTheGiveawayIsGated(): void
+    {
+        self::assertSame('{subscriber,vip}', GiveawayBadges::rolesLiteral(['vip', 'admin', 'subscriber']), 'Known roles only, in their order.');
+
+        $badges = [['id' => 'campaign-777-b', 'title' => 'Sorteio', 'image' => '']];
+        $gated  = ['badge_gate' => true, 'badges' => json_encode($badges), 'badge_roles' => '{subscriber,moderator}'];
+
+        self::assertSame(['subscriber', 'moderator'], GiveawayBadges::rolesOf($gated));
+        self::assertSame([], GiveawayBadges::rolesOf(['badge_gate' => false] + $gated), 'Not gated: nobody needs an exception.');
+        self::assertSame(['subscriber', 'moderator'], GiveawayBadges::chosenRoles(['badge_gate' => false] + $gated), 'Kept for when it is gated again.');
+
+        $this->expectException(UserError::class);
+        GiveawayBadges::choose($this->user, ['vip']);
     }
 
     public function testTheBattleDrawGetsTheBadgesOnlyWhenTheGiveawayIsGated(): void
@@ -78,6 +93,10 @@ final class GiveawayBadgesTest extends DatabaseTestCase
         if (Games::manifest('boss-draw') !== null) {
             $config = GameDraws::config($this->user, Giveaways::find($this->user, $id), 'boss-draw');
             self::assertSame([['id' => 'campaign-777-b', 'title' => 'Sorteio de Outubro', 'image' => $badges[0]['image']]], $config['badges']);
+            self::assertArrayNotHasKey('badgeRoles', $config);
+
+            $this->pdo->exec("UPDATE giveaways SET badge_roles = '{vip}' WHERE id = {$id}");
+            self::assertSame(['vip'], GameDraws::config($this->user, Giveaways::find($this->user, $id), 'boss-draw')['badgeRoles']);
         }
 
         $this->pdo->exec("UPDATE giveaways SET badge_gate = false WHERE id = {$id}");

@@ -135,7 +135,8 @@ final class GameDraws
      * are left out only when the creator asks for it. The options start
      * from the creator's last ones. A round of chosen prizes (roundOf)
      * sets the winners to its size. A badge-gated giveaway sends its
-     * badges, so only their holders can enter.
+     * badges, so only their holders can enter, and the roles it lets in
+     * without one (badgeRoles).
      *
      * @param ?array $options the options chosen on the page, or null for the creator's last ones
      * @param list<int> $round the round's prizes, in the order they are given
@@ -170,6 +171,10 @@ final class GameDraws
         }
         if (($badges = GiveawayBadges::forGame($giveaway)) !== []) {
             $config['badges'] = $badges;
+
+            if (($roles = GiveawayBadges::rolesOf($giveaway)) !== []) {
+                $config['badgeRoles'] = $roles;
+            }
         }
 
         return $config;

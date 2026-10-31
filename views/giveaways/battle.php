@@ -61,6 +61,9 @@ $current = (array) $config['options'];
                 <?php foreach ($badges as $badge): ?>
                     <span class="badge-chip"><?php if (($badge['image'] ?? '') !== ''): ?><img src="<?= e((string) $badge['image']) ?>" alt="" width="18" height="18"><?php endif; ?><?= e((string) $badge['title']) ?></span>
                 <?php endforeach; ?>
+                <?php if (($roles = GiveawayBadges::rolesOf($giveaway)) !== []): ?>
+                    <span class="muted"><?= e(sprintf(__('ui.label.badges_roles_too'), implode(', ', array_map(static fn (string $r): string => GiveawayBadges::roles()[$r], $roles)))) ?></span>
+                <?php endif; ?>
             </p>
         <?php endif; ?>
         <div class="card-actions game-draw-controls">

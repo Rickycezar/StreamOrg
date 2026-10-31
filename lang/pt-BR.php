@@ -2475,6 +2475,12 @@ return [
             'badges_none' => 'Seu canal não tem insígnias de campanha na Twitch.',
             'badges_showing_hint' => 'A Twitch só mostra a insígnia que a pessoa está exibindo no chat.',
             'badges_only' => 'Só para quem tem a insígnia',
+            'badges_roles' => 'Também podem entrar sem a insígnia',
+            'badges_campaign' => 'Insígnias de campanha do canal',
+            'badge_role_vip' => 'VIPs',
+            'badge_role_moderator' => 'Moderadores',
+            'badge_role_subscriber' => 'Inscritos',
+            'badges_roles_too' => '· também sem insígnia: %s',
         ],
 
         'message' => [

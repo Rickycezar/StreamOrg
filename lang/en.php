@@ -2476,6 +2476,12 @@ return [
             'badges_none' => 'Your channel has no campaign badges on Twitch.',
             'badges_showing_hint' => 'Twitch only shows the badge a viewer is displaying in chat.',
             'badges_only' => 'Only for badge holders',
+            'badges_roles' => 'Can also enter without a badge',
+            'badges_campaign' => 'Your channel\'s campaign badges',
+            'badge_role_vip' => 'VIPs',
+            'badge_role_moderator' => 'Moderators',
+            'badge_role_subscriber' => 'Subscribers',
+            'badges_roles_too' => '· also without a badge: %s',
         ],
 
         'message' => [

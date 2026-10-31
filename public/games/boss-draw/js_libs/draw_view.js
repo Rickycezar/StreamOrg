@@ -650,6 +650,7 @@ class DrawLobby {
         this.joinSeq = Math.max(this.joinSeq, state.joined);
         state.tier = Math.max(0, Math.min(3, Math.floor(Number(entry.tier) || 0)));
         state.vip = !!entry.vip;
+        state.mod = !!entry.mod;
         state.badges = Object.assign({}, entry.badges || {});
         state.extra = entry.extra || 0;
         state.fromList = !!entry.fromList;
@@ -691,7 +692,7 @@ class DrawLobby {
         for (const [kind] of DRAW_SIDES) {
             for (const p of this.order[kind]) {
                 out.push({ id: p.id, name: p.name, color: p.rawColor, kind: p.kind, picked: p.picked, hero: p.hero,
-                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList, joined: p.joined, badges: p.badges });
+                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList, joined: p.joined, badges: p.badges, mod: p.mod });
             }
         }
         return out;

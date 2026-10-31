@@ -128,9 +128,9 @@ final class GiveawayController
         $input = self::input('/giveaways');
 
         $stmt = Database::connection()->prepare(
-            'INSERT INTO giveaways (user_id, title, keyword, rules_note, starts_at, ends_at, is_surprise, post_winner_link, badge_gate, badges,
+            'INSERT INTO giveaways (user_id, title, keyword, rules_note, starts_at, ends_at, is_surprise, post_winner_link, badge_gate, badges, badge_roles,
                                     winner_mode, entry_method, claim_days, stream_id, notes, streaming_platform_id)
-             VALUES (:user, :title, :keyword, :rules, :starts, :ends, :surprise, :postlink, :gate, CAST(:badges AS jsonb), :mode, :method, :days, :stream, :notes,
+             VALUES (:user, :title, :keyword, :rules, :starts, :ends, :surprise, :postlink, :gate, CAST(:badges AS jsonb), CAST(:roles AS text[]), :mode, :method, :days, :stream, :notes,
                      (SELECT id FROM streaming_platforms WHERE code = \'twitch\'))
              RETURNING id'
         );
@@ -156,7 +156,7 @@ final class GiveawayController
 
         Database::connection()->prepare(
             'UPDATE giveaways SET title = :title, keyword = :keyword, rules_note = :rules, starts_at = :starts,
-                    ends_at = :ends, is_surprise = :surprise, post_winner_link = :postlink, badge_gate = :gate, badges = CAST(:badges AS jsonb),
+                    ends_at = :ends, is_surprise = :surprise, post_winner_link = :postlink, badge_gate = :gate, badges = CAST(:badges AS jsonb), badge_roles = CAST(:roles AS text[]),
                     winner_mode = :mode, entry_method = :method,
                     claim_days = :days, stream_id = :stream, notes = :notes, updated_at = now()
               WHERE id = :id'
@@ -602,6 +602,7 @@ final class GiveawayController
             'surprise' => !empty($_POST['is_surprise']) ? 'true' : 'false',
             'postlink' => !empty($_POST['post_winner_link']) ? 'true' : 'false',
             'gate'     => $gate ? 'true' : 'false',
+            'roles'    => GiveawayBadges::rolesLiteral((array) ($_POST['badge_roles'] ?? [])),
             'badges'   => json_encode($badges, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'mode'     => $_POST['winner_mode'],
             'method'   => $_POST['entry_method'],

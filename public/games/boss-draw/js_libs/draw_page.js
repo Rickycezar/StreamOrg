@@ -301,7 +301,26 @@ function showBossName() {
 function mayEnter(who) {
     const rule = settings.entryFrom;
     const role = rule === 'everyone' || who.tier > 0 || (rule === 'subs_vips' && who.vip);
-    return role && hasRequiredBadge(who.badges || {});
+    return role && passesBadgeGate(who);
+}
+
+/**
+ * The badge gate StreamOrg may set (config.badges): a chatter passes when
+ * they show one of the badges, or hold one of the roles StreamOrg lets in
+ * without it (config.badgeRoles: subscriber, vip, moderator).
+ *
+ * @param {{tier: number, vip: boolean, mod: boolean, badges: Object<string, string>}} who
+ * @returns {boolean}
+ */
+function passesBadgeGate(who) {
+    if (!requiredBadges().length) {
+        return true;
+    }
+    const roles = embedConfig.badgeRoles;
+    return hasRequiredBadge(who.badges || {})
+        || (roles.includes('subscriber') && who.tier > 0)
+        || (roles.includes('vip') && !!who.vip)
+        || (roles.includes('moderator') && !!who.mod);
 }
 
 /**
@@ -367,7 +386,14 @@ function chatStatus(flags, extra) {
         const m = info.match(/(?:subscriber|founder)\/(\d+)/);
         months = m ? Number(m[1]) : 0;
     }
-    return { tier, months, vip: badges.vip !== undefined || !!(flags && flags.vip), badges: Object.assign({}, badges) };
+    const state = (extra && extra.userState) || {};
+    return {
+        tier,
+        months,
+        vip: badges.vip !== undefined || !!(flags && flags.vip) || state.vip === true || state.vip === '1',
+        mod: !!(flags && (flags.mod || flags.broadcaster)) || state.mod === true || state.mod === '1',
+        badges: Object.assign({}, badges)
+    };
 }
 
 /**
@@ -382,7 +408,7 @@ function joinByRules(entry, options) {
         return;
     }
     const tier = Math.max(0, Math.min(3, Math.floor(Number(entry.tier) || 0)));
-    const who = { tier, vip: !!entry.vip, badges: entry.badges || {} };
+    const who = { tier, vip: !!entry.vip, mod: !!entry.mod, badges: entry.badges || {} };
     if (!mayEnter(who)) {
         return;
     }
@@ -589,6 +615,10 @@ function setHint(text, small, badges = []) {
                 chip.appendChild(document.createTextNode(badge.title || badge.id));
                 line.appendChild(chip);
             }
+            const roles = embedConfig ? embedConfig.badgeRoles : [];
+            if (roles.length) {
+                line.appendChild(document.createTextNode(` ${drawT('entries.badge_roles', { roles: roles.map(r => drawT(`role.${r}`)).join(', ') })}`));
+            }
             line.appendChild(document.createTextNode(' · '));
         }
         line.appendChild(document.createTextNode(small));
@@ -672,7 +702,7 @@ function openLobby(restore = [], kicks = []) {
     }
     for (const e of restore) {
         joinByRules({ login: e.id, name: e.name, color: e.color, side: e.kind, hero: e.hero, tier: e.tier, vip: e.vip,
-            extra: e.extra, fromList: e.fromList, joined: e.joined, badges: e.badges }, { instant: true });
+            extra: e.extra, fromList: e.fromList, joined: e.joined, badges: e.badges, mod: e.mod }, { instant: true });
         const p = lobby.players.get(e.id);
         if (p) {
             p.picked = e.picked;
@@ -968,6 +998,7 @@ function resultPayload() {
     }
     if (requiredBadges().length) {
         out.badges = requiredBadges().map(b => b.id);
+        out.badgeRoles = embedConfig.badgeRoles.slice();
     }
     return out;
 }
@@ -1585,6 +1616,10 @@ function checkConfig(c) {
         && (b.image === undefined || (typeof b.image === 'string' && b.image.length <= 30000 && /^(data:image\/(png|gif|webp);base64,|\/|https:\/\/)/.test(b.image)))))) {
         return { ok: false, detail: 'badges' };
     }
+    if (c.badgeRoles !== undefined && !(Array.isArray(c.badgeRoles) && c.badgeRoles.length <= 3
+        && c.badgeRoles.every(r => ['subscriber', 'vip', 'moderator'].includes(r)))) {
+        return { ok: false, detail: 'badgeRoles' };
+    }
     if (c.options !== undefined && !(c.options && typeof c.options === 'object' && !Array.isArray(c.options))) {
         return { ok: false, detail: 'options' };
     }
@@ -1609,6 +1644,7 @@ function checkConfig(c) {
                 const [name, level] = b.id.toLowerCase().split('/');
                 return { id: b.id.toLowerCase(), name, level: level || null, title: b.title || '', image: b.image || '' };
             }),
+            badgeRoles: c.badges && c.badges.length ? [...new Set(c.badgeRoles || [])] : [],
             giveaway: c.giveaway || '',
             texts: c.texts ? drawCleanTexts(c.texts) : null,
             settings: cleanSettings(c.settings)
@@ -2007,7 +2043,7 @@ $('join').addEventListener('click', () => {
         sound.unlock();
         const status = $('join-tier').value;
         joinByRules({ name, color: $('join-color').value, side: $('join-side').value || null,
-            tier: status === 'vip' ? 0 : Number(status), vip: status === 'vip' });
+            tier: status === 'vip' || status === 'mod' ? 0 : Number(status), vip: status === 'vip', mod: status === 'mod' });
     }
 });
 $('join-name').addEventListener('keydown', (e) => e.key === 'Enter' && $('join').click());

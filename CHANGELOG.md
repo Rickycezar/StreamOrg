@@ -5,6 +5,17 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.5 — 2026-10-31
+
+This release has a database migration (058: who may enter a
+badge-gated giveaway without a badge).
+
+### Added
+- Badge-gated giveaways can let the channel's subscribers, VIPs or
+  moderators in without the badge ("Can also enter without a badge"),
+  judged by their status in chat rather than by the badge they show
+  (boss-draw 1.3.1).
+
 ## 0.11.4 — 2026-10-31
 
 This release has a database migration (057: badge-gated giveaways).

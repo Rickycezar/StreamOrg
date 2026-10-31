@@ -120,6 +120,9 @@ $orderable = $open && count($prizes) > 1;
                     <?php foreach ($badges as $badge): ?>
                         <span class="badge-chip"><?php if (($badge['image'] ?? '') !== ''): ?><img src="<?= e((string) $badge['image']) ?>" alt="" width="18" height="18"><?php endif; ?><?= e((string) $badge['title']) ?></span>
                     <?php endforeach; ?>
+                    <?php if (($roles = GiveawayBadges::rolesOf($g)) !== []): ?>
+                        <span class="muted small"><?= e(sprintf(__('ui.label.badges_roles_too'), implode(', ', array_map(static fn (string $r): string => GiveawayBadges::roles()[$r], $roles)))) ?></span>
+                    <?php endif; ?>
                     <button type="button" class="btn small ghost" data-modal-form="#edit-giveaway" data-modal-title="<?= e($g['title']) ?>"><?= e(__('ui.action.edit')) ?></button>
                 </dd>
             </div>

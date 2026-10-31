@@ -3872,3 +3872,7 @@ p.giveaway-badges { display: flex; flex-wrap: wrap; align-items: center; gap: .3
 label.badge-option > span { display: inline; margin: 0; font-size: .88rem; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text); }
 .giveaway-summary .giveaway-badges { grid-column: 1 / -1; }
 .badge-chip { white-space: nowrap; }
+.badge-group { margin: 0 0 .35rem; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-2); }
+.badge-roles-title { margin-top: .85rem; }
+.badge-roles { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; }
+.badge-roles label.inline { margin: 0; }

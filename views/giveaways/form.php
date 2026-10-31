@@ -90,6 +90,7 @@ $local = static fn (?string $at): string => $at ? substr(str_replace(' ', 'T', $
     </label>
     <div class="badge-picker" data-badge-picker data-url="<?= e(url('/giveaways/badges')) ?>"
          data-loading="<?= e(__('ui.label.badges_loading')) ?>" data-none="<?= e(__('ui.label.badges_none')) ?>"<?= $gate ? '' : ' hidden' ?>>
+        <p class="badge-group"><?= e(__('ui.label.badges_campaign')) ?></p>
         <div class="badge-options" data-badge-options>
             <?php foreach ($chosen as $badge): ?>
                 <label class="badge-option">
@@ -103,6 +104,16 @@ $local = static fn (?string $at): string => $at ? substr(str_replace(' ', 'T', $
         <div class="badge-picker-foot">
             <button type="button" class="btn small" data-badge-load><?= icon_label('refresh', __('ui.action.badges_load')) ?></button>
             <small class="muted"><?= e(__('ui.label.badges_showing_hint')) ?></small>
+        </div>
+        <?php $roles = $g !== null ? GiveawayBadges::chosenRoles($g) : []; ?>
+        <p class="badge-group badge-roles-title"><?= e(__('ui.label.badges_roles')) ?></p>
+        <div class="badge-roles">
+            <?php foreach (GiveawayBadges::roles() as $role => $name): ?>
+                <label class="inline">
+                    <input type="checkbox" name="badge_roles[]" value="<?= e($role) ?>" <?= in_array($role, $roles, true) ? 'checked' : '' ?>>
+                    <span><?= e($name) ?></span>
+                </label>
+            <?php endforeach; ?>
         </div>
     </div>
     <label>
