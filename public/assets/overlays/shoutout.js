@@ -17,7 +17,7 @@
 
     const widget = document.createElement('div');
     widget.className = 'amorph-container';
-    widget.innerHTML = '<div class="amorph four"></div><div class="amorph three"></div><div class="amorph two"></div><div class="amorph one"></div>'
+    widget.innerHTML = '<div class="so-backdrop"></div><div class="so-art"></div><div class="amorph four"></div><div class="amorph three"></div><div class="amorph two"></div><div class="amorph one"></div>'
         + '<div class="info-bar"><div class="text-area"><h1></h1><h2></h2><div class="separator"></div><h3></h3></div></div>';
     stage.append(widget);
 

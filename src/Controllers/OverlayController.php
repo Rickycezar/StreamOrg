@@ -30,6 +30,10 @@ final class OverlayController
             self::lookup();
         }
 
+        if ($path === '/overlay/badges' && $method === 'POST') {
+            self::badges();
+        }
+
         if (preg_match('~^/overlay/special/([0-9a-f]{32})$~', $path, $m) && $method === 'GET') {
             self::special($m[1]);
         }
@@ -94,6 +98,16 @@ final class OverlayController
         $details = Overlays::lookup(trim((string) ($_POST['k'] ?? '')), (string) ($_POST['login'] ?? ''));
 
         json_response(['ok' => $details !== null, 'channel' => $details], $details !== null ? 200 : 404);
+    }
+
+    private static function badges(): never
+    {
+        header('Access-Control-Allow-Origin: *');
+        header('Cache-Control: no-store');
+
+        $badges = Overlays::badges(trim((string) ($_POST['k'] ?? '')));
+
+        json_response(['ok' => $badges !== null, 'badges' => (object) ($badges ?? [])], $badges !== null ? 200 : 404);
     }
 
     private static function state(): never

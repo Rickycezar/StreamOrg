@@ -34,7 +34,8 @@ declare(strict_types=1);
  * reads chat, its size in OBS (the browser source the streamer adds; taken
  * from the sources these overlays were first made for), what it needs from StreamOrg
  * (lookup: channel details for shoutouts; emotes: the channel's id for
- * emote services) and its page's script and style
+ * emote services; badges: the images of Twitch's chat badges) and its
+ * page's script and style
  * (public/assets/overlays/<type>.js and .css).
  */
 final class OverlayTypes
@@ -61,6 +62,7 @@ final class OverlayTypes
                 'size'  => [1920, 1080],
                 'tests' => ['alert'],
                 'fields' => [
+                    'theme'        => ['kind' => 'select', 'options' => ['classic', 'clean', 'neon'], 'default' => 'classic', 'pt' => 'tema'],
                     'message'      => ['kind' => 'text', 'max' => 140, 'default' => 'alert_default_message', 'pt' => 'mensagem'],
                     'image'        => ['kind' => 'image', 'pt' => 'imagem'],
                     'sound'        => ['kind' => 'sound', 'pt' => 'som'],
@@ -80,6 +82,7 @@ final class OverlayTypes
                 'size'   => [900, 300],
                 'tests'  => ['shoutout'],
                 'fields' => [
+                    'theme'         => ['kind' => 'select', 'options' => ['classic', 'clean', 'neon'], 'default' => 'classic', 'pt' => 'tema'],
                     'commands'      => ['kind' => 'list', 'items' => 'word', 'max_items' => 10, 'default' => ['so', 's2', 'sh'], 'pt' => 'comandos'],
                     'roles'         => ['kind' => 'roles', 'default' => ['broadcaster', 'mod'], 'pt' => 'quem_pode_usar'],
                     'sound'         => ['kind' => 'sound', 'pt' => 'som'],
@@ -117,6 +120,7 @@ final class OverlayTypes
                 'size'   => [800, 300],
                 'tests'  => ['streak_small', 'streak_big'],
                 'fields' => [
+                    'theme'                => ['kind' => 'select', 'options' => ['classic', 'clean', 'neon'], 'default' => 'classic', 'pt' => 'tema'],
                     'show_seconds'         => ['kind' => 'number', 'min' => 1, 'max' => 600, 'step' => 0.5, 'default' => 11, 'pt' => 'tempo_na_tela'],
                     'show_seconds_big'     => ['kind' => 'number', 'min' => 1, 'max' => 600, 'step' => 0.5, 'default' => 15, 'pt' => 'tempo_na_tela_grande'],
                     'queue_gap'            => ['kind' => 'number', 'min' => 0, 'max' => 60, 'step' => 0.5, 'default' => 1, 'pt' => 'intervalo_entre_alertas', 'advanced' => true],
@@ -148,10 +152,11 @@ final class OverlayTypes
             'chat' => [
                 'chat'   => true,
                 'emotes' => true,
+                'badges' => true,
                 'size'   => [600, 800],
                 'tests'  => ['message', 'highlight', 'reward', 'sub', 'streak'],
                 'fields' => [
-                    'theme'           => ['kind' => 'select', 'options' => ['cards', 'outline'], 'default' => 'cards', 'pt' => 'tema'],
+                    'theme'           => ['kind' => 'select', 'options' => ['cards', 'outline', 'bubbles', 'neon'], 'default' => 'cards', 'pt' => 'tema'],
                     'align'           => ['kind' => 'select', 'options' => ['left', 'right'], 'default' => 'left', 'pt' => 'alinhamento'],
                     'font_size'       => ['kind' => 'number', 'min' => 10, 'max' => 60, 'step' => 1, 'default' => 22, 'pt' => 'tamanho_do_texto'],
                     'emote_size'      => ['kind' => 'number', 'min' => 16, 'max' => 112, 'step' => 2, 'default' => 32, 'pt' => 'tamanho_dos_emotes', 'advanced' => true],

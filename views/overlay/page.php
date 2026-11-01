@@ -23,6 +23,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
     <style id="overlay-custom-css"></style>
 </head>
 <body class="overlay overlay-<?= e($type) ?>" data-type="<?= e($type) ?>" data-state-url="<?= e(url('/overlay/state')) ?>" data-lookup-url="<?= e(url('/overlay/lookup')) ?>"
+      data-badges-url="<?= e(url('/overlay/badges')) ?>"
       data-emotes="<?= !empty($definition['emotes']) ? '1' : '0' ?>"
       data-missing-key="<?= e(__('ui.overlay.missing_key')) ?>" data-unknown-key="<?= e(__('ui.overlay.unknown_key')) ?>">
     <div class="overlay-stage" id="overlay-stage"></div>

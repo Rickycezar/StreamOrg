@@ -327,6 +327,33 @@ final class Overlays
      *
      * @return array<string, mixed>|null
      */
+    /**
+     * The chat badge images for an overlay that shows badges, by its key:
+     * Twitch's and its owner's channel's (OverlayBadges). Null for an
+     * unknown key or an overlay that is off or shows none.
+     *
+     * @return ?array<string, string>
+     */
+    public static function badges(string $key): ?array
+    {
+        if ($key === '' || strlen($key) > 100) {
+            return null;
+        }
+
+        $stmt = Database::connection()->prepare(
+            'SELECT o.type, o.is_enabled, t.twitch_user_id FROM overlays o LEFT JOIN twitch_connections t ON t.user_id = o.user_id WHERE o.key_hash = ?'
+        );
+        $stmt->execute([hash('sha256', $key)]);
+        $overlay = $stmt->fetch();
+
+        if ($overlay === false || !$overlay['is_enabled'] || !OverlayConfig::enabled() || !OverlayConfig::typeAllowed((string) $overlay['type'])
+            || empty(OverlayTypes::get((string) $overlay['type'])['badges'])) {
+            return null;
+        }
+
+        return OverlayBadges::map($overlay['twitch_user_id'] !== null ? (string) $overlay['twitch_user_id'] : null);
+    }
+
     public static function state(string $key, int $version, int $since): ?array
     {
         if ($key === '' || strlen($key) > 100) {

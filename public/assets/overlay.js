@@ -22,6 +22,9 @@
  *   message(text, emotes)  a chat message as DOM nodes, Twitch and BTTV emotes as images
  *   knownBots()            a Set of known bot logins (Twitch Insights), once
  *   lookup(login)          a channel's details for a shoutout, or null
+ *   badges()               Twitch's chat badge images, {"set/version": url}, once
+ *
+ * The settings' theme (a type's look) is set on <body data-theme>.
  */
 (function () {
     'use strict';
@@ -41,6 +44,8 @@
     let timer = null;
     let chatStarted = false;
     let emotesFor = null;
+    let badgeMap = null;
+    let badgeWaiter = null;
     let bots = null;
     let lookupSeq = 0;
 
@@ -151,6 +156,25 @@
 
         chat: function (fn) {
             overlay.on('command', function (c) { fn(c.user, c.command, c.message, c.flags, c.extra); });
+        },
+
+        badges: function () {
+            if (badgeMap) return badgeMap;
+
+            if (inPreview) {
+                badgeMap = new Promise(function (resolve) {
+                    badgeWaiter = resolve;
+                    window.parent.postMessage({ type: 'streamorg-preview-badges' }, '*');
+                    setTimeout(function () { if (badgeWaiter) { badgeWaiter({}); badgeWaiter = null; } }, 8000);
+                });
+                return badgeMap;
+            }
+
+            badgeMap = fetch(body.dataset.badgesUrl, { method: 'POST', body: new URLSearchParams({ k: key }), cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : {}; })
+                .then(function (data) { return data.badges && typeof data.badges === 'object' ? data.badges : {}; })
+                .catch(function () { return {}; });
+            return badgeMap;
         }
     };
 
@@ -283,6 +307,7 @@
 
     function apply(settings, css) {
         overlay.settings = settings;
+        body.dataset.theme = typeof settings.theme === 'string' && /^[a-z]{1,20}$/.test(settings.theme) ? settings.theme : '';
         if (typeof css === 'string') customCss.textContent = css;
         preloadSounds(settings);
         overlay.emit('settings', settings);
@@ -355,6 +380,10 @@
         }
         if (data.type === 'streamorg-preview-test') overlay.emit('test', data.payload || {});
         if (data.type === 'streamorg-preview-stop') stopAll();
+        if (data.type === 'streamorg-preview-badges-result' && badgeWaiter) {
+            badgeWaiter(data.badges && typeof data.badges === 'object' ? data.badges : {});
+            badgeWaiter = null;
+        }
         if (data.type === 'streamorg-preview-lookup-result' && lookups[data.id]) {
             lookups[data.id](data.channel || null);
             delete lookups[data.id];

@@ -163,6 +163,21 @@ final class OverlayStudioController
         json_response(['ok' => $details !== null, 'channel' => $details], $details !== null ? 200 : 404);
     }
 
+    /** GET /overlays/badges?id= — the chat badge images for the preview of an overlay that shows them (JSON). */
+    public static function badges(): void
+    {
+        Auth::requireLogin();
+        $overlay = Overlays::find(filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 0, (int) Auth::id());
+
+        if ($overlay === null) {
+            json_response(['ok' => false, 'badges' => (object) []], 404);
+        }
+
+        $channel = TwitchUser::connection((int) Auth::id())['twitch_user_id'] ?? null;
+
+        json_response(['ok' => true, 'badges' => (object) OverlayBadges::map($channel !== null ? (string) $channel : null)]);
+    }
+
     /** POST /overlays/new-link — retires the old link. */
     public static function newLink(): void
     {

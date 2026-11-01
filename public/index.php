@@ -181,6 +181,7 @@ $routes = [
         '/overlays/media'    => [OverlayStudioController::class, 'media'],
         '/overlays/edit'     => [OverlayStudioController::class, 'edit'],
         '/overlays/lookup'   => [OverlayStudioController::class, 'lookup'],
+        '/overlays/badges'   => [OverlayStudioController::class, 'badges'],
         '/admin/overlays'    => [OverlayStudioController::class, 'admin'],
         '/admin/data'        => [AdminDataController::class, 'index'],
         '/admin/data/content' => [AdminDataController::class, 'content'],

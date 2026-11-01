@@ -1,4 +1,11 @@
-/* Custom alert overlay: one card, sliding in at the chosen height, in the chosen colours. */
+/*
+ * Custom alert overlay: one card, sliding in at the chosen height, in the
+ * chosen colours. Three themes (body data-theme): "classic" (the dark
+ * card with a thick accent border), "clean" (a flat panel with an accent
+ * stripe, the image beside the text) and "neon" (no fill, a glowing
+ * outline and glowing text in the accent colour).
+ */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Audiowide&display=swap');
 :root { --alert-accent: #9146ff; --alert-text: #ffffff; --alert-size: 44px; }
 .overlay-stage { display: flex; align-items: center; justify-content: center; padding: 6vh 4vw; box-sizing: border-box; }
 .overlay-stage[data-position="top"] { align-items: flex-start; }
@@ -8,3 +15,13 @@
 .alert-card.out { opacity: 0; transform: translateY(-20px) scale(.96); transition: opacity .5s ease, transform .5s ease; }
 .alert-image { max-width: 40vw; max-height: 40vh; border-radius: 14px; object-fit: contain; }
 .alert-text { color: var(--alert-text); font-size: var(--alert-size); font-weight: 800; line-height: 1.2; text-align: center; text-shadow: 0 3px 10px rgba(0, 0, 0, .5); overflow-wrap: anywhere; }
+body[data-theme="clean"] .alert-card { flex-direction: row; align-items: center; gap: 26px; max-width: 86vw; padding: 22px 38px 22px 30px; border: 0; border-left: 12px solid var(--alert-accent); border-radius: 18px; background: rgba(18, 18, 26, .94); box-shadow: 0 24px 60px rgba(0, 0, 0, .45); transform: translateX(-60px); transition: opacity .4s ease, transform .5s cubic-bezier(.2, 1, .3, 1); }
+body[data-theme="clean"] .alert-card.in { transform: none; }
+body[data-theme="clean"] .alert-card.out { opacity: 0; transform: translateX(60px); }
+body[data-theme="clean"] .alert-image { max-width: 22vw; max-height: 26vh; border-radius: 12px; }
+body[data-theme="clean"] .alert-text { font-family: 'Outfit', 'Segoe UI', sans-serif; font-weight: 800; text-align: left; text-shadow: none; letter-spacing: -.01em; }
+body[data-theme="neon"] .alert-card { padding: 30px 46px; border: 3px solid var(--alert-accent); border-radius: 6px; background: rgba(4, 4, 10, .55); box-shadow: 0 0 18px var(--alert-accent), 0 0 46px color-mix(in srgb, var(--alert-accent) 55%, transparent), inset 0 0 22px color-mix(in srgb, var(--alert-accent) 45%, transparent); }
+body[data-theme="neon"] .alert-card.in { animation: neonFlicker 1.6s linear both; }
+body[data-theme="neon"] .alert-image { border-radius: 4px; box-shadow: 0 0 14px var(--alert-accent); }
+body[data-theme="neon"] .alert-text { font-family: 'Audiowide', 'Segoe UI', sans-serif; font-weight: 400; letter-spacing: .03em; text-shadow: 0 0 6px var(--alert-text), 0 0 18px var(--alert-accent), 0 0 34px var(--alert-accent); }
+@keyframes neonFlicker { 0%, 12%, 16%, 22% { opacity: 1; } 14%, 20% { opacity: .35; } 100% { opacity: 1; } }

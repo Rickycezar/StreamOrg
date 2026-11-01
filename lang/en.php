@@ -1419,6 +1419,10 @@ return [
             'position_top' => 'Top',
             'position_center' => 'Middle',
             'position_bottom' => 'Bottom',
+            'theme_classic' => 'Classic',
+            'theme_clean' => 'Clean',
+            'theme_neon' => 'Neon',
+            'theme_bubbles' => 'Speech bubbles',
         ],
         'overlay_role' => [
             'broadcaster' => 'You',

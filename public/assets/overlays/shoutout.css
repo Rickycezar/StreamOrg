@@ -3,9 +3,18 @@
  * three coloured blobs behind it, and a bar that grows out with the
  * channel's name, category (over its box art) and title. Colours come from
  * the settings or from the channel's name: --bar-background, --blob1..3,
- * --text-color, --text-accent; the box art as --box-art.
+ * --text-color, --text-accent; the box art as --box-art. Three themes
+ * (body data-theme), each with its own layout and motion: "classic" (the
+ * morphing blobs and a bar that grows out), "clean" (a profile card: the
+ * box art blurred behind a card in the bar colour, a big round picture
+ * over its edge, the whole box art floating in front of the card's other
+ * end; the card unrolls, the picture pops, the text rises, the box art
+ * drops in) and
+ * "neon" (a slanted glowing banner with scanlines that wipes in with a
+ * light sweep, the picture in a hexagon, the name glitching in). The
+ * .so-backdrop layer is the card or the banner; classic hides it.
  */
-@import url('https://fonts.googleapis.com/css2?family=Varela+Round&family=Fredoka+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Varela+Round&family=Fredoka+One&family=Outfit:wght@500;700;800&family=Audiowide&display=swap');
 
 * {
     box-sizing: border-box;
@@ -19,6 +28,11 @@
     --text-color: #fefefe;
     --text-accent: #000553;
     --box-art: none;
+}
+
+.so-backdrop,
+.so-art {
+    display: none;
 }
 
 .overlay-stage {
@@ -195,4 +209,421 @@ div.amorph.two {
 @keyframes shrink {
     0% { width: 640px; }
     100% { width: 0; }
+}
+
+body[data-theme="clean"] .amorph-container,
+body[data-theme="neon"] .amorph-container {
+    display: block;
+    width: 860px;
+    height: 270px;
+    padding: 0;
+    filter: none;
+}
+
+body[data-theme="clean"] .amorph-container.in,
+body[data-theme="neon"] .amorph-container.in {
+    animation: none;
+    opacity: 1;
+}
+
+body[data-theme="clean"] .amorph-container.out,
+body[data-theme="neon"] .amorph-container.out {
+    animation: soLeave 0.7s ease-in forwards;
+}
+
+body[data-theme="clean"] .so-backdrop,
+body[data-theme="neon"] .so-backdrop {
+    display: block;
+    position: absolute;
+    overflow: hidden;
+}
+
+body[data-theme="clean"] div.amorph.two,
+body[data-theme="clean"] div.amorph.three,
+body[data-theme="clean"] div.amorph.four,
+body[data-theme="neon"] div.amorph.four {
+    display: none;
+}
+
+body[data-theme="clean"] .info-bar,
+body[data-theme="neon"] .info-bar,
+body[data-theme="clean"] .amorph-container.in .info-bar,
+body[data-theme="neon"] .amorph-container.in .info-bar,
+body[data-theme="clean"] .amorph-container.out .info-bar,
+body[data-theme="neon"] .amorph-container.out .info-bar {
+    position: absolute;
+    width: auto;
+    height: auto;
+    margin: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    animation: none;
+}
+
+body[data-theme="clean"] .text-area,
+body[data-theme="neon"] .text-area {
+    width: auto;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    gap: 8px;
+    justify-content: flex-start;
+    text-shadow: none;
+}
+
+body[data-theme="clean"] .separator,
+body[data-theme="neon"] .separator {
+    display: none;
+}
+
+body[data-theme="clean"] .so-backdrop {
+    left: 100px;
+    right: 10px;
+    top: 30px;
+    bottom: 30px;
+    border-radius: 30px;
+    background: var(--bar-background);
+    box-shadow: 0 22px 50px rgba(0, 0, 0, 0.45);
+    transform-origin: left center;
+    transform: scaleX(0);
+}
+
+body[data-theme="clean"] .so-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: -30px;
+    background: var(--box-art) center / cover no-repeat;
+    filter: blur(14px) saturate(1.2);
+    opacity: 0.55;
+}
+
+body[data-theme="clean"] .so-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--bar-background) 30%, color-mix(in srgb, var(--bar-background) 55%, transparent));
+}
+
+body[data-theme="clean"] .amorph-container.in .so-backdrop {
+    animation: soUnroll 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+}
+
+body[data-theme="clean"] div.amorph.one {
+    left: 0;
+    top: 25px;
+    width: 220px;
+    height: 220px;
+    margin: 0;
+    border-radius: 50%;
+    border: 8px solid #ffffff;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+    animation: none;
+    transform: scale(0);
+    z-index: 2;
+}
+
+body[data-theme="clean"] .amorph-container.in div.amorph.one {
+    animation: soPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+body[data-theme="clean"] .info-bar {
+    left: 252px;
+    right: 215px;
+    top: 52px;
+    bottom: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+body[data-theme="clean"] .amorph-container.no-art .info-bar {
+    right: 50px;
+}
+
+body[data-theme="clean"] .so-art {
+    display: block;
+    position: absolute;
+    right: 46px;
+    top: 8px;
+    width: 152px;
+    height: 203px;
+    z-index: 3;
+    border-radius: 12px;
+    border: 4px solid #ffffff;
+    background: var(--box-art) center / cover no-repeat, var(--bar-background);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(-40px) rotate(6deg) scale(0.9);
+}
+
+body[data-theme="clean"] .amorph-container.no-art .so-art {
+    display: none;
+}
+
+body[data-theme="clean"] .amorph-container.in .so-art {
+    animation: soArtDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s forwards, soArtFloat 4s ease-in-out 1.4s infinite;
+}
+
+body[data-theme="clean"] .amorph-container.out .so-art {
+    opacity: 1;
+    transform: rotate(4deg);
+}
+
+body[data-theme="clean"] .text-area {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    opacity: 0;
+    transform: translateY(16px);
+}
+
+body[data-theme="clean"] .amorph-container.in .text-area {
+    animation: soRise 0.5s ease-out 0.5s forwards;
+}
+
+body[data-theme="clean"] .text-area h1 {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 50px;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: -0.02em;
+}
+
+body[data-theme="clean"] .text-area h2 {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: var(--text-color);
+    color: var(--bar-background);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+body[data-theme="clean"] .text-area h2:empty {
+    display: none;
+}
+
+body[data-theme="clean"] .text-area h3 {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.3;
+    opacity: 0.92;
+}
+
+body[data-theme="neon"] .so-backdrop {
+    left: 120px;
+    right: 20px;
+    top: 55px;
+    bottom: 55px;
+    background: linear-gradient(90deg, rgba(5, 5, 14, 0.95) 45%, rgba(5, 5, 14, 0.7)), var(--box-art) right center / 45% auto no-repeat;
+    border: 2px solid var(--blob3);
+    box-shadow: 0 0 18px var(--blob3), 0 0 44px color-mix(in srgb, var(--blob1) 60%, transparent), inset 0 0 22px color-mix(in srgb, var(--blob3) 30%, transparent);
+    transform: skewX(-16deg);
+    clip-path: inset(-80px 100% -80px -80px);
+}
+
+body[data-theme="neon"] .so-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 5px);
+}
+
+body[data-theme="neon"] .so-backdrop::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 120px;
+    left: -140px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+}
+
+body[data-theme="neon"] .amorph-container.in .so-backdrop {
+    animation: soWipe 0.55s cubic-bezier(0.7, 0, 0.3, 1) 0.2s forwards;
+}
+
+body[data-theme="neon"] .amorph-container.in .so-backdrop::after {
+    animation: soSweep 0.9s ease-in-out 0.7s forwards;
+}
+
+body[data-theme="neon"] div.amorph.one,
+body[data-theme="neon"] div.amorph.two,
+body[data-theme="neon"] div.amorph.three {
+    margin: 0;
+    animation: none;
+    border-radius: 0;
+    transform: none;
+    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+}
+
+body[data-theme="neon"] div.amorph.three {
+    left: -10px;
+    top: 10px;
+    width: 270px;
+    height: 250px;
+    background: radial-gradient(circle, var(--blob1), transparent 65%);
+    clip-path: none;
+    opacity: 0;
+    filter: blur(10px);
+}
+
+body[data-theme="neon"] div.amorph.two {
+    left: 20px;
+    top: 30px;
+    width: 230px;
+    height: 210px;
+    background: var(--blob3);
+    opacity: 0;
+}
+
+body[data-theme="neon"] div.amorph.one {
+    left: 29px;
+    top: 38px;
+    width: 212px;
+    height: 194px;
+    z-index: 2;
+    opacity: 0;
+}
+
+body[data-theme="neon"] .amorph-container.in div.amorph.one,
+body[data-theme="neon"] .amorph-container.in div.amorph.two {
+    animation: soHexIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+body[data-theme="neon"] .amorph-container.in div.amorph.three {
+    animation: soGlow 2.4s ease-in-out 0.4s infinite;
+}
+
+body[data-theme="neon"] .info-bar {
+    left: 262px;
+    right: 90px;
+    top: 72px;
+    bottom: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+body[data-theme="neon"] .text-area {
+    font-family: 'Audiowide', 'Segoe UI', sans-serif;
+    color: #ffffff;
+    opacity: 0;
+}
+
+body[data-theme="neon"] .amorph-container.in .text-area {
+    animation: soFadeIn 0.2s linear 0.6s forwards;
+}
+
+body[data-theme="neon"] .text-area h1 {
+    font-family: 'Audiowide', 'Segoe UI', sans-serif;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 10px var(--blob3), 0 0 26px var(--blob1);
+}
+
+body[data-theme="neon"] .amorph-container.in .text-area h1 {
+    animation: soGlitch 0.7s steps(2) 0.6s;
+}
+
+body[data-theme="neon"] .text-area h2 {
+    font-size: 19px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blob3);
+    text-shadow: 0 0 8px var(--blob3);
+}
+
+body[data-theme="neon"] .text-area h3 {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-size: 17px;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+body[data-theme="clean"] .amorph-container.out .so-backdrop,
+body[data-theme="clean"] .amorph-container.out div.amorph.one,
+body[data-theme="clean"] .amorph-container.out .text-area {
+    transform: none;
+    opacity: 1;
+}
+
+body[data-theme="neon"] .amorph-container.out .so-backdrop {
+    clip-path: inset(-80px -80px -80px -80px);
+}
+
+body[data-theme="neon"] .amorph-container.out div.amorph.one,
+body[data-theme="neon"] .amorph-container.out div.amorph.two,
+body[data-theme="neon"] .amorph-container.out .text-area {
+    opacity: 1;
+}
+
+body[data-theme="neon"] .amorph-container.out div.amorph.three {
+    opacity: 0.6;
+}
+
+@keyframes soArtDrop {
+    0% { opacity: 0; transform: translateY(-40px) rotate(12deg) scale(0.9); }
+    100% { opacity: 1; transform: rotate(4deg); }
+}
+
+@keyframes soArtFloat {
+    0%, 100% { transform: rotate(4deg); }
+    50% { transform: translateY(-6px) rotate(3deg); }
+}
+
+@keyframes soLeave {
+    0% { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: translateY(24px) scale(0.97); }
+}
+
+@keyframes soUnroll {
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+}
+
+@keyframes soPop {
+    0% { transform: scale(0) rotate(-12deg); }
+    100% { transform: scale(1) rotate(0); }
+}
+
+@keyframes soRise {
+    0% { opacity: 0; transform: translateY(16px); }
+    100% { opacity: 1; transform: none; }
+}
+
+@keyframes soWipe {
+    0% { clip-path: inset(-80px 100% -80px -80px); }
+    100% { clip-path: inset(-80px -80px -80px -80px); }
+}
+
+@keyframes soSweep {
+    0% { left: -140px; }
+    100% { left: 110%; }
+}
+
+@keyframes soHexIn {
+    0% { opacity: 0; transform: scale(0.4) rotate(-60deg); }
+    100% { opacity: 1; transform: none; }
+}
+
+@keyframes soGlow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.9; }
+}
+
+@keyframes soFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes soGlitch {
+    0% { transform: translate(-6px, 0); text-shadow: 3px 0 #ff2bd6, -3px 0 #00f0ff; }
+    25% { transform: translate(5px, -2px); text-shadow: -4px 0 #ff2bd6, 4px 0 #00f0ff; }
+    50% { transform: translate(-3px, 2px); text-shadow: 2px 0 #ff2bd6, -2px 0 #00f0ff; }
+    75% { transform: translate(2px, 0); text-shadow: -2px 0 #ff2bd6, 2px 0 #00f0ff; }
+    100% { transform: none; text-shadow: 0 0 10px var(--blob3), 0 0 26px var(--blob1); }
 }

@@ -5,6 +5,24 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.11.6 — 2026-11-01
+
+This release has a database migration (059: a cache of Twitch's chat
+badges).
+
+### Added
+- Two new looks for every overlay type, chosen in "Theme": the chat gets
+  "Speech bubbles" and "Neon"; alerts, shoutouts and watch streaks get
+  "Clean" (flat, rounded panels) and "Neon" (glowing outlines), besides
+  their classic look. The shoutout's are layouts of their own: a profile
+  card over the blurred box art, with the whole box art floating in front
+  of it, and a slanted neon banner with the
+  picture in a hexagon and a glitching name. The colours already set
+  still apply.
+- With "Show badges" on, the chat overlay shows each chatter's real
+  Twitch badges (the channel's own, such as subscriber months and
+  campaign badges, and Twitch's global ones), in OBS and in the preview.
+
 ## 0.11.5 — 2026-10-31
 
 This release has a database migration (058: who may enter a

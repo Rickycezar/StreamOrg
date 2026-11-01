@@ -4,9 +4,13 @@
  * card, a title with jumping letters, a tape behind it, sparks from the
  * number block and a count-up. The viewer's name colour comes in as
  * --user-* on .streak-alert; the settings set --streak-panel,
- * --streak-highlight and --streak-bottom.
+ * --streak-highlight and --streak-bottom. Three themes (body data-theme):
+ * "classic" (the pixel-art card), "clean" (a rounded flat card with the
+ * number in a badge of the viewer's colour) and "neon" (a dark card with
+ * a glowing outline in the viewer's colour); the big streak keeps its
+ * title, tape, sparks and count-up in each.
  */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&family=Outfit:wght@500;700;800&family=Audiowide&display=swap');
 
 :root {
     --outline: #101018;
@@ -451,4 +455,204 @@
 
 @keyframes fadeOut {
     to { opacity: 0; }
+}
+
+body[data-theme="clean"] *,
+body[data-theme="neon"] * {
+    -webkit-font-smoothing: auto;
+    font-smooth: auto;
+}
+
+body[data-theme="clean"] .streak-alert .grass,
+body[data-theme="clean"] .streak-alert .earth,
+body[data-theme="neon"] .streak-alert .grass,
+body[data-theme="neon"] .streak-alert .earth,
+body[data-theme="clean"] .streak-alert .streak-block::before,
+body[data-theme="neon"] .streak-alert .streak-block::before {
+    display: none;
+}
+
+body[data-theme="clean"] .streak-alert .pixel-card {
+    border-radius: 20px;
+    overflow: visible;
+    background: var(--panel);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+    filter: none;
+}
+
+body[data-theme="clean"] .streak-alert .card-main {
+    background: transparent;
+    border: 0;
+    padding: 16px 30px 16px 16px;
+    gap: 20px;
+}
+
+body[data-theme="clean"] .streak-alert .streak-block {
+    margin-top: 0;
+    border-radius: 16px;
+    background: linear-gradient(145deg, var(--user-light), var(--user-color) 55%, var(--user-dark));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--user-color) 45%, transparent);
+}
+
+body[data-theme="clean"] .streak-alert .streak-num,
+body[data-theme="neon"] .streak-alert .streak-num {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+body[data-theme="clean"] .streak-alert:not(.big) .streak-num,
+body[data-theme="neon"] .streak-alert:not(.big) .streak-num { font-size: 26px; }
+body[data-theme="clean"] .streak-alert:not(.big) .streak-num.long,
+body[data-theme="neon"] .streak-alert:not(.big) .streak-num.long { font-size: 20px; }
+body[data-theme="clean"] .streak-alert.big .streak-num,
+body[data-theme="neon"] .streak-alert.big .streak-num { font-size: 48px; }
+body[data-theme="clean"] .streak-alert.big .streak-num.long,
+body[data-theme="neon"] .streak-alert.big .streak-num.long { font-size: 36px; }
+
+body[data-theme="clean"] .streak-alert .streak-name {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    text-shadow: none;
+}
+
+body[data-theme="clean"] .streak-alert .streak-line,
+body[data-theme="clean"] .streak-alert .streak-msg {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 500;
+}
+
+body[data-theme="clean"] .streak-alert .streak-line strong {
+    font-weight: 800;
+}
+
+body[data-theme="clean"] .streak-alert .streak-msg::before,
+body[data-theme="neon"] .streak-alert .streak-msg::before {
+    content: '';
+}
+
+body[data-theme="clean"] .streak-alert .streak-test-tag {
+    border-radius: 999px;
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+body[data-theme="clean"] .streak-banner,
+body[data-theme="clean"] .streak-dedication {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 40px;
+    text-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+body[data-theme="clean"] .streak-dedication {
+    font-size: 24px;
+    color: var(--gold);
+}
+
+body[data-theme="clean"] .streak-tape {
+    height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--user-color) 85%, transparent);
+}
+
+body[data-theme="clean"] .streak-tape::before,
+body[data-theme="clean"] .streak-tape::after,
+body[data-theme="neon"] .streak-tape::before,
+body[data-theme="neon"] .streak-tape::after {
+    display: none;
+}
+
+body[data-theme="clean"] .streak-tape-track {
+    padding-top: 10px;
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    color: #ffffff;
+}
+
+body[data-theme="neon"] .streak-alert .pixel-card {
+    border-radius: 6px;
+    background: rgba(6, 6, 14, 0.9);
+    border: 2px solid var(--user-color);
+    box-shadow: 0 0 14px var(--user-color), 0 0 34px color-mix(in srgb, var(--user-color) 50%, transparent), inset 0 0 18px color-mix(in srgb, var(--user-color) 25%, transparent);
+    filter: none;
+}
+
+body[data-theme="neon"] .streak-alert .card-main {
+    background: transparent;
+    border: 0;
+    padding: 14px 28px 14px 14px;
+    gap: 20px;
+}
+
+body[data-theme="neon"] .streak-alert .streak-block {
+    margin-top: 0;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--user-light);
+    box-shadow: 0 0 12px var(--user-color), inset 0 0 12px var(--user-color);
+}
+
+body[data-theme="neon"] .streak-alert .streak-num {
+    font-family: 'Audiowide', 'Segoe UI', sans-serif;
+    font-weight: 400;
+    text-shadow: 0 0 6px #fff, 0 0 16px var(--user-color);
+}
+
+body[data-theme="neon"] .streak-alert .streak-name {
+    font-family: 'Audiowide', 'Segoe UI', sans-serif;
+    font-size: 18px;
+    color: var(--user-light);
+    text-shadow: 0 0 8px var(--user-color);
+}
+
+body[data-theme="neon"] .streak-alert .streak-line,
+body[data-theme="neon"] .streak-alert .streak-msg {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-weight: 500;
+}
+
+body[data-theme="neon"] .streak-alert .streak-line strong {
+    color: var(--gold);
+    text-shadow: 0 0 8px var(--gold);
+}
+
+body[data-theme="neon"] .streak-alert .streak-test-tag {
+    font-family: 'Outfit', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 0 8px #d82800;
+}
+
+body[data-theme="neon"] .streak-banner,
+body[data-theme="neon"] .streak-dedication {
+    font-family: 'Audiowide', 'Segoe UI', sans-serif;
+    font-size: 36px;
+    color: #ffffff;
+    text-shadow: 0 0 6px #fff, 0 0 18px var(--gold), 0 0 36px var(--user-color);
+}
+
+body[data-theme="neon"] .streak-dedication {
+    font-size: 22px;
+    text-shadow: 0 0 6px #fff, 0 0 16px var(--user-color);
+}
+
+body[data-theme="neon"] .streak-tape {
+    height: 40px;
+    border-top: 2px solid var(--user-light);
+    border-bottom: 2px solid var(--user-light);
+    background: rgba(6, 6, 14, 0.85);
+    box-shadow: 0 0 16px var(--user-color);
+}
+
+body[data-theme="neon"] .streak-tape-track {
+    padding-top: 11px;
+    font-family: 'Audiowide', 'Segoe UI', sans-serif;
+    font-size: 17px;
+    color: var(--user-light);
+    text-shadow: 0 0 8px var(--user-color);
 }

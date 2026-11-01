@@ -1418,6 +1418,10 @@ return [
             'position_top' => 'Em cima',
             'position_center' => 'No meio',
             'position_bottom' => 'Embaixo',
+            'theme_classic' => 'Clássico',
+            'theme_clean' => 'Limpo',
+            'theme_neon' => 'Neon',
+            'theme_bubbles' => 'Balões',
         ],
         'overlay_role' => [
             'broadcaster' => 'Você',

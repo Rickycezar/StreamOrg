@@ -6464,7 +6464,16 @@
         if (window.ResizeObserver) new ResizeObserver(scale).observe(box);
 
         window.addEventListener('message', async function (event) {
-            if (event.source !== frame.contentWindow || !event.data || event.data.type !== 'streamorg-preview-lookup') return;
+            if (event.source !== frame.contentWindow || !event.data) return;
+            if (event.data.type === 'streamorg-preview-badges') {
+                let badges = {};
+                try {
+                    badges = (await (await fetch(url('/overlays/badges?id=' + encodeURIComponent(editor.dataset.id)), { headers: { 'Accept': 'application/json' } })).json()).badges || {};
+                } catch (e) { }
+                send({ type: 'streamorg-preview-badges-result', badges: badges });
+                return;
+            }
+            if (event.data.type !== 'streamorg-preview-lookup') return;
             let channel = null;
             try {
                 const response = await fetch(url('/overlays/lookup?id=' + encodeURIComponent(editor.dataset.id) + '&login=' + encodeURIComponent(event.data.login)), { headers: { 'Accept': 'application/json' } });
