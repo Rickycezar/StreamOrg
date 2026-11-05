@@ -1,7 +1,8 @@
 <?php
-/** @var array $keys @var array $counts @var array $filters @var array $statuses
- *  @var array $platforms @var array $sources
+/** @var array $keys @var array $counts @var array $filters @var array $statuses @var array $listStatuses
+ *  @var array $platforms @var array $sources @var int $transfersWaiting
  *  @var bool $canAddGames @var bool $vaultLocked @var list<array> $giftable @var bool $twitchReady */
+$sendable = static fn (array $key): bool => in_array($key['status'], KeyTransfers::SENDABLE, true) && !$key['prize_id'] && !$key['is_placeholder'] && !$key['transfer_item_id'];
 ?>
 <div class="page-head">
     <h1><?= e(__('ui.nav.vault')) ?></h1>
@@ -13,8 +14,15 @@
     <?php $back = '/keys'; require dirname(__DIR__) . '/partials/vault_unlock.php'; ?>
 <?php endif; ?>
 
+<?php if ($transfersWaiting > 0): ?>
+    <div class="card transfer-waiting">
+        <p><?= e(sprintf(__('ui.transfer.waiting_banner'), $transfersWaiting)) ?></p>
+        <a class="btn small primary" href="<?= e(url('/keys/transfers')) ?>"><?= e(__('ui.transfer.waiting_open')) ?></a>
+    </div>
+<?php endif; ?>
+
 <section class="tiles compact">
-    <?php foreach ($statuses as $status): ?>
+    <?php foreach ($listStatuses as $status): ?>
         <a class="tile <?= $filters['status'] === [$status] ? 'active' : '' ?>"
            href="<?= e(url('/keys?status=' . $status)) ?>">
             <span class="tile-value"><?= (int) ($counts[$status] ?? 0) ?></span>
@@ -28,7 +36,7 @@
     <?= View::partial('partials/filter_search', ['value' => $filters['q'], 'placeholder' => __('ui.label.search_games')]) ?>
     <?= View::partial('partials/filter_select', [
         'name' => 'status', 'label' => __('ui.field.status'), 'selected' => $filters['status'],
-        'options' => array_combine($statuses, array_map(static fn ($s) => code_label('key_status', $s), $statuses)),
+        'options' => array_combine($listStatuses, array_map(static fn ($s) => code_label('key_status', $s), $listStatuses)),
     ]) ?>
     <?= View::partial('partials/filter_select', [
         'name' => 'key_type', 'label' => __('ui.field.key_type'), 'selected' => $filters['key_type'],
@@ -174,6 +182,7 @@
                 <th data-col="redeem_by"><?= e(__('ui.field.redeem_by')) ?></th>
                 <th data-col="status"><?= e(__('ui.field.status')) ?></th>
                 <th data-col="winner"><?= e(__('ui.field.winner')) ?></th>
+                <th data-col="received_from"><?= e(__('ui.transfer.col_received_from')) ?></th>
                 <th data-col="added"><?= e(__('ui.field.added_at')) ?></th>
                 <th data-col="key_code" data-nosort><?= e(__('ui.field.key_code')) ?></th>
             </tr>
@@ -185,19 +194,24 @@
                         <button type="button" class="btn small key-detail" data-id="<?= (int) $key['id'] ?>">
                             <?= icon_label('eye', __('ui.action.details')) ?>
                         </button>
-                        <?php if ($twitchReady && in_array($key['status'], Giveaways::GIFTABLE, true) && !$key['prize_id'] && !$key['is_placeholder']): ?>
+                        <?php if ($twitchReady && in_array($key['status'], Giveaways::GIFTABLE, true) && !$key['prize_id'] && !$key['is_placeholder'] && !$key['transfer_item_id']): ?>
                             <button type="button" class="btn small" data-modal-form="#give-key" data-give-key="<?= (int) $key['id'] ?>"
                                     data-modal-title="<?= e(__('ui.action.give_key')) ?>"><?= icon_label('gift', __('ui.action.give')) ?></button>
                         <?php endif; ?>
-                        <button type="button" class="btn small" data-modal-form="#edit-key-<?= (int) $key['id'] ?>"
-                                data-modal-title="<?= e($key['game_title']) ?>">
-                            <?= icon_label('edit', __('ui.action.edit')) ?>
-                        </button>
+                        <?php if ($sendable($key)): ?>
+                            <a class="btn small" href="<?= e(url('/keys/transfers?key[]=' . (int) $key['id'] . '#send')) ?>"><?= icon_label('send', __('ui.transfer.send_one')) ?></a>
+                        <?php endif; ?>
+                        <?php if ($key['status'] !== 'transferred' && !$key['transfer_item_id']): ?>
+                            <button type="button" class="btn small" data-modal-form="#edit-key-<?= (int) $key['id'] ?>"
+                                    data-modal-title="<?= e($key['game_title']) ?>">
+                                <?= icon_label('edit', __('ui.action.edit')) ?>
+                            </button>
+                        <?php endif; ?>
                     </td>
                     <td data-card-title data-col="game" data-label="<?= e(__('ui.field.game')) ?>">
                         <img class="card-cover" loading="lazy" alt=""
                              src="<?= e($key['cover_path'] ? GameImages::publicUrl($key['cover_path'], (string) $key['cover_version']) : url('/assets/game-missing.svg')) ?>">
-                        <?= e($key['game_title']) ?>
+                        <?= game_name($key['game_title']) ?>
                         <?php if ($key['under_embargo']): ?>
                             <span class="badge danger"
                                   title="<?= e(sprintf(__('ui.label.under_embargo_until'), fmt_datetime($key['embargo_until']))) ?>">
@@ -227,6 +241,13 @@
                         <?php endif; ?>
                     </td>
                     <td data-col="status" data-label="<?= e(__('ui.field.status')) ?>">
+                        <?php if ($key['status'] === 'transferred'): ?>
+                            <span class="badge transfer-accepted"><?= e(code_label('key_status', 'transferred')) ?></span>
+                            <?php if ($key['transferred_to']): ?><small class="muted block"><?= e(sprintf(__('ui.transfer.to_handle'), '@' . $key['transferred_to'])) ?></small><?php endif; ?>
+                        <?php elseif ($key['transfer_item_id']): ?>
+                            <span class="badge transfer-pending"><?= e(__('ui.transfer.on_the_way')) ?></span>
+                            <small class="muted block"><?= e(sprintf(__('ui.transfer.to_handle'), '@' . $key['sending_to'])) ?></small>
+                        <?php else: ?>
                         <select class="status-select status-<?= e($key['status']) ?>" data-id="<?= (int) $key['id'] ?>"
                                 <?= $key['under_embargo'] ? 'data-embargo="' . e(fmt_datetime($key['embargo_until'])) . '" data-game="' . e($key['game_title']) . '"' : '' ?>>
                             <?php foreach ($statuses as $status): ?>
@@ -235,6 +256,7 @@
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <?php endif; ?>
                     </td>
                     <td data-col="winner" data-label="<?= e(__('ui.field.winner')) ?>">
                         <?php if ($key['winner_login']): ?>
@@ -246,12 +268,34 @@
                             <span class="muted">—</span>
                         <?php endif; ?>
                     </td>
+                    <td data-col="received_from" data-label="<?= e(__('ui.transfer.col_received_from')) ?>" data-sort="<?= e($key['origin'] === 'own' ? '' : sort_key($key['received_at'])) ?>">
+                        <?php if ($key['origin'] === 'transfer'): ?>
+                            <strong>@<?= e((string) $key['received_from']) ?></strong>
+                            <small class="muted block"><?= e(fmt_date($key['received_at'])) ?></small>
+                        <?php elseif ($key['origin'] === 'streamorg'): ?>
+                            <strong>StreamOrg</strong>
+                            <small class="muted block"><?= e(fmt_date($key['received_at'])) ?></small>
+                        <?php else: ?>
+                            <span class="muted">—</span>
+                        <?php endif; ?>
+                    </td>
                     <td class="dates" data-col="added" data-label="<?= e(__('ui.field.added_at')) ?>" data-sort="<?= e(sort_key($key['created_at'])) ?>"
                         title="<?= e(fmt_datetime($key['created_at'])) ?>"><?= e(fmt_date($key['created_at'])) ?></td>
                     <td class="keycell" data-col="key_code" data-label="<?= e(__('ui.field.key_code')) ?>">
-                        <div class="keyfield">
+                        <?php if ($key['status'] === 'transferred'): ?>
+                            <span class="keystate muted"><?= e(__('ui.transfer.code_gone')) ?></span>
+                        <?php elseif ($key['transfer_item_id']): ?>
+                            <span class="keystate"><span class="badge transfer-pending">🔒 <?= e(__('ui.transfer.locked_in_transfer')) ?></span></span>
+                        <?php else: ?>
+                        <?php if (!$key['code_seen']): ?>
+                            <span class="keystate keyseal">
+                                <span class="badge ok" title="<?= e(__('ui.transfer.sealed_hint')) ?>">🔒 <?= e(__('ui.transfer.sealed')) ?></span>
+                                <button type="button" class="btn small key-unseal" data-id="<?= (int) $key['id'] ?>"><?= e(__('ui.transfer.reveal')) ?></button>
+                            </span>
+                        <?php endif; ?>
+                        <div class="keyfield"<?= $key['code_seen'] ? '' : ' hidden' ?>>
                             <input type="text" class="key-field masked" readonly
-                                   data-id="<?= (int) $key['id'] ?>"
+                                   <?= $key['code_seen'] ? '' : 'data-sealed ' ?>data-id="<?= (int) $key['id'] ?>"
                                    autocomplete="off" spellcheck="false"
                                    placeholder="••••••••••••">
                             <button type="button" class="btn small key-load" data-id="<?= (int) $key['id'] ?>"
@@ -261,12 +305,13 @@
                             <button type="button" class="btn small key-copy"
                                     title="<?= e(__('ui.action.copy')) ?>"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11.5" height="11.5" rx="2.2"/><path d="M5.5 15.5A2 2 0 0 1 3.5 13.5v-8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2"/></svg></button>
                         </div>
+                        <?php endif; ?>
                     </td>
                 </tr>
 
                 <tr id="edit-key-<?= (int) $key['id'] ?>" class="editrow hidden"
                     data-edit-url="<?= e(url('/keys/edit?id=' . (int) $key['id'])) ?>">
-                    <td colspan="11"></td>
+                    <td colspan="12"></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

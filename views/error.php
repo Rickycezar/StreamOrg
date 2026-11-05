@@ -12,7 +12,7 @@ $code      = in_array($code ?? 500, [403, 404, 419, 500], true) ? (int) $code : 
 $path      = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
 $signedIn  = Auth::check();
 $home      = url($signedIn ? '/dashboard' : '/');
-$email     = (string) Config::get('app.contact_email', '');
+$email     = contact_email();
 $report    = url('/support/bug?' . http_build_query(array_filter(['page' => $path, 'code' => $code, 'ref' => $reference ?? null])));
 $drawings  = [
     404 => '<circle cx="54" cy="54" r="30" class="err-line"/><path d="M76 76l26 26" class="err-line"/><path d="M44 46c2-6 18-6 20 2 1 6-8 7-9 13M55 68h.01" class="err-accent"/>',

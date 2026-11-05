@@ -84,7 +84,7 @@ $current = (array) $config['options'];
                         <li data-round-item="<?= (int) $prize['id'] ?>">
                             <button type="button" class="drag-handle" data-drag-handle aria-label="<?= e(__('ui.label.prize_drag')) ?>" title="<?= e(__('ui.label.prize_drag')) ?>"><?= Icons::svg('grip') ?></button>
                             <span class="prize-pos" data-round-pos></span>
-                            <span><?= e($prize['game_title']) ?> <small class="muted"><?= e(code_label('game_platform', $prize['platform_code'])) ?></small></span>
+                            <span><?= game_name($prize['game_title']) ?> <small class="muted"><?= e(code_label('game_platform', $prize['platform_code'])) ?></small></span>
                         </li>
                     <?php endforeach; ?>
                 </ol>

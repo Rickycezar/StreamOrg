@@ -106,14 +106,14 @@ $shots = static function (array $list): void {
         <?php if ($c['to_status'] !== null): ?>
             <div class="bug-event">
                 <span class="badge bug-<?= e($c['to_status']) ?>"><?= e(__('ui.bug_status.' . $c['to_status'])) ?></span>
-                <small class="muted"><?= e(sprintf(__('ui.support.status_by'), $fromTeam ? ($admin ? (string) $c['author'] : __('ui.support.team')) : (string) $c['author'], fmt_datetime($c['created_at'], 'd/m H:i'))) ?></small>
+                <small class="muted"><?= sprintf(e(__('ui.support.status_by')), $fromTeam && !$admin ? e(__('ui.support.team')) : pii((string) $c['author']), e(fmt_datetime($c['created_at'], 'd/m H:i'))) ?></small>
             </div>
         <?php endif; ?>
         <?php if ($c['body'] !== null || !empty($images[(int) $c['id']])): ?>
             <article class="bug-comment<?= $fromTeam ? ' from-team' : '' ?><?= $c['is_internal'] ? ' internal' : '' ?>">
                 <header>
                     <?php $avatarUser = $c; $avatarSize = 'sm'; require dirname(__DIR__) . '/partials/avatar.php'; ?>
-                    <strong><?= e((string) $c['author']) ?></strong>
+                    <strong><?= pii((string) $c['author']) ?></strong>
                     <?php if ($fromTeam): ?><span class="badge"><?= e(__('ui.support.team')) ?></span><?php endif; ?>
                     <?php if ($c['is_internal']): ?><span class="badge warn"><?= e(__('ui.support.internal_note')) ?></span><?php endif; ?>
                     <time class="muted" datetime="<?= e($c['created_at']) ?>"><?= e(fmt_datetime($c['created_at'], 'd/m H:i')) ?></time>

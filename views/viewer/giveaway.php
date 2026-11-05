@@ -26,7 +26,7 @@ $card = static function (array $p) use ($art): void {
     <article class="pub-card pub-prize-card<?= $p['winner_name'] !== null ? ' is-won' : '' ?>">
         <?= View::partial('viewer/_art', ['art' => $src, 'class' => 'pub-prize-art']) ?>
         <div class="pub-prize-body">
-            <strong><?= e($p['game_title']) ?></strong>
+            <strong><?= game_name($p['game_title']) ?></strong>
             <small><?= e(code_label('game_platform', $p['platform_code'])) ?></small>
             <?php if ($p['winner_name'] !== null): ?>
                 <span class="pub-winner"><?= e(sprintf(__('ui.viewer.won_by'), $p['winner_name'])) ?></span>

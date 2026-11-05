@@ -14,7 +14,7 @@ final class HelpController
     /** Page => its sections, each drawn with the illustration of the same name (views/help/art.php). */
     public const PAGES = [
         'dashboard' => ['today', 'pick', 'shortcuts', 'attention', 'week', 'schedule'],
-        'keys'      => ['vault', 'add', 'hidden', 'status', 'dates', 'content', 'giveaways'],
+        'keys'      => ['vault', 'add', 'hidden', 'status', 'dates', 'content', 'giveaways', 'transfers'],
         'content'   => ['what', 'calendar', 'resize', 'statuses', 'title', 'warnings', 'twitch'],
         'defaults'  => ['schedule', 'length', 'prefixes', 'counters', 'numbers', 'limit'],
         'giveaways' => ['setup', 'prizes', 'chat', 'page', 'winners', 'battle', 'claim', 'private', 'finish'],

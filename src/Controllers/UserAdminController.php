@@ -29,6 +29,7 @@ final class UserAdminController
                     (SELECT max(s.last_seen_at) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
                FROM users u
           LEFT JOIN twitch_connections tc ON tc.user_id = u.id
+              WHERE u.signup_status IS NULL
            ORDER BY u.created_at DESC, u.id DESC"
         )->fetchAll();
 
@@ -36,6 +37,9 @@ final class UserAdminController
         unset($_SESSION[self::GENERATED_KEY]);
 
         View::render('admin/users', [
+            'signups'   => Signups::pending(),
+            'signupOpen' => Mailer::ready(),
+            'autoApprove' => Signups::autoApprove(),
             'users'     => $users,
             'generated' => is_array($generated) ? $generated : null,
             'old'       => (array) ($_SESSION['admin_new_user_old'] ?? []),
@@ -98,10 +102,11 @@ final class UserAdminController
             $password = self::generatePassword();
         }
 
-        $pdo->prepare(
+        $insert = $pdo->prepare(
             'INSERT INTO users (username, email, password_hash, display_name, locale, timezone, role)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
-        )->execute([
+             VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+        );
+        $insert->execute([
             $input['username'],
             $input['email'],
             Auth::hash($password),
@@ -111,11 +116,13 @@ final class UserAdminController
             $input['role'],
         ]);
 
+        $welcomed = AccountEmails::welcome($insert->fetch()) !== null;
+
         if ($generated) {
             $_SESSION[self::GENERATED_KEY] = ['username' => $input['username'], 'password' => $password];
         }
 
-        flash('success', sprintf(__('ui.message.user_created'), $input['username']));
+        flash('success', sprintf(__('ui.message.user_created'), $input['username']) . ($welcomed ? ' ' . __('ui.message.user_welcome_sent') : ''));
         redirect('/admin/users');
     }
 
@@ -167,7 +174,8 @@ final class UserAdminController
         $pdo->beginTransaction();
 
         $pdo->prepare(
-            'UPDATE users SET display_name = ?, email = ?, role = ?, locale = ?, timezone = ?, is_active = ?, updated_at = now()
+            'UPDATE users SET display_name = ?, email = ?, role = ?, locale = ?, timezone = ?, is_active = ?, updated_at = now(),
+                    email_verified_at = CASE WHEN email = ?::citext THEN email_verified_at END
               WHERE id = ?'
         )->execute([
             $input['name'] !== '' ? $input['name'] : $target['username'],
@@ -176,6 +184,7 @@ final class UserAdminController
             $input['locale'],
             $input['timezone'],
             $input['active'] ? 'true' : 'false',
+            $input['email'],
             $id,
         ]);
 
@@ -233,6 +242,8 @@ final class UserAdminController
 
         $pdo->commit();
 
+        AccountEmails::passwordChanged($target);
+
         if ($generated) {
             $_SESSION[self::GENERATED_KEY] = ['username' => $target['username'], 'password' => $password];
         }
@@ -240,6 +251,33 @@ final class UserAdminController
         flash('success', sprintf(__('ui.message.user_password_reset'), $target['username'])
             . ($ended > 0 ? ' ' . sprintf(__('ui.message.user_sessions_ended'), $ended) : ''));
         redirect('/admin/users');
+    }
+
+    /** POST /admin/users/signup — approves or declines an account waiting from the sign-up page. */
+    public static function signup(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT) ?: 0;
+        $ok = ($_POST['decision'] ?? '') === 'approve' ? Signups::approve($id) : Signups::decline($id);
+
+        flash($ok ? 'success' : 'error', __($ok
+            ? (($_POST['decision'] ?? '') === 'approve' ? 'ui.message.signup_approved' : 'ui.message.signup_declined')
+            : 'ui.message.signup_not_ready'));
+        redirect('/admin/users#signups');
+    }
+
+    /** POST /admin/users/auto-approve — whether sign-ups are let in as soon as their address is confirmed. */
+    public static function autoApprove(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        Settings::set('signup.auto_approve', !empty($_POST['auto_approve']) ? '1' : '0', Auth::id());
+
+        flash('success', __('ui.message.saved'));
+        redirect('/admin/users#signups');
     }
 
     /** Deletes an account and everything it owns. The username must be typed back. */

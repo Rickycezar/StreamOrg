@@ -51,7 +51,7 @@ $art = static fn (int $gameId): ?array => GameImages::boxArt(Database::connectio
                 <article class="pub-card pub-prize-card">
                     <?= View::partial('viewer/_art', ['art' => $src, 'class' => 'pub-prize-art']) ?>
                     <div class="pub-prize-body">
-                        <strong><?= e($p['game_title']) ?></strong>
+                        <strong><?= game_name($p['game_title']) ?></strong>
                         <small><?= e(code_label('game_platform', $p['platform_code'])) ?> · <?= e(!empty($p['is_direct']) ? __('ui.label.direct_gift') : $p['title']) ?></small>
                         <small><?= e(sprintf(__('ui.viewer.claimed_on'), fmt_date($p['claimed_at']))) ?><?= $p['redeem_by'] ? ' · ' . e(sprintf(__('ui.label.redeem_by_date'), fmt_date($p['redeem_by']))) : '' ?></small>
                         <details class="pub-key">

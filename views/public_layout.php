@@ -11,7 +11,7 @@
 $asset   = static fn (string $path): string => url($path) . '?v=' . (@filemtime(dirname(__DIR__) . '/public' . $path) ?: 0);
 $viewer  = Viewers::current();
 $creator = Auth::user();
-$email   = (string) Config::get('app.contact_email', '');
+$email   = contact_email();
 ?>
 <!DOCTYPE html>
 <html lang="<?= e(Lang::locale()) ?>" data-theme="dark">

@@ -77,12 +77,16 @@ final class Notifications
     }
 
     /**
-     * @param array{texts: array<string, array{title:string, body:string}>, level:string, link:?string, users:?list<int>} $notification
+     * Sends a notification, and e-mail copies to the recipients who want
+     * them (AccountEmails), unless "email" is false (the administrators'
+     * error alerts, which come in bursts).
+     *
+     * @param array{texts: array<string, array{title:string, body:string}>, level:string, link:?string, users:?list<int>, email?:bool} $notification
      * @return int the new notification's id
      */
     public static function send(array $notification, ?int $createdBy): int
     {
-        return Database::transaction(static function (PDO $pdo) use ($notification, $createdBy): int {
+        $id = Database::transaction(static function (PDO $pdo) use ($notification, $createdBy): int {
             $stmt = $pdo->prepare(
                 'INSERT INTO notifications (audience, level, link_url, created_by) VALUES (?, ?, ?, ?) RETURNING id'
             );
@@ -104,6 +108,16 @@ final class Notifications
 
             return $id;
         });
+
+        if (($notification['email'] ?? true) !== false) {
+            try {
+                AccountEmails::notification($notification['texts'], $notification['link'], $notification['users']);
+            } catch (Throwable $e) {
+                ErrorLog::note('mail: notification copies not queued: ' . $e->getMessage());
+            }
+        }
+
+        return $id;
     }
 
     /**
@@ -155,7 +169,7 @@ final class Notifications
             ];
         }
 
-        return self::send(['texts' => $texts, 'level' => $level, 'link' => $link, 'users' => $userIds], null);
+        return self::send(['texts' => $texts, 'level' => $level, 'link' => $link, 'users' => $userIds, 'email' => !str_starts_with($key, 'error_')], null);
     }
 
     /**

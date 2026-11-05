@@ -9,6 +9,9 @@ declare(strict_types=1);
  */
 final class GameCatalog
 {
+    /** The longest a game's name may be (real Steam titles pass 130). */
+    public const TITLE_MAX = 200;
+
     /** Finds a game by exact title, case-insensitively. */
     public static function findByTitle(PDO $pdo, string $title): ?int
     {
@@ -78,7 +81,7 @@ final class GameCatalog
         );
 
         $stmt->execute([
-            'title'        => $detail['title'],
+            'title'        => self::title($detail['title']),
             'slug'         => self::slug($detail['title'] . '-' . $code . '-' . $ref),
             'publisher_id' => $publisherId,
             'developer_id' => $developerId,
@@ -545,6 +548,17 @@ final class GameCatalog
     }
 
     /**
+     * A game's name as stored: spaces tidied and at most TITLE_MAX
+     * characters, cut with "…" when a provider sends something longer.
+     */
+    public static function title(string $title): string
+    {
+        $title = trim((string) preg_replace('/\s+/u', ' ', $title));
+
+        return mb_strlen($title) > self::TITLE_MAX ? rtrim(mb_substr($title, 0, self::TITLE_MAX - 1)) . '…' : $title;
+    }
+
+    /**
      * Creates a bare game row when no provider match is available, with
      * the Twitch category it came from, or else one looked up.
      */
@@ -555,7 +569,7 @@ final class GameCatalog
              ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title
              RETURNING id'
         );
-        $stmt->execute([trim($title), self::slug($title)]);
+        $stmt->execute([self::title($title), self::slug($title)]);
         $gameId = (int) $stmt->fetchColumn();
 
         if ($category !== null) {

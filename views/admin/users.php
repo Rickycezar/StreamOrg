@@ -1,6 +1,8 @@
 <?php
 /** @var array $users @var ?array $generated @var array $old @var list<string> $roles
- *  @var list<string> $locales @var list<string> $timezones @var string $defaultTz */
+ *  @var list<string> $locales @var list<string> $timezones @var string $defaultTz
+ *  @var list<array> $signups accounts waiting for approval @var bool $signupOpen whether the sign-up page is open (e-mail live)
+ *  @var bool $autoApprove whether sign-ups need no approval */
 
 $value = static fn (string $key, string $default = ''): string => (string) ($old[$key] ?? $default);
 ?>
@@ -15,6 +17,54 @@ $value = static fn (string $key, string $default = ''): string => (string) ($old
             <button type="button" class="btn key-copy" title="<?= e(__('ui.action.copy')) ?>"><?= e(__('ui.action.copy')) ?></button>
         </div>
     </section>
+<?php endif; ?>
+
+<?php if ($signupOpen || $signups !== []): ?>
+<section class="card" id="signups">
+    <div class="card-head">
+        <h2><?= e(sprintf(__('ui.signup_admin.title'), count($signups))) ?></h2>
+        <form method="post" action="<?= e(url('/admin/users/auto-approve')) ?>" class="signup-auto">
+            <?= Csrf::field() ?>
+            <input type="hidden" name="auto_approve" value="<?= $autoApprove ? '' : '1' ?>">
+            <span class="muted small"><?= e(__($autoApprove ? 'ui.signup_admin.auto_on' : 'ui.signup_admin.auto_off')) ?></span>
+            <button type="submit" class="btn small"><?= e(__($autoApprove ? 'ui.signup_admin.auto_disable' : 'ui.signup_admin.auto_enable')) ?></button>
+        </form>
+    </div>
+    <p class="muted small"><?= e(__($signupOpen ? 'ui.signup_admin.intro' : 'ui.signup_admin.closed')) ?></p>
+    <?php if ($signups === []): ?>
+        <p class="empty"><?= e(__('ui.signup_admin.none')) ?></p>
+    <?php else: ?>
+        <ul class="signup-list">
+            <?php foreach ($signups as $s): $confirmed = $s['email_verified_at'] !== null; ?>
+                <li>
+                    <div>
+                        <strong><?= e($s['display_name'] ?: $s['username']) ?></strong> <small class="muted">@<?= e($s['username']) ?></small>
+                        <div class="muted small">
+                            <?= e($s['email']) ?>
+                            <span class="badge <?= $confirmed ? 'ok' : 'warn' ?>"><?= e(__($confirmed ? 'ui.label.email_verified' : 'ui.label.email_unverified')) ?></span>
+                            <?php if ($s['channel_handle']): ?> · <a href="https://twitch.tv/<?= e($s['channel_handle']) ?>" target="_blank" rel="noopener noreferrer">twitch.tv/<?= e($s['channel_handle']) ?></a><?php endif; ?>
+                            · <?= e(fmt_datetime($s['created_at'], 'd/m H:i')) ?>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <form method="post" action="<?= e(url('/admin/users/signup')) ?>">
+                            <?= Csrf::field() ?>
+                            <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
+                            <input type="hidden" name="decision" value="approve">
+                            <button type="submit" class="btn small primary" <?= $confirmed ? '' : 'disabled title="' . e(__('ui.signup_admin.needs_confirm')) . '"' ?>><?= e(__('ui.signup_admin.approve')) ?></button>
+                        </form>
+                        <form method="post" action="<?= e(url('/admin/users/signup')) ?>">
+                            <?= Csrf::field() ?>
+                            <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
+                            <input type="hidden" name="decision" value="decline">
+                            <button type="submit" class="btn small ghost" data-confirm="<?= e(sprintf(__('ui.signup_admin.decline_confirm'), $s['username'])) ?>"><?= e(__('ui.signup_admin.decline')) ?></button>
+                        </form>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
 <?php endif; ?>
 
 <section class="card">

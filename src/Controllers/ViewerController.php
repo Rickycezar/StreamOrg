@@ -161,7 +161,7 @@ final class ViewerController
     /** GET /privacy */
     public static function privacy(): void
     {
-        View::publicPage('privacy', ['email' => (string) Config::get('app.contact_email', '')], __('ui.privacy.title'));
+        View::publicPage('privacy', ['email' => privacy_email()], __('ui.privacy.title'));
     }
 
     /**

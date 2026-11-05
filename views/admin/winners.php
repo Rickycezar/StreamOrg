@@ -143,7 +143,7 @@ $removable = static fn (array $w): bool => in_array($w['state'], ['waiting', 'ex
                 <li>
                     <div>
                         <strong><?= e($r['display_name'] ?: $r['twitch_login']) ?></strong>
-                        <span class="muted">· <?= e($r['game_title'] ?: '—') ?> · <?= e($r['giveaway_title']) ?> (<?= e($r['streamer']) ?>)</span>
+                        <span class="muted">· <?= $r['game_title'] ? game_name($r['game_title'], true) : '—' ?> · <?= e($r['giveaway_title']) ?> (<?= e($r['streamer']) ?>)</span>
                         <p class="removal-reason"><?= e($r['reason']) ?></p>
                     </div>
                     <div class="removal-meta">

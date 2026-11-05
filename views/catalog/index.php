@@ -89,7 +89,7 @@
                             <?php else: ?>
                                 <span class="picker-cover"></span>
                             <?php endif; ?>
-                            <span class="game-title"><?= e($game['title']) ?></span>
+                            <span class="game-title"><?= game_name($game['title']) ?></span>
                         </span>
                     </td>
                     <td data-col="publisher" data-label="<?= e(__('ui.nav.publishers')) ?>"><?= e($game['publisher_name'] ?: '—') ?></td>

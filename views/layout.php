@@ -70,6 +70,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 'children' => [
                     '/keys'         => __('ui.nav.vault'),
                     '/keys/given'   => __('ui.nav.given_keys'),
+                    '/keys/transfers' => __('ui.nav.key_transfers'),
                     '/giveaways'    => __('ui.nav.giveaways'),
                     '/negotiations' => __('ui.nav.negotiations'),
                 ],
@@ -122,6 +123,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                         '/admin/api'      => __('ui.nav.api_settings'),
                         '/admin/lang'     => __('ui.nav.languages'),
                         '/admin/game-texts' => __('ui.nav.game_texts'),
+                        '/admin/emails'   => __('ui.nav.emails'),
                     ],
                 ],
             ];
@@ -203,14 +205,14 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
                 <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM4 4l16 16"/></svg>
                 <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
             </span>
-            <span class="usermenu-name"><?= e($user['display_name'] ?: $user['username']) ?></span>
+            <span class="usermenu-name"><?= $user['display_name'] ? pii($user['display_name']) : e($user['username']) ?></span>
         </button>
 
         <div class="usermenu-panel" id="usermenu-panel" hidden>
             <div class="usermenu-head">
                 <?php $avatarSize = 'md'; require dirname(__DIR__) . '/views/partials/avatar.php'; ?>
                 <span>
-                    <strong><?= e($user['display_name'] ?: $user['username']) ?></strong>
+                    <strong><?= $user['display_name'] ? pii($user['display_name']) : e($user['username']) ?></strong>
                     <?php if (!empty($user['channel_handle'])): ?>
                         <small><?= e(code_label('streaming_platform', $user['channel_platform_code'] ?? '')) ?>/<?= e($user['channel_handle']) ?></small>
                     <?php else: ?>

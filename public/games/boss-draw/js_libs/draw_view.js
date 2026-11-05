@@ -218,6 +218,8 @@ function drawPixelIcon(rows, colors) {
 const DRAW_ICONS = {
     heart: drawPixelIcon(['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'], { '#': '#e52521' }),
     heartEmpty: drawPixelIcon(['.##.##.', '#..#..#', '#.....#', '.#...#.', '..#.#..', '...#...'], { '#': '#6b2a2e' }),
+    shield: drawPixelIcon(['.#####.', '#=====#', '#=====#', '#=====#', '.#===#.', '..#=#..', '...#...'], { '#': '#24557d', '=': '#8fd0ff' }),
+    shieldEmpty: drawPixelIcon(['.#####.', '#.....#', '#.....#', '#.....#', '.#...#.', '..#.#..', '...#...'], { '#': '#3b5068' }),
     skull: drawPixelIcon(['.#####.', '#######', '#..#..#', '#######', '.##.##.', '.#####.', '.#.#.#.'], { '#': '#f1ede4' })
 };
 
@@ -255,6 +257,8 @@ class DrawArena {
         this.el.style.setProperty('--icon-heart', DRAW_ICONS.heart);
         this.el.style.setProperty('--icon-heart-empty', DRAW_ICONS.heartEmpty);
         this.el.style.setProperty('--icon-skull', DRAW_ICONS.skull);
+        this.el.style.setProperty('--icon-shield', DRAW_ICONS.shield);
+        this.el.style.setProperty('--icon-shield-empty', DRAW_ICONS.shieldEmpty);
         this._buildScenery();
         this.toasts = drawEl('div', 'draw-toasts');
         this.army = drawEl('div', 'draw-army');
@@ -301,14 +305,15 @@ class DrawArena {
         const holder = drawEl('div', 'draw-sprite');
         clip.appendChild(holder);
         const hearts = drawEl('div', 'draw-hearts');
+        const shields = drawEl('div', 'draw-shields');
         const name = drawEl('div', 'draw-name', p.name);
         const color = drawNameColor(p.name, p.color);
         name.style.color = color;
-        el.append(hearts, clip, name);
+        el.append(shields, hearts, clip, name);
         this.sides[p.kind].body.appendChild(el);
 
         const max = Math.max(1, hitsPerPlayer + Math.floor(Number(p.bonus) || 0));
-        const state = { id: p.id, name: p.name, color, el, clip, holder, hearts, animator: null, kind: p.kind,
+        const state = { id: p.id, name: p.name, color, el, clip, holder, hearts, shields, animator: null, kind: p.kind,
             hp: max, max, bonus: max - hitsPerPlayer, dead: false };
         this.dressPlayer(state, DRAW_DATA.heroes[p.hero] ? p.hero : drawPickHero(p.kind));
         this.renderHearts(state);
@@ -340,6 +345,7 @@ class DrawArena {
             height: `${def.h * DRAW_SCALE}px`
         });
         state.holder.classList.toggle('draw-flip', flip);
+        state.el.style.setProperty('--hearts-drop', `${Math.max(0, Math.round(DRAW_CLIP_H - bh * DRAW_SCALE - 3))}px`);
         state.animator = drawCharacter(state.holder, def);
         state.animator.playAnimation('idle');
         this.animators.push(state.animator);
@@ -443,18 +449,30 @@ class DrawArena {
      * @param {object} state - Player state.
      */
     renderHearts(state) {
-        state.hearts.textContent = '';
-        const base = state.max - Math.max(0, state.bonus || 0);
-        if (state.hp > DRAW_HEART_ICONS) {
-            const heart = drawEl('span', 'draw-heart');
-            heart.classList.toggle('draw-heart-bonus', state.bonus > 0);
-            state.hearts.append(heart, drawEl('span', 'draw-heart-count', `${state.hp}/${state.max}`));
+        const shieldsMax = Math.max(0, state.bonus || 0);
+        const heartsMax = state.max - shieldsMax;
+        const shieldsLeft = Math.max(0, state.hp - heartsMax);
+        const heartsLeft = Math.min(state.hp, heartsMax);
+        this._renderRow(state.hearts, 'draw-heart', heartsLeft, heartsMax);
+        this._renderRow(state.shields, 'draw-shield', shieldsLeft, shieldsMax);
+    }
+
+    /**
+     * One row of icons, full then empty; above DRAW_HEART_ICONS one icon and "left/max".
+     *
+     * @param {HTMLElement} row
+     * @param {string} kind - draw-heart or draw-shield.
+     * @param {number} left - Still full.
+     * @param {number} max - In all.
+     */
+    _renderRow(row, kind, left, max) {
+        row.textContent = '';
+        if (max > DRAW_HEART_ICONS) {
+            row.append(drawEl('span', left > 0 ? kind : `${kind} ${kind}-empty`), drawEl('span', 'draw-heart-count', `${left}/${max}`));
             return;
         }
-        for (let i = 0; i < Math.min(state.max, DRAW_HEART_ICONS); i++) {
-            const heart = drawEl('span', i < state.hp ? 'draw-heart' : 'draw-heart draw-heart-empty');
-            heart.classList.toggle('draw-heart-bonus', i >= base);
-            state.hearts.appendChild(heart);
+        for (let i = 0; i < max; i++) {
+            row.appendChild(drawEl('span', i < left ? kind : `${kind} ${kind}-empty`));
         }
     }
 
@@ -485,7 +503,7 @@ class DrawArena {
         const arena = this.el.getBoundingClientRect();
         const armyBox = this.army.getBoundingClientRect();
         const width = armyBox.width / scale;
-        const height = (arena.bottom - armyBox.top) / scale - 16;
+        const height = (arena.bottom - armyBox.top) / scale - 30;
         const slotH = DRAW_SLOT_H;
         const total = (n.melee || 0) + (n.ranged || 0);
         let zoom = DRAW_ZOOMS[DRAW_ZOOMS.length - 1];
@@ -1017,6 +1035,7 @@ class DrawPlayback {
         this._rafId = null;
 
         this.arena = new DrawArena(root);
+        this.arena.el.classList.toggle('draw-hide-dead', !!options.hideDead);
         this.arena.fitArmy({
             melee: result.players.filter(p => p.kind === 'melee').length,
             ranged: result.players.filter(p => p.kind === 'ranged').length

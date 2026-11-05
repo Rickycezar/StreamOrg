@@ -6,6 +6,7 @@
  *
  * @var bool    $signedIn
  * @var string  $email   preview-access contact address
+ * @var bool    $signup  whether streamers can sign up (e-mail is live) @var bool $autoApprove whether sign-ups need no approval
  * @var ?string $mailto
  * @var list<array{title:string, url:string}> $art  catalogue box art for the illustrations
  * @var list<array{name:string, quote:string, detail:?string, avatar:?string, url:?string, rating:int}> $testimonials
@@ -120,12 +121,19 @@ $initials = static function (string $name): string {
                     <?= $icon($I['arrow'], 'lp-btn-icon', 2.2) ?>
                     <?= e(__($signedIn ? 'ui.landing.open_app' : 'ui.landing.use_system')) ?>
                 </a>
-                <?php if ($mailto !== null): ?>
+                <?php if ($signup): ?>
+                    <a class="lp-btn ghost" href="<?= e(url('/signup')) ?>" data-turbo="false"><?= e(__('ui.landing.signup')) ?></a>
+                <?php elseif ($mailto !== null): ?>
                     <a class="lp-btn ghost" href="<?= e($mailto) ?>"><?= e(__('ui.landing.request_preview')) ?></a>
                 <?php endif; ?>
             </div>
 
-            <?php if ($mailto !== null): ?>
+            <?php if ($signup): ?>
+                <p class="lp-note">
+                    <?= $icon($I['mail'], 'lp-note-icon') ?>
+                    <span><?= e(__($autoApprove ? 'ui.landing.signup_note_open' : 'ui.landing.signup_note_approval')) ?></span>
+                </p>
+            <?php elseif ($mailto !== null): ?>
                 <p class="lp-note">
                     <?= $icon($I['mail'], 'lp-note-icon') ?>
                     <span><?= e($noteBefore) ?><a href="<?= e($mailto) ?>"><?= e($email) ?></a><?= e($noteAfter) ?></span>
@@ -319,7 +327,7 @@ $initials = static function (string $name): string {
     </section>
     <?php endif; ?>
 
-    <?php if ($mailto !== null): ?>
+    <?php if ($signup || $mailto !== null): ?>
     <section class="lp-cta">
         <div class="lp-envelope" aria-hidden="true">
             <span class="lp-letter"><i></i><i></i><i class="short"></i></span>
@@ -328,9 +336,15 @@ $initials = static function (string $name): string {
         </div>
         <div class="lp-cta-copy">
             <span class="lp-eyebrow"><?= e(__('ui.landing.cta_title')) ?></span>
-            <h2><?= e(__('ui.landing.cta_heading')) ?></h2>
-            <p><?= e(__('ui.landing.cta_sub')) ?></p>
-            <a class="lp-btn primary" href="<?= e($mailto) ?>"><?= $icon($I['mail'], 'lp-btn-icon') ?><?= e(__('ui.landing.request_preview')) ?></a>
+            <?php if ($signup): ?>
+                <h2><?= e(__('ui.landing.signup_heading')) ?></h2>
+                <p><?= e(__($autoApprove ? 'ui.landing.signup_sub_open' : 'ui.landing.signup_sub_approval')) ?></p>
+                <a class="lp-btn primary" href="<?= e(url('/signup')) ?>" data-turbo="false"><?= $icon($I['arrow'], 'lp-btn-icon', 2.2) ?><?= e(__('ui.landing.signup')) ?></a>
+            <?php else: ?>
+                <h2><?= e(__('ui.landing.cta_heading')) ?></h2>
+                <p><?= e(__('ui.landing.cta_sub')) ?></p>
+                <a class="lp-btn primary" href="<?= e($mailto) ?>"><?= $icon($I['mail'], 'lp-btn-icon') ?><?= e(__('ui.landing.request_preview')) ?></a>
+            <?php endif; ?>
         </div>
     </section>
     <?php endif; ?>

@@ -256,7 +256,7 @@ $orderable = $open && count($prizes) > 1;
                         <td data-card-title data-label="<?= e(__('ui.field.game')) ?>">
                             <img class="card-cover" loading="lazy" alt=""
                                  src="<?= e($p['art_path'] ? GameImages::publicUrl($p['art_path'], (string) $p['art_version']) : url('/assets/game-missing.svg')) ?>">
-                            <?= e($p['game_title']) ?>
+                            <?= game_name($p['game_title']) ?>
                         </td>
                         <td data-label="<?= e(__('ui.field.platform')) ?>"><?= e(code_label('game_platform', $p['platform_code'])) ?></td>
                         <td class="nowrap" data-sort="<?= e(sort_key($p['expires_at'])) ?>" data-label="<?= e(__('ui.field.redeem_by')) ?>"><?= e($p['expires_at'] ? fmt_date($p['expires_at']) : '—') ?></td>

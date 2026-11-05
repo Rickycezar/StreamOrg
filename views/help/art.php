@@ -123,6 +123,12 @@ $arts = [
         . $r(156, 34, 70, 34, 'ha-warnbg', 8) . $path('M170 44l6 10h-12z', 'ha-warn-fill') . $bar(184, 47, 34, 'ha-warn')
         . $r(156, 80, 70, 34, 'ha-dangerbg', 8) . $dot(171, 97, 7, 'ha-danger-ring') . $path('M171 93v4l3 2', 'ha-stroke-danger') . $bar(184, 94, 34, 'ha-danger'),
 
+    'keys.transfers' =>
+        $r(14, 38, 82, 70, 'ha-panel', 8) . $key(24, 52) . $bar(24, 84, 52, 'ha-text')
+        . $path('M100 73h44', 'ha-stroke-accent-dash') . $path('M138 66l8 7-8 7', 'ha-stroke-accent')
+        . $r(150, 38, 82, 70, 'ha-okbg', 8) . $key(160, 52) . $bar(160, 84, 40, 'ha-text')
+        . $dot(214, 46, 11, 'ha-soft') . $r(209, 45, 10, 8, 'ha-accent', 2) . $path('M211 45v-3a3 3 0 0 1 6 0v3', 'ha-stroke-accent'),
+
     'keys.content' =>
         $r(16, 46, 80, 50, 'ha-panel', 8) . $key(26, 56) . $bar(26, 76, 56, 'ha-text')
         . $path('M98 71c20 0 24-20 46-20', 'ha-stroke-accent-dash') . $dot(98, 71, 3, 'ha-accent') . $dot(144, 51, 3, 'ha-accent')

@@ -5,6 +5,59 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## Unreleased
+
+This release has database migrations (060: e-mail; 061: key transfers; 062: game name limit).
+
+### Added
+- Key transfers (Sponsorships → Transfers): send keys to another
+  creator's vault by their Twitch channel or StreamOrg login, without
+  anyone seeing the code. The code travels sealed; the sender's keys are
+  locked until the receiver accepts (then the code leaves the sender's
+  vault for good) or declines, cancels or lets it expire (14 days; then
+  they come back). The receiver can pass a key on the same way.
+- Received keys arrive sealed: the global "reveal keys" switch never
+  shows them; only Reveal does, after a warning, and each reveal is
+  recorded for good in the key's history (who passed it on and who has
+  seen the code, by handle). Only their status can change. The vault has
+  a "Received from" column (another creator, or StreamOrg later on).
+- Safe to show on stream: while keys are hidden, real names and e-mails
+  are blurred wherever they appear outside Administration (the menu, the
+  dashboard greeting, the profile, joint plans and their chat, support,
+  contacts). Transfers show people by handle only, and notifications
+  about joint plans now name people by handle too.
+- E-mail, ready to be plugged in but off (its screens stay hidden until it is live): Administration → E-mails has
+  the system messages in each language (edit them, preview them as they
+  would arrive, send yourself a test), the outbox, and the settings. In
+  "Preview" everything is prepared and kept in the outbox and nothing is
+  sent; "Live" needs a provider (Postmark) and a worker.
+- The messages: welcome (choose your password), confirm your e-mail,
+  your e-mail changed (to the old address), reset your password, your
+  password changed, and e-mail copies of notifications (only to
+  confirmed addresses, with a one-click way out). "Forgot your password"
+  appears on the sign-in page while e-mail is on; over a private vault it
+  works like an administrator's reset.
+- The profile shows whether the e-mail is confirmed and has a switch for
+  notification e-mails.
+- Streamers can create their own account (only while e-mail is live):
+  they confirm the address and an administrator approves or declines it
+  in Administration → Users, with an e-mail either way. A switch there
+  turns on auto-approval, so confirming the address is enough.
+- The contact and privacy e-mails shown on the landing page, the privacy
+  page and error pages are set in Administration → Settings.
+- While e-mail is live, the landing page offers "Create a streamer
+  account" and the sign-in page links to the sign-up.
+
+### Changed
+- Long game names no longer push tables and forms sideways: lists,
+  cards and tables show at most two lines with "…" (the whole name on
+  hover), pickers and fields one line, and modal titles two. Names are
+  capped at 200 characters (real titles pass 130); a longer one from a
+  provider is cut with "…", and typing one is refused.
+- The battle draw (boss-draw 1.4.1): extra lives show as blue shields
+  above the hearts, lost first, right over each hero's head; a personal
+  setting hides fallen players; the entry hint moved to the top.
+
 ## 0.11.6 — 2026-11-01
 
 This release has a database migration (059: a cache of Twitch's chat

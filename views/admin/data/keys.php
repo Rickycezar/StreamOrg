@@ -23,7 +23,7 @@
         <tr>
             <td data-col="user" data-label="<?= e(__('ui.admin_data.user')) ?>"><a href="<?= e($userLink($r)) ?>"><?= e($r['user_name']) ?></a></td>
             <td data-card-title data-col="game" data-label="<?= e(__('ui.field.game')) ?>">
-                <?= e($r['game']) ?>
+                <?= game_name($r['game']) ?>
                 <?php if ($r['is_placeholder']): ?><span class="badge off"><?= e(__('ui.admin_data.placeholder')) ?></span><?php endif; ?>
                 <?php if ($r['in_content']): ?><span class="badge"><?= e(__('ui.admin_data.in_content')) ?></span><?php endif; ?>
             </td>

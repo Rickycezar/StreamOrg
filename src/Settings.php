@@ -28,6 +28,12 @@ final class Settings
         return self::$cache[$key] ?? $default;
     }
 
+    /** Forgets the settings read in this request (tests, after a rollback). */
+    public static function forget(): void
+    {
+        self::$cache = null;
+    }
+
     public static function set(string $key, string $value, ?int $userId): void
     {
         Database::connection()->prepare(

@@ -309,6 +309,15 @@ private preview. Preview access: streamorg@outlook.com.
 - **Game texts**: the hosted games' texts in each language, or in a new
   one, apart from StreamOrg's own; a text must keep the game's
   {placeholders}.
+- **E-mails**: the system messages (welcome, confirm your e-mail, e-mail
+  changed, password reset and changed, notification copies) in each
+  language, editable with a live preview; the outbox; and the sending
+  mode: off (default), preview (everything queued, nothing sent) or live
+  (through Postmark, with a DNS checklist for SPF, DKIM and DMARC on a
+  sending subdomain). Links in e-mails are random, stored hashed,
+  single-use and short-lived; notification copies only go to confirmed
+  addresses and have a one-click unsubscribe; limits per address and per
+  day, and a list of addresses never written to again.
 - **Notifications**: write one in each language — with light formatting
   (bold, italic, links, lists, headings, highlights) from a toolbar or
   shortcuts, and a preview — choose its kind and an optional link, send it to everyone or to chosen users, see how many read
@@ -412,6 +421,7 @@ variables, which is how the container is configured:
 | `php bin/encrypt_keys.php [--status]` | Encrypt key codes stored before the vault existed |
 | `php bin/check_lang.php` | Check that the locales agree with each other and with the database |
 | `php bin/lang_overrides.php apply <edits.json>` | Write the texts edited in Administration → Languages into `lang/` |
+| `php bin/mail_worker.php` | Send the queued e-mails (only in "live" mode; run it every minute once e-mail is plugged in) |
 | `php bin/update_game.php <dist folder>` | Check a game package against the integration contract and copy it into `public/games/` |
 | `composer test` | Run the PHPUnit suite (`--testsuite unit` skips the database) |
 | `npm install` / `npm run vendor` | Fetch / re-copy the browser libraries into `public/assets/vendor/` |

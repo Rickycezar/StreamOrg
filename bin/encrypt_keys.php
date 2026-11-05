@@ -64,7 +64,7 @@ foreach ($users as $user) {
     $pdo->beginTransaction();
 
     try {
-        $rows = $pdo->prepare('SELECT id, key_code FROM game_keys WHERE user_id = ? AND key_hash IS NULL FOR UPDATE');
+        $rows = $pdo->prepare("SELECT id, key_code FROM game_keys WHERE user_id = ? AND key_hash IS NULL AND status <> 'transferred' FOR UPDATE");
         $rows->execute([$id]);
 
         $update = $pdo->prepare('UPDATE game_keys SET key_code = ?, key_hash = ? WHERE id = ?');

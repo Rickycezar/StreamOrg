@@ -345,16 +345,23 @@ final class ProfileController
             $platformId = $found === false ? null : (int) $found;
         }
 
+        $before  = Auth::user();
+        $changed = mb_strtolower($email) !== mb_strtolower((string) $before['email']);
+
         $stmt = $pdo->prepare(
             'UPDATE users
                 SET display_name = :name, email = :email, locale = :locale,
                     timezone = :tz,
-                    channel_platform_id = :platform, channel_handle = :handle
+                    channel_platform_id = :platform, channel_handle = :handle,
+                    email_verified_at = CASE WHEN :changed THEN NULL ELSE email_verified_at END,
+                    email_notifications = :notify
               WHERE id = :id'
         );
 
         try {
             $stmt->execute([
+                'changed'  => $changed ? 'true' : 'false',
+                'notify'   => Mailer::ready() ? (!empty($_POST['email_notifications']) ? 'true' : 'false') : ($before['email_notifications'] ? 'true' : 'false'),
                 'name'     => trim((string) ($_POST['display_name'] ?? '')) ?: null,
                 'email'    => $email,
                 'locale'   => $locale,
@@ -372,7 +379,13 @@ final class ProfileController
             throw $e;
         }
 
-        flash('success', __('ui.message.saved'));
+        if ($changed) {
+            $fresh = Database::connection()->prepare('SELECT * FROM users WHERE id = ?');
+            $fresh->execute([Auth::id()]);
+            AccountEmails::emailChanged($fresh->fetch(), (string) $before['email']);
+        }
+
+        flash('success', __('ui.message.saved') . ($changed && Mailer::ready() ? ' ' . __('ui.message.email_verify_sent') : ''));
         redirect('/profile');
     }
 
@@ -418,6 +431,8 @@ final class ProfileController
         $pdo->commit();
 
         session_regenerate_id(true);
+
+        AccountEmails::passwordChanged(Auth::user());
 
         flash('success', __('ui.message.password_changed')
             . ($ended > 0 ? ' ' . sprintf(__('ui.message.sessions_revoked'), $ended) : ''));
@@ -475,7 +490,7 @@ final class ProfileController
         Csrf::verify();
 
         $back = (string) ($_POST['back'] ?? '');
-        $back = $back === '/profile/security' || preg_match('#^/giveaways/show\?id=\d+$#', $back) ? $back : '/keys';
+        $back = in_array($back, ['/profile/security', '/keys/transfers'], true) || preg_match('#^/giveaways/show\?id=\d+$#', $back) ? $back : '/keys';
 
         self::confirmPassword('vault', (string) ($_POST['password'] ?? ''), $back);
 

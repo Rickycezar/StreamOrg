@@ -1,8 +1,36 @@
 <?php
 /** One key's edit form, fetched when its Edit button is first used rather
  *  than rendered for every key up front (see KeysController::editForm).
+ *  A key received from another creator (or StreamOrg) only has its status:
+ *  everything else, the code above all, stays as it arrived.
  *  @var array $key @var array $statuses @var array $sources @var array $gamePlatforms */
 ?>
+<?php if ($key['origin'] !== 'own'): ?>
+<form class="inline-edit" autocomplete="off" data-endpoint="/keys/update" data-id="<?= (int) $key['id'] ?>">
+    <p class="muted small"><?= e(__('ui.transfer.received_locked')) ?></p>
+    <div class="grid">
+        <label>
+            <span><?= e(__('ui.field.status')) ?></span>
+            <select name="status"
+                    <?= $key['under_embargo'] ? 'data-embargo="' . e(fmt_datetime($key['embargo_until'])) . '" data-game="' . e($key['game_title']) . '"' : '' ?>>
+                <?php foreach ($statuses as $status): ?>
+                    <option value="<?= e($status) ?>" <?= $key['status'] === $status ? 'selected' : '' ?>>
+                        <?= e(code_label('key_status', $status)) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+    </div>
+    <div class="editrow-actions">
+        <button type="submit" class="btn primary small"><?= e(__('ui.action.save')) ?></button>
+        <button type="button" class="btn small row-cancel"><?= e(__('ui.action.cancel')) ?></button>
+        <span class="edit-result muted small"></span>
+        <button type="button" class="btn small danger-btn row-delete"
+                data-endpoint="/keys/delete" data-id="<?= (int) $key['id'] ?>"
+                data-label="<?= e($key['game_title']) ?>"><?= e(__('ui.action.delete')) ?></button>
+    </div>
+</form>
+<?php return; endif; ?>
 <form class="inline-edit" autocomplete="off" data-endpoint="/keys/update" data-id="<?= (int) $key['id'] ?>">
     <div class="grid">
         <label class="grow">

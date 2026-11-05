@@ -32,6 +32,7 @@ const DRAW_PAGE = {
     settingsKey: 'bossDrawSettings',
     soundKey: 'bossDrawSounds',
     audioKey: 'bossDrawAudio',
+    viewKey: 'bossDrawView',
     handshakeMs: 1000,
     handshakeTries: 10,
     savedTimeoutMs: 15000,
@@ -41,26 +42,43 @@ const DRAW_PAGE = {
     lockable: ['channel', 'entry', 'prize', 'winners']
 };
 
-/** Technical parameters shown in "Avançado": input step, or choices for a select (winners and hearts live on the main tab). */
-const PARAM_INFO = {
-    rangedShare: [0.05],
-    tickMs: [100],
-    playerDamageMin: [1],
-    playerDamageMax: [1],
-    bossHp: [100],
-    bossHpFrom: [null, ['fixed', 'entrants', 'alive']],
-    bossHpPerEntrant: [1],
-    bossHpGrowth: [0.05],
-    firstAttackMs: [100],
-    attackMinMs: [100],
-    attackMaxMs: [100],
-    bossFocus: [0.25],
-    targetRatio: [0.05],
-    targetBase: [null, ['side', 'alive', 'entrants']],
-    minTargets: [1],
-    minWipesSide: [null, ['yes', 'no']],
-    respawnMs: [100],
-    maxDurationMs: [1000]
+/** Technical parameters shown in "Avançado", by group: input step, or choices for a select (winners and hearts live on the main tab). */
+const PARAM_GROUPS = {
+    players: {
+        rangedShare: [0.05],
+        tickMs: [100],
+        playerDamageMin: [1],
+        playerDamageMax: [1]
+    },
+    boss: {
+        bossHpFrom: [null, ['fixed', 'entrants', 'alive']],
+        bossHp: [100],
+        bossHpPerEntrant: [1],
+        bossHpGrowth: [0.05],
+        respawnMs: [100]
+    },
+    attacks: {
+        firstAttackMs: [100],
+        attackMinMs: [100],
+        attackMaxMs: [100],
+        bossFocus: [0.25],
+        targetBase: [null, ['side', 'alive', 'entrants']],
+        targetRatio: [0.05],
+        minTargets: [1],
+        minWipesSide: [null, ['yes', 'no']]
+    },
+    match: {
+        maxDurationMs: [1000]
+    }
+};
+
+/** Every technical parameter, flat: name → [step, choices]. */
+const PARAM_INFO = Object.assign({}, ...Object.values(PARAM_GROUPS));
+
+/** Parameters that only matter for some values of others: name → when it is used. */
+const PARAM_USED_WHEN = {
+    bossHp: v => v.bossHpFrom === 'fixed',
+    bossHpPerEntrant: v => v.bossHpFrom !== 'fixed'
 };
 
 /** Broadcaster commands in chat, by action; aliases share an action. */
@@ -494,39 +512,63 @@ function wantedWinners() {
     return Math.min(most, Math.max(1, Math.round(Number($('main-winners').value) || DRAW_DEFAULTS.winners)));
 }
 
-/** Builds the technical parameter inputs ("Avançado") and the two on the main tab. */
+/** Builds the technical parameter inputs ("Avançado", in groups) and the two on the main tab. */
 function buildParams(values) {
     const box = $('params');
     box.textContent = '';
-    for (const [key, def] of Object.entries(DRAW_DEFAULTS)) {
-        if (!PARAM_INFO[key]) {
-            continue;
-        }
-        const [step, choices] = PARAM_INFO[key];
-        const wrap = document.createElement('label');
-        wrap.textContent = drawT(`param.${snake(key)}`);
-        let input;
-        if (choices) {
-            input = document.createElement('select');
-            for (const value of choices) {
-                input.appendChild(new Option(drawT(`param.${snake(key)}.${value}`), value));
+    for (const [group, params] of Object.entries(PARAM_GROUPS)) {
+        const title = document.createElement('h3');
+        title.textContent = drawT(`adv.group_${group}`);
+        const grid = document.createElement('div');
+        grid.className = 'params-grid';
+        for (const [key, [step, choices]] of Object.entries(params)) {
+            const wrap = document.createElement('label');
+            wrap.dataset.param = key;
+            wrap.textContent = drawT(`param.${snake(key)}`);
+            let input;
+            if (choices) {
+                input = document.createElement('select');
+                for (const value of choices) {
+                    input.appendChild(new Option(drawT(`param.${snake(key)}.${value}`), value));
+                }
             }
+            else {
+                input = document.createElement('input');
+                input.type = 'number';
+                input.step = step;
+            }
+            input.name = key;
+            input.value = values[key] ?? DRAW_DEFAULTS[key];
+            input.addEventListener('change', () => {
+                showParamUse();
+                saveParams();
+            });
+            wrap.appendChild(input);
+            grid.appendChild(wrap);
         }
-        else {
-            input = document.createElement('input');
-            input.type = 'number';
-            input.step = step;
-        }
-        input.name = key;
-        input.value = values[key] ?? def;
-        input.addEventListener('change', saveParams);
-        wrap.appendChild(input);
-        box.appendChild(wrap);
+        box.append(title, grid);
     }
+    showParamUse();
     $('main-winners').value = embedded && embedConfig
         ? Math.min(embedConfig.maxWinners, Number($('main-winners').value) || embedConfig.winners)
         : values.winners ?? DRAW_DEFAULTS.winners;
     $('main-hits').value = values.hitsPerPlayer ?? DRAW_DEFAULTS.hitsPerPlayer;
+}
+
+/** Greys out the parameters that do not matter with the current values (they keep their value). */
+function showParamUse() {
+    const values = {};
+    for (const input of $('params').querySelectorAll('[name]')) {
+        values[input.name] = input.value;
+    }
+    for (const [key, used] of Object.entries(PARAM_USED_WHEN)) {
+        const wrap = $('params').querySelector(`[data-param="${key}"]`);
+        if (wrap) {
+            const on = used(values);
+            wrap.classList.toggle('unused', !on);
+            wrap.querySelector('[name]').disabled = !on;
+        }
+    }
 }
 
 /** All battle parameters, from both tabs. */
@@ -926,7 +968,8 @@ function startDraw(newSeed, replacement = false) {
         onEnd: showResult,
         onShowdown: showShowdown,
         showdown: settings.showdown ? { seconds: settings.showdownSeconds } : null,
-        bossName: bossNameInUse()
+        bossName: bossNameInUse(),
+        hideDead: !!stored(DRAW_PAGE.viewKey, {}).hideDead
     });
     playback.setSpeed(speed);
     playback.play();
@@ -1503,7 +1546,8 @@ function queueSettings() {
         const payload = {
             params: Object.assign({}, memory[DRAW_PAGE.storageKey] || {}),
             sounds: memory[DRAW_PAGE.soundKey] || {},
-            audio: memory[DRAW_PAGE.audioKey] || {}
+            audio: memory[DRAW_PAGE.audioKey] || {},
+            view: memory[DRAW_PAGE.viewKey] || {}
         };
         delete payload.params.winners;
         delete payload.params.hitsPerPlayer;
@@ -1567,6 +1611,9 @@ function cleanSettings(raw) {
             }
         }
         out[DRAW_PAGE.audioKey] = audio;
+    }
+    if (isObject(raw.view) && typeof raw.view.hideDead === 'boolean') {
+        out[DRAW_PAGE.viewKey] = { hideDead: raw.view.hideDead };
     }
     return out;
 }
@@ -1775,6 +1822,7 @@ function startHandshake() {
 /** Puts the settings into the panel fields. */
 function fillFields() {
     applyOptions(optionValues());
+    $('hide-dead').checked = !!stored(DRAW_PAGE.viewKey, {}).hideDead;
     $('channel').value = settings.channel;
     $('prize-text').value = settings.prize;
     $('entry-command').value = settings.entry === DRAW_PAGE.defaultEntry ? '' : settings.entry;
@@ -1974,6 +2022,12 @@ $('unkick-all').addEventListener('click', () => {
     if (lobby) {
         lobby.unkick();
         renderKicked();
+    }
+});
+$('hide-dead').addEventListener('change', () => {
+    store(DRAW_PAGE.viewKey, { hideDead: $('hide-dead').checked });
+    if (playback) {
+        playback.arena.el.classList.toggle('draw-hide-dead', $('hide-dead').checked);
     }
 });
 $('rule-extra-regen').addEventListener('change', () => {

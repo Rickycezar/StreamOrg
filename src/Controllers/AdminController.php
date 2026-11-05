@@ -43,7 +43,33 @@ final class AdminController
             'maxDays'       => intdiv(UserSessions::IDLE_MAX, 1440),
             'domains'       => array_map('strval', (array) Config::get('app.domain_locales', [])),
             'fixedDomains'  => fixed_locale_domains(),
+            'contact'       => (string) Settings::get('site.contact_email', ''),
+            'privacy'       => (string) Settings::get('site.privacy_email', ''),
+            'contactDefault' => (string) Config::get('app.contact_email', ''),
         ], __('ui.nav.settings'));
+    }
+
+    /** POST /admin/settings/contact — the addresses shown to the public; blank uses the configured one. */
+    public static function saveContact(): void
+    {
+        Auth::requireAdmin();
+        Csrf::verify();
+
+        $contact = mb_strtolower(trim((string) ($_POST['contact_email'] ?? '')));
+        $privacy = mb_strtolower(trim((string) ($_POST['privacy_email'] ?? '')));
+
+        foreach ([$contact, $privacy] as $address) {
+            if ($address !== '' && (filter_var($address, FILTER_VALIDATE_EMAIL) === false || strlen($address) > 254)) {
+                flash('error', __('ui.message.invalid_email'));
+                redirect('/admin/settings#contact');
+            }
+        }
+
+        Settings::set('site.contact_email', $contact, Auth::id());
+        Settings::set('site.privacy_email', $privacy, Auth::id());
+
+        flash('success', __('ui.message.saved'));
+        redirect('/admin/settings#contact');
     }
 
     public static function saveSettings(): void
@@ -217,8 +243,13 @@ final class AdminController
         Auth::requireAdmin();
         Csrf::verify();
 
-        $title      = trim((string) ($_POST['title'] ?? ''));
+        $title      = trim((string) preg_replace('/\s+/u', ' ', (string) ($_POST['title'] ?? '')));
         $categoryId = trim((string) ($_POST['category_id'] ?? ''));
+
+        if (mb_strlen($title) > GameCatalog::TITLE_MAX) {
+            flash('error', sprintf(__('ui.message.game_title_long'), GameCatalog::TITLE_MAX));
+            redirect('/admin/games');
+        }
 
         if ($categoryId !== '' && $title === '') {
             try {

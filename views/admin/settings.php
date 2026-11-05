@@ -1,7 +1,8 @@
 <?php
 /** @var int $lifetimeValue @var string $lifetimeUnit @var list<string> $units
  *  @var int $minMinutes @var int $maxDays
- *  @var array<string,string> $domains domain => locale @var list<string> $fixedDomains */
+ *  @var array<string,string> $domains domain => locale @var list<string> $fixedDomains
+ *  @var string $contact @var string $privacy the public addresses set here ('' = the configured one) @var string $contactDefault */
 ?>
 <h1><?= e(__('ui.nav.settings')) ?></h1>
 
@@ -29,6 +30,27 @@
             </label>
         </div>
         <p class="muted small"><?= e(sprintf(__('ui.message.session_lifetime_range'), $minMinutes, $maxDays)) ?></p>
+        <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
+    </form>
+</section>
+
+<section class="card" id="contact">
+    <h2><?= e(__('ui.label.contact_emails')) ?></h2>
+    <p class="muted small"><?= e(__('ui.message.contact_emails_hint')) ?></p>
+    <form method="post" action="<?= e(url('/admin/settings/contact')) ?>" class="subform">
+        <?= Csrf::field() ?>
+        <div class="grid">
+            <label>
+                <span><?= e(__('ui.field.contact_email')) ?></span>
+                <input type="email" name="contact_email" value="<?= e($contact) ?>" placeholder="<?= e($contactDefault) ?>" maxlength="254">
+                <small class="muted"><?= e(__('ui.label.contact_email_hint')) ?></small>
+            </label>
+            <label>
+                <span><?= e(__('ui.field.privacy_email')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
+                <input type="email" name="privacy_email" value="<?= e($privacy) ?>" placeholder="<?= e($contact !== '' ? $contact : $contactDefault) ?>" maxlength="254">
+                <small class="muted"><?= e(__('ui.label.privacy_email_hint')) ?></small>
+            </label>
+        </div>
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
 </section>

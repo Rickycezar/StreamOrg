@@ -7,11 +7,20 @@ declare(strict_types=1);
  * Key codes are never included in the list response. The listing carries
  * only metadata; the code itself is fetched one row at a time through
  * reveal(), which re-checks ownership on every call.
+ *
+ * Keys received from another creator (KeyTransfers) are sealed until
+ * their owner reveals one explicitly: the global reveal never returns
+ * them, a reveal asks for confirmation and is logged, and only their
+ * status can change. A key on its way to another creator is locked, and
+ * one that was handed over ("transferred") has no code any more.
  */
 final class KeysController
 {
     /** Public so other screens offering a key status use this list, not their own. */
     public const STATUSES = ['available', 'reserved', 'for_giveaway', 'used', 'given_away', 'expired', 'revoked'];
+
+    /** The statuses the list can show: the ones above, and a key handed over to another creator. */
+    public const LIST_STATUSES = [...self::STATUSES, 'transferred'];
 
     /** Statuses that put a key in front of an audience. */
     private const GIVEAWAY_STATUSES = ['for_giveaway', 'given_away'];
@@ -62,6 +71,31 @@ final class KeysController
         if ($giveaway !== null) {
             json_response(['ok' => false, 'error' => sprintf(__('ui.message.key_in_giveaway'), $giveaway)], 409);
         }
+    }
+
+    /**
+     * Stops changes to a key on its way to another creator or already
+     * handed over; returns the key's origin otherwise.
+     */
+    private static function guardLocked(int $keyId): string
+    {
+        $stmt = Database::connection()->prepare('SELECT status, transfer_item_id, origin FROM game_keys WHERE id = ? AND user_id = ?');
+        $stmt->execute([$keyId, Auth::id()]);
+        $key = $stmt->fetch();
+
+        if ($key === false) {
+            json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
+        }
+
+        if ($key['status'] === 'transferred') {
+            json_response(['ok' => false, 'error' => __('ui.message.key_transferred')], 409);
+        }
+
+        if ($key['transfer_item_id'] !== null) {
+            json_response(['ok' => false, 'error' => __('ui.message.key_in_transfer')], 409);
+        }
+
+        return (string) $key['origin'];
     }
 
     /**
@@ -136,7 +170,14 @@ final class KeysController
                        kp.code AS key_platform_code,
                        (k.key_type = 'review' AND g.release_date IS NOT NULL
                         AND g.release_date > CURRENT_DATE) AS playable_early,
-                       k.is_placeholder, gift.prize_id, gift.giveaway_title, gift.is_direct,
+                       k.is_placeholder, k.origin, k.code_seen, k.transfer_item_id, gift.prize_id, gift.giveaway_title, gift.is_direct,
+                       (SELECT coalesce((SELECT " . KeyTransfers::handleSql('fu') . " FROM users fu WHERE fu.id = t.from_user_id), t.from_handle)
+                          FROM key_transfer_items i JOIN key_transfers t ON t.id = i.transfer_id WHERE i.id = k.received_item_id) AS received_from,
+                       (SELECT coalesce((SELECT " . KeyTransfers::handleSql('tu') . " FROM users tu WHERE tu.id = t.to_user_id), t.to_handle)
+                          FROM key_transfer_items i JOIN key_transfers t ON t.id = i.transfer_id WHERE i.id = k.transfer_item_id) AS sending_to,
+                       (SELECT coalesce((SELECT " . KeyTransfers::handleSql('tu') . " FROM users tu WHERE tu.id = t.to_user_id), t.to_handle)
+                          FROM key_transfer_items i JOIN key_transfers t ON t.id = i.transfer_id
+                         WHERE i.from_key_id = k.id AND i.outcome = 'moved' ORDER BY i.id DESC LIMIT 1) AS transferred_to,
                        gift.winner_name, gift.winner_login, gift.winner_claimed_at,
                        cover.path AS cover_path, cover.updated_at AS cover_version
                   FROM game_keys k
@@ -170,12 +211,13 @@ final class KeysController
     public static function index(): void
     {
         Auth::requireLogin();
+        KeyTransfers::expireStale();
 
         $pdo    = Database::connection();
         $userId = Auth::id();
 
         $filters = [
-            'status'       => filter_values('status', self::STATUSES),
+            'status'       => filter_values('status', self::LIST_STATUSES),
             'key_type'     => filter_values('key_type', ['common', 'review']),
             'content_type' => filter_values('content_type', ['game', 'dlc']),
             'platform'     => filter_values('platform'),
@@ -214,6 +256,7 @@ final class KeysController
             'counts'    => $counts,
             'filters'   => $filters,
             'statuses'  => self::STATUSES,
+            'listStatuses' => array_values(array_filter(self::LIST_STATUSES, static fn (string $s): bool => $s !== 'transferred' || !empty($counts['transferred']))),
             'platforms' => $pdo->query('SELECT code, family FROM game_platforms ORDER BY sort_order')->fetchAll(),
             'sources'   => $pdo->query('SELECT code FROM key_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
@@ -221,6 +264,7 @@ final class KeysController
             'vaultLocked' => !Vault::isUnlocked($userId),
             'giftable'    => Giveaways::giftableKeys((int) $userId),
             'twitchReady' => Twitch::isConfigured(),
+            'transfersWaiting' => KeyTransfers::waitingFor((int) $userId),
         ], __('ui.nav.keys'));
     }
 
@@ -344,18 +388,34 @@ final class KeysController
         }
 
         $stmt = Database::connection()->prepare(
-            'SELECT key_code FROM game_keys WHERE id = ? AND user_id = ?'
+            'SELECT key_code, status, code_seen, transfer_item_id FROM game_keys WHERE id = ? AND user_id = ?'
         );
         $stmt->execute([$id, Auth::id()]);
-        $code = $stmt->fetchColumn();
+        $key = $stmt->fetch();
 
-        if ($code === false) {
+        if ($key === false) {
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 404);
         }
 
-        $plain = Vault::decryptCode((int) Auth::id(), (string) $code);
+        if ($key['status'] === 'transferred') {
+            json_response(['ok' => false, 'error' => __('ui.message.key_transferred')], 410);
+        }
 
-        if ($plain === null) {
+        if ($key['transfer_item_id'] !== null) {
+            json_response(['ok' => false, 'error' => __('ui.message.key_in_transfer')], 409);
+        }
+
+        if (!$key['code_seen']) {
+            if (empty($_POST['confirm'])) {
+                json_response(['ok' => false, 'sealed' => true, 'title' => __('ui.transfer.reveal_title'), 'error' => __('ui.transfer.reveal_warning')], 409);
+            }
+
+            $plain = KeyTransfers::revealSealed((int) Auth::id(), $id);
+        } else {
+            $plain = Vault::decryptCode((int) Auth::id(), (string) $key['key_code']);
+        }
+
+        if ($plain === null || $plain === '') {
             json_response(['ok' => false, 'error' => __('ui.message.key_unreadable')], 410);
         }
 
@@ -377,6 +437,7 @@ final class KeysController
 
         $pdo = Database::connection();
 
+        self::guardLocked($id);
         self::guardGiveawayPrize($id, $status);
 
         if (($block = self::embargoBlock($pdo, $id, $status)) !== null) {
@@ -384,7 +445,7 @@ final class KeysController
         }
 
         $stmt = $pdo->prepare(
-            'UPDATE game_keys SET status = ? WHERE id = ? AND user_id = ?'
+            "UPDATE game_keys SET status = ? WHERE id = ? AND user_id = ? AND status <> 'transferred' AND transfer_item_id IS NULL"
         );
         $stmt->execute([$status, $id, Auth::id()]);
 
@@ -569,6 +630,27 @@ final class KeysController
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 400);
         }
 
+        $origin = self::guardLocked($id);
+
+        if ($origin !== 'own') {
+            $status = in_array($_POST['status'] ?? '', self::STATUSES, true) ? (string) $_POST['status'] : null;
+
+            if ($status === null || trim((string) ($_POST['key_code'] ?? '')) !== '') {
+                json_response(['ok' => false, 'error' => __('ui.message.key_received_locked')], 409);
+            }
+
+            self::guardGiveawayPrize($id, $status);
+
+            if (($block = self::embargoBlock(Database::connection(), $id, $status)) !== null) {
+                self::embargoConfirmResponse($block);
+            }
+
+            Database::connection()->prepare("UPDATE game_keys SET status = ?, updated_at = now() WHERE id = ? AND user_id = ? AND origin <> 'own'")
+                ->execute([$status, $id, Auth::id()]);
+
+            json_response(['ok' => true, 'message' => __('ui.message.saved'), 'labels' => ['status' => code_label('key_status', $status)]]);
+        }
+
         $newCode = trim((string) ($_POST['key_code'] ?? ''));
 
         if ($newCode !== '') {
@@ -618,6 +700,7 @@ final class KeysController
             $sets[] = 'key_code = :code';
             $sets[] = 'key_hash = :hash';
             $sets[] = 'is_placeholder = false';
+            $sets[] = 'lineage = gen_random_uuid()';
             $params['code'] = Vault::encryptCode((int) Auth::id(), $newCode);
             $params['hash'] = Vault::hashCode((int) Auth::id(), $newCode);
         }
@@ -663,7 +746,7 @@ final class KeysController
         }
 
         $stmt = $pdo->prepare(
-            'UPDATE game_keys SET ' . implode(', ', $sets) . ' WHERE id = :id AND user_id = :user'
+            'UPDATE game_keys SET ' . implode(', ', $sets) . " WHERE id = :id AND user_id = :user AND origin = 'own' AND status <> 'transferred' AND transfer_item_id IS NULL"
         );
 
         try {
@@ -701,7 +784,9 @@ final class KeysController
      * Bounded to the ids the caller asks for and filtered by user_id, so it
      * is the same authorisation as reveal() — just one round trip instead of
      * one per row. Codes are still never rendered into the page by the
-     * server; this is the only way they reach the browser.
+     * server; this is the only way they reach the browser. Sealed keys
+     * (received and never revealed), keys on their way to another creator
+     * and handed-over ones are never returned here, whatever is asked.
      */
     public static function revealBulk(): void
     {
@@ -726,7 +811,8 @@ final class KeysController
 
         $stmt = Database::connection()->prepare(
             "SELECT id, key_code FROM game_keys
-              WHERE user_id = ? AND id IN ({$placeholders})"
+              WHERE user_id = ? AND id IN ({$placeholders})
+                AND code_seen AND transfer_item_id IS NULL AND status <> 'transferred'"
         );
         $stmt->execute([Auth::id(), ...$ids]);
 
@@ -774,7 +860,7 @@ final class KeysController
         $stmt = $pdo->prepare(
             'SELECT k.id, k.key_type, k.content_type, k.status, k.region,
                     k.received_at, k.activated_at, k.expires_at,
-                    k.source_note, k.notes, k.created_at, k.updated_at,
+                    k.source_note, k.notes, k.created_at, k.updated_at, k.origin, k.code_seen,
                     g.id AS game_id, g.title AS game_title,
                     g.release_date, g.release_precision, g.store_url,
                     gp.code AS game_platform_code, kp.code AS key_platform_code,
@@ -825,6 +911,7 @@ final class KeysController
         $prize = $stmt->fetch();
 
         $precision = (string) $key['release_precision'];
+        $history   = KeyTransfers::history((int) Auth::id(), $id);
 
         json_response([
             'ok'  => true,
@@ -874,6 +961,15 @@ final class KeysController
                 'won'       => $prize['won_at']       ? fmt_datetime($prize['won_at'])       : null,
                 'delivered' => $prize['delivered_at'] ? fmt_datetime($prize['delivered_at']) : null,
             ],
+            'sealed'  => !$key['code_seen'],
+            'chain'   => $history === null ? null : [
+                'title'        => __('ui.transfer.history_key'),
+                'holders_label' => __('ui.transfer.holders'),
+                'seen_label'   => __('ui.transfer.seen_by'),
+                'holders' => array_map(static fn (array $h): string => '@' . $h['handle'] . ' · '
+                    . ($h['since'] === null ? __('ui.transfer.first_holder') : sprintf(__('ui.transfer.received_on'), fmt_datetime($h['since']))), $history['holders']),
+                'seen'    => $history['seen'] === [] ? [__('ui.transfer.seen_nobody')] : array_map(static fn (array $r): string => sprintf(__('ui.transfer.seen_' . $r['kind']), '@' . $r['handle'], fmt_datetime($r['happened_at'])), $history['seen']),
+            ],
         ]);
     }
 
@@ -896,7 +992,9 @@ final class KeysController
             json_response(['ok' => false, 'error' => __('ui.message.not_found')], 400);
         }
 
-        $stmt = Database::connection()->prepare('DELETE FROM game_keys WHERE id = ? AND user_id = ?');
+        self::guardLocked($id);
+
+        $stmt = Database::connection()->prepare("DELETE FROM game_keys WHERE id = ? AND user_id = ? AND status <> 'transferred' AND transfer_item_id IS NULL");
 
         try {
             $stmt->execute([$id, Auth::id()]);

@@ -60,8 +60,8 @@ $castPicker = static fn (): string => '<div class="cast-picker" data-cast-picker
                     <a class="together-link" href="<?= e(url(CollabSessions::LINK . (int) $t['id'])) ?>">
                         <strong><?= e($t['title']) ?></strong>
                         <small class="muted">
-                            <?= e($t['member_role'] === 'host' ? __('ui.label.together_you_host') : sprintf(__('ui.label.together_hosted_by'), $t['host_name'])) ?>
-                            <?php if ($t['others']): ?> · <?= e($t['others']) ?><?php endif; ?>
+                            <?= $t['member_role'] === 'host' ? e(__('ui.label.together_you_host')) : sprintf(e(__('ui.label.together_hosted_by')), pii($t['host_name'])) ?>
+                            <?php if ($t['others']): ?> · <?= pii($t['others']) ?><?php endif; ?>
                         </small>
                     </a>
                     <span class="together-time"><?= e($t['agreed_start'] ? fmt_datetime($t['agreed_start']) : __('ui.label.together_no_time')) ?></span>

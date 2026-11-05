@@ -127,7 +127,7 @@ foreach ($session['plans'] as $plan) {
     <section class="card together-needs">
         <div class="together-needs-text">
             <span class="together-needs-label"><?= e(__('ui.label.together_needs_you')) ?></span>
-            <h2><?= e(sprintf(__('ui.message.together_invite_title'), $session['members'][0]['name'] ?? '')) ?></h2>
+            <h2><?= sprintf(e(__('ui.message.together_invite_title')), pii($session['members'][0]['name'] ?? '')) ?></h2>
             <p class="muted"><?= e(__('ui.message.together_invite_text')) ?></p>
         </div>
         <div class="card-actions">
@@ -149,7 +149,7 @@ foreach ($session['plans'] as $plan) {
     <section class="card together-needs<?= $me === 'accepted' && !$session['approves'] ? '' : ' is-waiting' ?>">
         <div class="together-needs-text">
             <span class="together-needs-label"><?= e(__($me === 'accepted' && !$session['approves'] ? 'ui.label.together_needs_you' : 'ui.label.together_waiting_others')) ?></span>
-            <h2><?= e(sprintf(__('ui.label.together_proposes'), (string) $proposer)) ?></h2>
+            <h2><?= sprintf(e(__('ui.label.together_proposes')), pii((string) $proposer)) ?></h2>
             <p class="together-change">
                 <span class="together-old"><?= e($when($session['agreed_start'], $session['agreed_start'] ? (int) $session['agreed_minutes'] : null)) ?></span>
                 <span aria-hidden="true">→</span>
@@ -159,7 +159,7 @@ foreach ($session['plans'] as $plan) {
                 <?php foreach ($taking as $m): $avatarUser = $m; $avatarSize = 'sm'; ?>
                     <li class="<?= $m['approves'] ? 'yes' : 'waiting' ?>" title="<?= e(__($m['approves'] ? 'ui.label.together_agreed' : 'ui.label.together_waiting')) ?>">
                         <?php require dirname(__DIR__) . '/partials/avatar.php'; ?>
-                        <span><?= e($m['name']) ?></span>
+                        <span><?= pii($m['name']) ?></span>
                         <span class="together-vote-mark"><?= Icons::svg($m['approves'] ? 'check' : 'clock') ?></span>
                     </li>
                 <?php endforeach; ?>
@@ -198,7 +198,7 @@ foreach ($session['plans'] as $plan) {
             <header class="plan-card-head">
                 <?php require dirname(__DIR__) . '/partials/avatar.php'; ?>
                 <span class="plan-card-who">
-                    <strong><?= e($m['name']) ?><?php if ($mine): ?> <small class="muted">(<?= e(__('ui.label.together_you')) ?>)</small><?php endif; ?></strong>
+                    <strong><?= pii($m['name']) ?><?php if ($mine): ?> <small class="muted">(<?= e(__('ui.label.together_you')) ?>)</small><?php endif; ?></strong>
                     <?php if ($m['twitch_login']): ?><small class="muted">@<?= e($m['twitch_login']) ?></small><?php endif; ?>
                 </span>
                 <span class="plan-card-badges">

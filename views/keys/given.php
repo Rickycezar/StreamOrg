@@ -68,7 +68,7 @@ $counts = array_count_values(array_column($rows, 'state'));
                         </td>
                         <td data-card-title data-col="key" data-label="<?= e(__('ui.field.key')) ?>">
                             <?php if ($r['key_id']): ?>
-                                <?= e((string) $r['game_title']) ?>
+                                <?= game_name((string) $r['game_title']) ?>
                                 <small class="muted block"><?= e(code_label('game_platform', $r['platform_code']) . ($r['key_site'] ? ' · ' . code_label('key_platform', $r['key_site']) : '')) ?></small>
                             <?php elseif (!$r['is_direct'] && $r['winner_mode'] === 'pick' && in_array($r['state'], ['waiting', 'expired'], true)): ?>
                                 <span class="muted"><?= e(__('ui.label.given_picks')) ?></span>

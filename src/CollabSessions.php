@@ -659,9 +659,6 @@ final class CollabSessions
 
     private static function name(int $userId): string
     {
-        $stmt = Database::connection()->prepare('SELECT coalesce(display_name, username) FROM users WHERE id = ?');
-        $stmt->execute([$userId]);
-
-        return (string) $stmt->fetchColumn();
+        return '@' . KeyTransfers::handleOf($userId);
     }
 }

@@ -366,3 +366,59 @@ function error_page(int $code, ?int $reference = null): never
 
     exit;
 }
+
+/**
+ * The address people write to (landing page, footers, error pages): the
+ * one set in Administration → Settings, otherwise the configured one.
+ */
+function contact_email(): string
+{
+    $set = trim((string) Settings::get('site.contact_email', ''));
+
+    return $set !== '' ? $set : (string) Config::get('app.contact_email', '');
+}
+
+/** The address for privacy questions (the privacy policy): its own, or the contact address. */
+function privacy_email(): string
+{
+    $set = trim((string) Settings::get('site.privacy_email', ''));
+
+    return $set !== '' ? $set : contact_email();
+}
+
+/**
+ * A person's name or e-mail, escaped and marked so it is blurred while
+ * the global "reveal keys" switch is off, so the site is safe to show on
+ * stream. Handles stay as they are, and the administration pages show
+ * everything plainly.
+ */
+function pii(?string $text): string
+{
+    return on_admin_page() ? e((string) $text) : '<span class="pii">' . e((string) $text) . '</span>';
+}
+
+/** Whether this request is for a page under Administration. */
+function on_admin_page(): bool
+{
+    $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+    $base = rtrim((string) Config::get('app.base_path', ''), '/');
+
+    if ($base !== '' && str_starts_with($path, $base)) {
+        $path = substr($path, strlen($base));
+    }
+
+    return $path === '/admin' || str_starts_with($path, '/admin/');
+}
+
+/**
+ * A game's name for lists, cards and tables: at most two lines, then
+ * "…", with the whole name on hover. Inline, it is one line instead.
+ * Some real titles run past 130 characters, and without this they push
+ * tables and forms sideways.
+ */
+function game_name(?string $title, bool $inline = false): string
+{
+    $title = (string) $title;
+
+    return '<span class="game-name' . ($inline ? ' inline' : '') . '" title="' . e($title) . '">' . e($title) . '</span>';
+}

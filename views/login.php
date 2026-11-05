@@ -40,6 +40,10 @@
                 </label>
 
                 <button type="submit" class="btn primary wide"><?= e(__('ui.action.login')) ?></button>
+                <?php if (Mailer::ready()): ?>
+                    <p class="login-forgot"><a href="<?= e(url('/password/forgot')) ?>"><?= e(__('ui.email_page.forgot_link')) ?></a></p>
+                    <p class="login-signup"><?= e(__('ui.signup.no_account')) ?> <a href="<?= e(url('/signup')) ?>"><?= e(__('ui.signup.create_link')) ?></a></p>
+                <?php endif; ?>
                 <p class="muted small login-note"><?= e(__('ui.login.creator_no_twitch')) ?></p>
             </form>
         <?php else: ?>

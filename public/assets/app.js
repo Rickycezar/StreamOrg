@@ -797,6 +797,7 @@
             const head = document.createElement('span');
             head.className = 'chat-head';
             const who = document.createElement('strong');
+            who.className = 'pii';
             who.textContent = item.name;
             const at = document.createElement('small');
             at.textContent = item.at;
@@ -2748,11 +2749,14 @@
 
     let revealOn = readRevealState();
 
+    /** The key fields the global reveal may fill: never a sealed key (received and never revealed). */
     function keyFields() {
-        return Array.prototype.slice.call(document.querySelectorAll('.key-field'));
+        return Array.prototype.slice.call(document.querySelectorAll('.key-field:not([data-sealed])'));
     }
 
     function applyMask() {
+        document.documentElement.classList.toggle('reveal-on', revealOn);
+
         keyFields().forEach(function (field) {
             field.classList.toggle('masked', !revealOn);
         });
@@ -2829,6 +2833,90 @@
                 loadCodes(keyFields());
             }
         }
+    });
+
+    /**
+     * Keys → Transfers: the key list's search, how many are picked, and the
+     * confirmation naming the creator and the count before sending.
+     */
+    onPage(function () {
+        const form = document.querySelector('[data-transfer-form]');
+        if (!form) return;
+
+        const count = form.querySelector('[data-transfer-count]');
+        const handle = form.querySelector('[data-transfer-handle]');
+        const submit = form.querySelector('[data-confirm-template]');
+        const filter = form.querySelector('[data-transfer-filter]');
+
+        function refresh() {
+            const picked = form.querySelectorAll('input[name="key_ids[]"]:checked').length;
+            const who = handle.value.trim().replace(/^@+/, '');
+
+            count.textContent = picked ? count.dataset.template.replace('%d', picked) : '';
+            submit.disabled = picked === 0;
+            submit.dataset.confirm = submit.dataset.confirmTemplate.replace('%1$d', picked).replace('%2$s', '@' + who);
+        }
+
+        form.addEventListener('change', refresh);
+        form.addEventListener('click', refresh);
+        form.addEventListener('submit', refresh);
+        handle.addEventListener('input', refresh);
+
+        filter.addEventListener('input', function () {
+            const term = filter.value.trim().toLowerCase();
+            form.querySelectorAll('.transfer-pick-list li').forEach(function (item) {
+                item.hidden = term !== '' && item.dataset.title.indexOf(term) === -1 && !item.querySelector('input:checked');
+            });
+        });
+
+        filter.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') event.preventDefault();
+        });
+
+        refresh();
+
+        const first = form.querySelector('input[name="key_ids[]"]:checked');
+        if (first && window.location.hash === '#send') handle.focus();
+    });
+
+    /**
+     * Reveals a sealed key (received, never seen): the server first answers
+     * with a warning, and only a confirmed second request shows the code,
+     * which is then logged in the key's history for good.
+     */
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('.key-unseal');
+        if (!button) return;
+
+        button.disabled = true;
+        let result = await postJson('/keys/reveal', { id: button.dataset.id });
+
+        if (!result.ok && result.sealed) {
+            if (!await confirmModal(result.title || '', result.error || '')) {
+                button.disabled = false;
+                return;
+            }
+
+            result = await postJson('/keys/reveal', { id: button.dataset.id, confirm: '1' });
+        }
+
+        button.disabled = false;
+
+        if (!result.ok) {
+            alert(result.error || 'Error');
+            return;
+        }
+
+        const cell = button.closest('.keycell');
+        const keyfield = cell.querySelector('.keyfield');
+        const field = keyfield.querySelector('.key-field');
+
+        delete field.dataset.sealed;
+        field.value = result.key_code;
+        field.dataset.loaded = '1';
+        field.classList.remove('masked');
+        keyfield.hidden = false;
+        button.closest('.keyseal').remove();
     });
 
     document.addEventListener('click', async function (event) {
@@ -3603,7 +3691,7 @@
 
     function detailKeyField(id) {
         const source = document.querySelector('tr[data-key-id="' + id + '"] .keycell .keyfield');
-        if (!source) return null;
+        if (!source || source.hidden) return null;
 
         const copy = source.cloneNode(true);
         const original = source.querySelector('.key-field');
@@ -3700,6 +3788,25 @@
             body.append(definitionList(data.used_in.map(function (c) {
                 return [c.title, c.status + (c.scheduled ? ' · ' + c.scheduled : '')];
             })));
+        }
+
+        if (data.chain) {
+            section(body, data.chain.title);
+            const chain = document.createElement('div');
+            chain.className = 'key-chain';
+            [[data.chain.holders_label, data.chain.holders], [data.chain.seen_label, data.chain.seen]].forEach(function (part) {
+                const head = document.createElement('p');
+                head.className = 'muted small';
+                head.textContent = part[0];
+                const list = document.createElement('ol');
+                part[1].forEach(function (line) {
+                    const li = document.createElement('li');
+                    li.textContent = line;
+                    list.append(li);
+                });
+                chain.append(head, list);
+            });
+            body.append(chain);
         }
 
         if (data.prize) {
@@ -5088,6 +5195,52 @@
         const button = event.target.closest('[data-badge-load]');
         if (!button) return;
         loadBadges(button.closest('[data-badge-picker]'));
+    });
+
+    /**
+     * Administration → E-mails, editing a message ([data-email-editor]):
+     * the preview follows the typing (rendered by StreamOrg with sample
+     * values, nothing saved), and switches between HTML and plain text.
+     */
+    onPage(function () {
+        const editor = document.querySelector('[data-email-editor]');
+        if (!editor) return;
+
+        const form = editor.querySelector('[data-email-form]');
+        const frame = editor.querySelector('[data-preview-html]');
+        const text = editor.querySelector('[data-preview-text]');
+        const subject = editor.querySelector('[data-preview-subject]');
+        let timer = null;
+
+        editor.querySelectorAll('[data-preview-show]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const html = button.dataset.previewShow === 'html';
+                if (frame) frame.hidden = !html;
+                if (text) text.hidden = html;
+                editor.querySelectorAll('[data-preview-show]').forEach(function (b) { b.classList.toggle('active', b === button); });
+            });
+        });
+
+        if (!form || !frame) return;
+
+        form.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(async function () {
+                const answer = await postJson('/admin/emails/preview', new FormData(form));
+                if (!answer.ok) return;
+                frame.srcdoc = answer.html;
+                if (text) text.textContent = answer.text;
+                if (subject) subject.textContent = answer.subject;
+            }, 350);
+        });
+    });
+
+    /** The sign-up form's time zone ([data-timezone-guess]): the browser's own, so dates read right from the start. */
+    onPage(function () {
+        document.querySelectorAll('[data-timezone-guess]').forEach(function (input) {
+            if (input.value) return;
+            try { input.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { }
+        });
     });
 
     /**
@@ -6550,6 +6703,8 @@
      * search showing picture, name and login; picking one puts its Twitch
      * id in the form, so the winner is that exact account. Typing again
      * drops the pick; a login typed without picking is looked up on save.
+     * Also the creator picker of Keys → Transfers, whose results carry a
+     * note in place of the login.
      */
     document.addEventListener('input', function (event) {
         const search = event.target.closest('[data-twitch-pick-search]');
@@ -6592,10 +6747,16 @@
                 row.type = 'button';
                 row.className = 'cast-add-result twitch-pick-option';
 
-                const img = document.createElement('img');
+                let img = document.createElement('img');
                 img.alt = '';
                 img.loading = 'lazy';
-                if (item.avatar) img.src = item.avatar;
+                if (item.avatar) {
+                    img.src = item.avatar;
+                } else {
+                    img = document.createElement('span');
+                    img.className = 'cast-avatar';
+                    img.textContent = item.login.charAt(0).toUpperCase();
+                }
 
                 const name = document.createElement('span');
                 name.className = 'cast-add-name';
@@ -6603,7 +6764,7 @@
                 strong.textContent = item.name;
                 const login = document.createElement('small');
                 login.className = 'muted';
-                login.textContent = '@' + item.login;
+                login.textContent = item.note || '@' + item.login;
                 name.append(strong, ' ', login);
 
                 row.append(img, name);
@@ -6615,7 +6776,7 @@
                     avatar.hidden = !item.avatar;
                     if (item.avatar) avatar.src = item.avatar;
                     chosen.querySelector('[data-twitch-pick-name]').textContent = item.name;
-                    chosen.querySelector('[data-twitch-pick-login]').textContent = '@' + item.login;
+                    chosen.querySelector('[data-twitch-pick-login]').textContent = item.note || '@' + item.login;
                     chosen.hidden = false;
                     search.closest('label').hidden = true;
                     results.replaceChildren();

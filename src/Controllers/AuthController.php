@@ -43,7 +43,7 @@ final class AuthController
         AuthThrottle::record('login', $subject, $ok);
 
         if (!$ok) {
-            flash('error', __('ui.message.login_failed'));
+            flash('error', Signups::waitingMessage($username, $password) ?? __('ui.message.login_failed'));
             $_SESSION['login_username'] = $username;
             redirect('/login');
         }

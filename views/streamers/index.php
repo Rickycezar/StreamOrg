@@ -171,7 +171,7 @@
                                 </label>
                                 <label>
                                     <span><?= e(__('ui.field.email')) ?></span>
-                                    <input type="email" name="email" value="<?= e($row['email'] ?? '') ?>">
+                                    <input type="email" name="email" class="pii" value="<?= e($row['email'] ?? '') ?>">
                                 </label>
                             </div>
                             <label class="inline">

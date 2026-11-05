@@ -114,7 +114,7 @@ final class Giveaways
         $pdo  = Database::connection();
         $stmt = $pdo->prepare(
             "SELECT k.id, k.status, k.is_placeholder, g.title,
-                    EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id) AS taken
+                    (EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id) OR k.transfer_item_id IS NOT NULL) AS taken
                FROM game_keys k JOIN games g ON g.id = k.game_id
               WHERE k.id = ? AND k.user_id = ?"
         );
@@ -447,7 +447,7 @@ final class Giveaways
         $pdo  = Database::connection();
         $stmt = $pdo->prepare(
             "SELECT k.id, k.status, k.is_placeholder, k.game_platform_id, g.title,
-                    EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id) AS taken
+                    (EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id) OR k.transfer_item_id IS NOT NULL) AS taken
                FROM game_keys k JOIN games g ON g.id = k.game_id WHERE k.id = ? AND k.user_id = ?"
         );
         $stmt->execute([$keyId, $userId]);
@@ -530,6 +530,7 @@ final class Giveaways
                JOIN games g ON g.id = k.game_id
           LEFT JOIN game_platforms gp ON gp.id = k.game_platform_id
               WHERE k.user_id = ? AND k.status IN ('for_giveaway', 'available') AND NOT k.is_placeholder
+                AND k.transfer_item_id IS NULL
                 AND NOT EXISTS (SELECT 1 FROM giveaway_prizes p WHERE p.game_key_id = k.id)
            ORDER BY k.status = 'for_giveaway' DESC, g.title, k.id"
         );
@@ -872,6 +873,7 @@ final class Giveaways
                 ->execute([$viewer['id'], $winner['id']]);
             $pdo->prepare("UPDATE game_keys SET status = 'given_away', updated_at = now() WHERE id = ?")
                 ->execute([$prize['game_key_id']]);
+            KeyTransfers::logClaim((int) $prize['game_key_id'], (string) ($viewer['twitch_login'] ?? $winner['twitch_login']));
 
             if (!empty($giveaway['is_direct'])) {
                 $pdo->prepare("UPDATE giveaways SET status = 'finished', updated_at = now() WHERE id = ?")->execute([$giveaway['id']]);

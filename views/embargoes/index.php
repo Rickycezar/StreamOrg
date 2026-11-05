@@ -99,7 +99,7 @@ $active = array_filter($embargoes, static fn (array $e): bool => (bool) $e['acti
                         </button>
                     </td>
                     <td data-card-title data-label="<?= e(__('ui.field.game')) ?>">
-                        <?= e($row['game_title']) ?>
+                        <?= game_name($row['game_title']) ?>
                         <?php if ($row['label']): ?>
                             <small class="muted block"><?= e($row['label']) ?></small>
                         <?php endif; ?>

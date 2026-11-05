@@ -111,14 +111,29 @@ $twitchSource = $twitch !== null || (($user['channel_handle'] ?? '') !== '' && T
             </label>
             <label class="grow">
                 <span><?= e(__('ui.field.name')) ?></span>
-                <input type="text" name="display_name" value="<?= e($user['display_name'] ?? '') ?>">
+                <input type="text" name="display_name" class="pii" value="<?= e($user['display_name'] ?? '') ?>">
             </label>
         </div>
 
         <label>
             <span><?= e(__('ui.field.email')) ?></span>
-            <input type="email" name="email" value="<?= e($user['email']) ?>" required>
+            <input type="email" name="email" class="pii" value="<?= e($user['email']) ?>" required>
+            <?php if (Mailer::ready()): ?>
+                <small class="email-status <?= $user['email_verified_at'] ? 'ok' : 'warn' ?>"><?= e(__($user['email_verified_at'] ? 'ui.label.email_verified' : 'ui.label.email_unverified')) ?></small>
+            <?php endif; ?>
         </label>
+        <?php if (Mailer::ready() && !$user['email_verified_at']): ?>
+            <p class="email-verify-row">
+                <button type="submit" class="btn small" form="resend-verification"><?= e(__('ui.action.email_resend_verification')) ?></button>
+                <small class="muted"><?= e(__('ui.label.email_unverified_hint')) ?></small>
+            </p>
+        <?php endif; ?>
+        <?php if (Mailer::ready()): ?>
+            <label class="inline">
+                <input type="checkbox" name="email_notifications" value="1" <?= $user['email_notifications'] ? 'checked' : '' ?>>
+                <span><?= e(__('ui.field.email_notifications')) ?> <small class="muted"><?= e(__('ui.label.email_notifications_hint')) ?></small></span>
+            </label>
+        <?php endif; ?>
 
         <div class="grid">
             <label>
@@ -168,6 +183,9 @@ $twitchSource = $twitch !== null || (($user['channel_handle'] ?? '') !== '' && T
 
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
+    <?php if (Mailer::ready() && !$user['email_verified_at']): ?>
+        <form id="resend-verification" method="post" action="<?= e(url('/profile/email/verify')) ?>" hidden><?= Csrf::field() ?></form>
+    <?php endif; ?>
 </section>
 
 <section class="card">

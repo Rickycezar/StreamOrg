@@ -56,7 +56,7 @@
         <div class="grid">
             <label>
                 <span><?= e(__('ui.field.title')) ?></span>
-                <input type="text" name="title" <?= $twitchReady ? '' : 'required' ?>>
+                <input type="text" name="title" maxlength="<?= GameCatalog::TITLE_MAX ?>" <?= $twitchReady ? '' : 'required' ?>>
             </label>
             <label>
                 <span><?= e(__('ui.nav.publishers')) ?></span>
@@ -108,9 +108,9 @@
                 <tr<?= row_art($game['art_path'], $game['art_version']) ?>>
                     <td data-card-title data-label="<?= e(__('ui.field.title')) ?>">
                         <?php if (safe_url($game['store_url'])): ?>
-                            <a href="<?= e(safe_url($game['store_url'])) ?>" target="_blank" rel="noopener noreferrer"><?= e($game['title']) ?></a>
+                            <a href="<?= e(safe_url($game['store_url'])) ?>" target="_blank" rel="noopener noreferrer"><?= game_name($game['title']) ?></a>
                         <?php else: ?>
-                            <?= e($game['title']) ?>
+                            <?= game_name($game['title']) ?>
                         <?php endif; ?>
                     </td>
                     <td data-label="<?= e(__('ui.nav.publishers')) ?>"><?= e($game['publisher_name'] ?: '—') ?></td>

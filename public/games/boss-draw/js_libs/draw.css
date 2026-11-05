@@ -103,6 +103,7 @@
 .draw-side-count { color: var(--accent); font: 11px/15px var(--font-px); }
 
 .draw-side-body {
+    margin-top: 14px;
     display: flex;
     flex-wrap: wrap;
     gap: 2px 0;
@@ -137,10 +138,13 @@
 .draw-layer .draw-player { position: absolute; left: 0; top: 0; transition: none; }
 
 .draw-hearts {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: center;
     gap: 2px;
     height: 12px;
+    transform: translateY(var(--hearts-drop, 0px));
 }
 
 .draw-heart {
@@ -150,6 +154,24 @@
 }
 
 .draw-heart-empty { background-image: var(--icon-heart-empty); }
+
+/* Shields (extra hearts from the rules): a row above the hearts, lost first. Both rows sit just above the hero's head (--hearts-drop). */
+.draw-shields {
+    position: absolute;
+    z-index: 1;
+    top: calc(-14px + var(--hearts-drop, 0px));
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    height: 12px;
+}
+.draw-shield { width: 14px; height: 12px; background: var(--icon-shield) center / contain no-repeat; }
+.draw-shield-empty { background-image: var(--icon-shield-empty); }
+
+/* Option: the dead fade out of the field (their cell stays, so nobody moves). */
+.draw-hide-dead .draw-dead { opacity: 0; transition: opacity .8s ease 1.4s; }
 
 .draw-name {
     display: inline-block;
@@ -591,8 +613,6 @@
 .draw-showdown-many .draw-lane-name { top: 6px; max-width: 116px; font-size: 17px; }
 .draw-showdown-many .draw-showdown-prompt { font-size: 22px; }
 
-/* Extra hearts from the subscriber rules: golden. */
-.draw-heart-bonus { filter: hue-rotate(42deg) saturate(1.6) brightness(1.25); }
 
 /* More than five hearts: one heart and "hp/max". */
 .draw-heart-count { margin-left: 3px; font: 700 12px/12px var(--font-name); color: #fff; text-shadow: var(--outline); white-space: nowrap; }

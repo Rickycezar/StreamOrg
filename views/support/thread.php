@@ -16,7 +16,7 @@
     <?php foreach ($thread['messages'] as $m): ?>
         <article class="chat-message<?= $m['from_admin'] ? ' from-team' : ' mine' ?>">
             <header>
-                <strong><?= e($m['from_admin'] ? (string) $m['author'] : __('ui.support.you')) ?></strong>
+                <strong><?= $m['from_admin'] ? pii((string) $m['author']) : e(__('ui.support.you')) ?></strong>
                 <?php if ($m['from_admin']): ?><span class="badge"><?= e(__('ui.support.team')) ?></span><?php endif; ?>
                 <time class="muted" datetime="<?= e($m['created_at']) ?>"><?= e(fmt_datetime($m['created_at'], 'd/m H:i')) ?></time>
             </header>
