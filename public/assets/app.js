@@ -67,6 +67,20 @@
     function pickerOption(kind, item, escape) {
         const L = window.STREAMORG_L || {};
 
+        if (kind === 'games' && item.searching) {
+            return '<div class="picker-option picker-searching"><span class="spinner small"></span>'
+                + '<span class="picker-text"><small class="picker-sub">' + escape(L.picker_searching || '…') + '</small></span></div>';
+        }
+
+        if (kind === 'games' && item.ref) {
+            return '<div class="picker-option picker-new">'
+                + (item.cover ? '<img class="picker-cover" src="' + escape(item.cover) + '" alt="">'
+                              : '<span class="picker-cover"></span>')
+                + '<span class="picker-text"><span class="picker-title">' + escape(item.title) + '</span>'
+                + '<small class="picker-sub">' + escape((L.picker_add_from || '%s').replace('%s', item.source || '')) + '</small>'
+                + '</span></div>';
+        }
+
         if (kind === 'games') {
             const studios = [item.developer, item.publisher]
                 .filter(function (v, i, all) { return v && all.indexOf(v) === i; })
@@ -109,11 +123,18 @@
         if (!conf) return;
 
         const L = window.STREAMORG_L || {};
+        const external = kind === 'games' && !!L.add_games && select.dataset.pickerLocal === undefined;
 
         const picker = new window.TomSelect(select, {
             valueField: 'id',
             labelField: conf.label,
             searchField: [conf.label],
+            optgroupField: 'group',
+            lockOptgroupOrder: true,
+            optgroups: external ? [
+                { value: 'catalog', label: L.picker_group_catalog || '' },
+                { value: 'external', label: L.picker_group_add || '' },
+            ] : [],
             maxOptions: 30,
             preload: 'focus',
             loadThrottle: 250,
@@ -140,7 +161,16 @@
                 }
 
                 if (kind === 'games') data.items.forEach(rememberGame);
+                if (external) {
+                    data.items.forEach(function (item) { item.group = 'catalog'; });
+                    searchingExternal(this, query);
+                }
                 callback(data.items);
+
+                if (external) loadExternalGames(this, query, data.items);
+            },
+            onItemAdd: function (value) {
+                if (external && String(value).indexOf('ext:') === 0) addExternalGame(this, value);
             },
             render: {
                 option: function (item, escape) { return pickerOption(kind, item, escape); },
@@ -160,6 +190,103 @@
             },
         });
 
+        completePickerValue(picker.input);
+    }
+
+    /**
+     * The game picker also searches Twitch and Steam (when the user may add
+     * games): those results arrive a moment after the catalog's, in their
+     * own group, leaving out the ones the catalog already listed.
+     */
+    async function loadExternalGames(picker, query, local) {
+        const term = (query || '').trim();
+        if (term.length < 2) return;
+
+        const mine = picker.externalSearch;
+        let data;
+        try {
+            const response = await fetch(url('/catalog/search') + '?' + new URLSearchParams({ q: term }), { headers: { 'Accept': 'application/json' } });
+            data = await response.json();
+        } catch (e) {
+            data = null;
+        }
+
+        if (mine !== picker.externalSearch) return;
+
+        picker.removeOption('__searching');
+
+        if (!data || !data.ok || picker.lastQuery !== query) {
+            picker.refreshOptions(false);
+            return;
+        }
+
+        const taken = local.map(function (item) { return String(item.title).toLowerCase(); });
+
+        data.results.forEach(function (result) {
+            if (taken.indexOf(String(result.title).toLowerCase()) !== -1) return;
+
+            picker.addOption({
+                id: 'ext:' + result.ref,
+                ref: result.ref,
+                title: result.title,
+                cover: result.image || null,
+                source: result.source || '',
+                group: 'external',
+            });
+        });
+
+        picker.refreshOptions(false);
+    }
+
+    /**
+     * While Twitch and Steam are still being asked, a "searching" row
+     * stands in their group, so an empty catalog result does not read as
+     * "nothing found" before they answer.
+     */
+    function searchingExternal(picker, query) {
+        picker.externalSearch = (picker.externalSearch || 0) + 1;
+        picker.removeOption('__searching');
+
+        if ((query || '').trim().length < 2) return;
+
+        picker.addOption({ id: '__searching', title: query, group: 'external', searching: true, disabled: true });
+    }
+
+    /**
+     * Picking a Twitch or Steam result adds the game to the catalog right
+     * away and puts the catalog's game in its place, so the form only ever
+     * sends real game ids.
+     */
+    async function addExternalGame(picker, value) {
+        const L = window.STREAMORG_L || {};
+        const option = picker.options[value] || {};
+
+        picker.wrapper.classList.add('picker-busy');
+        picker.wrapper.dataset.busyLabel = L.picker_adding || '…';
+
+        const result = await postJson('/catalog/import', { ref: option.ref || String(value).slice(4) });
+
+        picker.wrapper.classList.remove('picker-busy');
+        picker.removeItem(value, true);
+        picker.removeOption(value);
+
+        if (!result.ok) {
+            alert(result.error || L.picker_add_failed || 'Error');
+            return;
+        }
+
+        const game = {
+            id: result.id,
+            title: result.title,
+            cover: option.cover || null,
+            developer: result.developer || null,
+            publisher: result.publisher || null,
+            group: 'catalog',
+        };
+
+        rememberGame(game);
+        picker.addOption(game);
+        picker.addItem(String(result.id));
         completePickerValue(picker.input);
     }
 
@@ -2773,10 +2900,8 @@
         if (badge) badge.title = revealOn ? badge.dataset.on : badge.dataset.off;
 
         if (revealToggle) {
-            revealToggle.setAttribute('aria-pressed', revealOn ? 'true' : 'false');
-            revealToggle.classList.toggle('on', revealOn);
-            revealToggle.querySelector('.txt').textContent =
-                revealOn ? revealToggle.dataset.on : revealToggle.dataset.off;
+            revealToggle.setAttribute('aria-pressed', revealOn ? 'false' : 'true');
+            revealToggle.classList.toggle('on', !revealOn);
         }
     }
 
@@ -2833,6 +2958,135 @@
                 loadCodes(keyFields());
             }
         }
+    });
+
+    /**
+     * Keys → Add in batch: rows of games, each with its codes. A new row
+     * copies the previous row's choices (not the game or the codes); the
+     * batch is saved in one request, an embargo is confirmed first, and
+     * the problems come back on their rows.
+     */
+    onPage(function () {
+        const form = document.querySelector('[data-key-batch]');
+        if (!form) return;
+
+        const list = form.querySelector('[data-batch-rows]');
+        const template = form.querySelector('[data-batch-template]');
+        const total = form.querySelector('[data-batch-total]');
+        const result = form.querySelector('[data-batch-result]');
+        let next = 0;
+
+        function codesOf(row) {
+            return row.querySelector('textarea').value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).length;
+        }
+
+        function refresh() {
+            const rows = list.querySelectorAll('[data-batch-row]');
+            let codes = 0;
+
+            rows.forEach(function (row, i) {
+                const count = codesOf(row);
+                const label = row.querySelector('[data-batch-count]');
+                codes += count;
+                row.querySelector('[data-batch-num]').textContent = String(i + 1);
+                label.textContent = count ? label.dataset.template.replace('%d', count) : '';
+                row.querySelector('[data-batch-remove]').hidden = rows.length === 1;
+            });
+
+            total.textContent = total.dataset.template.replace('%1$d', rows.length).replace('%2$d', codes);
+        }
+
+        function addRow(focus) {
+            const previous = list.querySelector('[data-batch-row]:last-child');
+            const holder = document.createElement('div');
+            holder.innerHTML = template.innerHTML.replace(/__I__/g, String(next++));
+            const row = holder.firstElementChild;
+
+            if (previous) {
+                previous.querySelectorAll('[data-batch-field]').forEach(function (field) {
+                    const copy = row.querySelector('[data-batch-field="' + field.dataset.batchField + '"]');
+                    if (copy) copy.value = field.value;
+                });
+            }
+
+            row.querySelector('textarea').classList.toggle('masked', !revealOn);
+            list.append(row);
+            initPicker(row.querySelector('[data-batch-game]'));
+            refresh();
+
+            if (focus) {
+                const game = row.querySelector('[data-batch-game]');
+                if (game.tomselect) game.tomselect.focus();
+                row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+
+        form.querySelector('[data-batch-add]').addEventListener('click', function () { addRow(true); });
+
+        list.addEventListener('click', function (event) {
+            const remove = event.target.closest('[data-batch-remove]');
+            if (!remove) return;
+            remove.closest('[data-batch-row]').remove();
+            refresh();
+        });
+
+        list.addEventListener('input', function (event) {
+            if (event.target.matches('textarea')) refresh();
+        });
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            if (form.querySelector('.picker-busy')) {
+                result.textContent = (window.STREAMORG_L || {}).picker_adding || '…';
+                return;
+            }
+
+            const submit = form.querySelector('button[type="submit"]');
+            const rows = Array.prototype.slice.call(list.querySelectorAll('[data-batch-row]'));
+            const payload = new FormData(form);
+
+            rows.forEach(function (row) {
+                row.classList.remove('has-error');
+                row.querySelector('[data-batch-error]').hidden = true;
+            });
+
+            submit.disabled = true;
+            result.textContent = '…';
+            let answer = await postJson(form.dataset.endpoint, payload);
+
+            if (!answer.ok && answer.confirm) {
+                result.textContent = '';
+                if (await confirmModal(answer.title || '', answer.error || '')) {
+                    payload.set('confirm', '1');
+                    result.textContent = '…';
+                    answer = await postJson(form.dataset.endpoint, payload);
+                }
+            }
+
+            submit.disabled = false;
+
+            if (answer.ok) {
+                window.location.href = answer.redirect;
+                return;
+            }
+
+            result.textContent = answer.confirm ? '' : '✗ ' + (answer.error || '');
+
+            (answer.rows || []).forEach(function (problem) {
+                const row = rows[problem.row];
+                if (!row) return;
+                row.classList.add('has-error');
+                const box = row.querySelector('[data-batch-error]');
+                box.textContent = problem.error;
+                box.hidden = false;
+            });
+
+            const first = list.querySelector('.has-error');
+            if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+
+        addRow(false);
     });
 
     /**

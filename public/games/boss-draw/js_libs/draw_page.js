@@ -39,7 +39,11 @@ const DRAW_PAGE = {
     settingsDebounceMs: 2000,
     settingsMaxBytes: 8192,
     textsMaxBytes: 65536,
-    lockable: ['channel', 'entry', 'prize', 'winners']
+    lockable: ['channel', 'entry', 'prize', 'winners'],
+    profilesPath: 'profiles',
+    profilesBatch: 50,
+    profilesDelayMs: 400,
+    profilesTimeoutMs: 3000
 };
 
 /** Technical parameters shown in "Avançado", by group: input step, or choices for a select (winners and hearts live on the main tab). */
@@ -115,6 +119,12 @@ let speed = 1;
 let chatOpen = false;
 let connectedChannel = null;
 let phase = null;
+/** Players' profiles from StreamOrg (looks only): login → {melee, ranged, effect, finale}, or null for none. */
+const profiles = new Map();
+const profilesWanted = new Set();
+let profilesTimer = null;
+let profilesBusy = false;
+
 /** Who was kicked in the last entry phase (kept for "reopen" after a battle). */
 let lastKicks = [];
 
@@ -437,6 +447,120 @@ function joinByRules(entry, options) {
         bonus = total - base;
     }
     lobby.join(Object.assign({}, entry, who, { bonus }), options);
+    wantProfile((entry.login || entry.name || '').trim().toLowerCase());
+}
+
+/**
+ * A profile's looks, keeping only what this game has: a hero of that side,
+ * a known effect and finale. Looks never change the battle, only how a
+ * player is drawn.
+ *
+ * @param {*} raw - One profile from StreamOrg (untrusted).
+ * @returns {object|null}
+ */
+function cleanLook(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return null;
+    }
+    const look = {};
+    for (const side of ['melee', 'ranged']) {
+        if (typeof raw[side] === 'string' && (DRAW_DATA.pools[side] || []).includes(raw[side])) {
+            look[side] = raw[side];
+        }
+    }
+    if (typeof raw.effect === 'string' && DRAW_EFFECTS[raw.effect]) {
+        look.effect = raw.effect;
+    }
+    if (typeof raw.finale === 'string' && DRAW_FINALES[raw.finale]) {
+        look.finale = raw.finale;
+    }
+    return Object.keys(look).length ? look : null;
+}
+
+/**
+ * Asks StreamOrg for the profile of someone who joined (batched; once per login).
+ *
+ * @param {string} login
+ */
+function wantProfile(login) {
+    if (!/^[a-z0-9_]{1,25}$/.test(login) || profiles.has(login) || profilesWanted.has(login)) {
+        return;
+    }
+    profilesWanted.add(login);
+    if (!profilesBusy) {
+        clearTimeout(profilesTimer);
+        profilesTimer = setTimeout(fetchProfiles, DRAW_PAGE.profilesDelayMs);
+    }
+}
+
+/**
+ * Fetches the wanted profiles from StreamOrg (profiles?logins=…, next to the
+ * page; the same in public and embedded mode), one request at a time. The
+ * game draws what StreamOrg sends: a player's own looks, else the answer's
+ * default look, else the automatic ones. Nothing happens when it is
+ * missing, slow or broken. A missing login says nothing about that person.
+ */
+async function fetchProfiles() {
+    const logins = [...profilesWanted].slice(0, DRAW_PAGE.profilesBatch);
+    if (!logins.length || profilesBusy) {
+        return;
+    }
+    profilesBusy = true;
+    for (const login of logins) {
+        profilesWanted.delete(login);
+        profiles.set(login, null);
+    }
+    const channel = connectedChannel || settings.channel || '';
+    const query = `logins=${logins.join(',')}${channel ? `&channel=${encodeURIComponent(channel)}` : ''}`;
+    const answer = await drawFetchJson(`${DRAW_PAGE.profilesPath}?${query}`, DRAW_PAGE.profilesTimeoutMs);
+    profilesBusy = false;
+    const found = answer && answer.profiles && typeof answer.profiles === 'object' ? answer.profiles : {};
+    const fallback = cleanLook(answer && answer.default);
+    for (const login of logins) {
+        const own = cleanLook(found[login]);
+        const look = own || fallback ? Object.assign({}, fallback, own, { own }) : null;
+        if (look) {
+            profiles.set(login, look);
+            if (lobby) {
+                lobby.restyle(login);
+            }
+        }
+    }
+    if (profilesWanted.size) {
+        profilesTimer = setTimeout(fetchProfiles, DRAW_PAGE.profilesDelayMs);
+    }
+}
+
+/**
+ * The looks to record in the result: what each player actually used, not
+ * the defaults (the hero of the side they fought on, their effect, a
+ * non-default finale); ids only, at most 500 players.
+ *
+ * @param {Array<{id: string, kind: string, hero: string}>} players
+ * @returns {Object<string, object>}
+ */
+function looksForResult(players) {
+    const out = {};
+    for (const p of players) {
+        const look = profiles.get(p.id) && profiles.get(p.id).own;
+        if (!look || Object.keys(out).length >= 500) {
+            continue;
+        }
+        const used = {};
+        if (look[p.kind] && look[p.kind] === p.hero) {
+            used[p.kind] = look[p.kind];
+        }
+        if (look.effect) {
+            used.effect = look.effect;
+        }
+        if (look.finale && look.finale !== DRAW_GAME.cosmetics.finales[0]) {
+            used.finale = look.finale;
+        }
+        if (Object.keys(used).length) {
+            out[p.id] = used;
+        }
+    }
+    return out;
 }
 
 /** Rebuilds the entry screen with the current rules and hearts, keeping its players, kicks and open state. */
@@ -737,14 +861,15 @@ function openLobby(restore = [], kicks = []) {
     $('panel-toggle').textContent = drawT('page.panel');
     $('skip').disabled = true;
     $('back').disabled = true;
-    lobby = new DrawLobby(arenaHost, { hitsPerPlayer: readParams().hitsPerPlayer, sound, onChange: showCounts, bossName: bossNameInUse() });
+    lobby = new DrawLobby(arenaHost, { hitsPerPlayer: readParams().hitsPerPlayer, sound, onChange: showCounts, bossName: bossNameInUse(),
+        lookFor: id => profiles.get(id) || null });
     for (const k of kicks) {
         lobby.kicked.add(k.id);
         lobby.kickedNames.set(k.id, k.name);
     }
     for (const e of restore) {
         joinByRules({ login: e.id, name: e.name, color: e.color, side: e.kind, hero: e.hero, tier: e.tier, vip: e.vip,
-            extra: e.extra, fromList: e.fromList, joined: e.joined, badges: e.badges, mod: e.mod }, { instant: true });
+            extra: e.extra, fromList: e.fromList, joined: e.joined, badges: e.badges, mod: e.mod, fromLook: e.fromLook }, { instant: true });
         const p = lobby.players.get(e.id);
         if (p) {
             p.picked = e.picked;
@@ -969,7 +1094,8 @@ function startDraw(newSeed, replacement = false) {
         onShowdown: showShowdown,
         showdown: settings.showdown ? { seconds: settings.showdownSeconds } : null,
         bossName: bossNameInUse(),
-        hideDead: !!stored(DRAW_PAGE.viewKey, {}).hideDead
+        hideDead: !!stored(DRAW_PAGE.viewKey, {}).hideDead,
+        cosmetics: Object.fromEntries(pool.filter(e => profiles.get(e.id)).map(e => [e.id, profiles.get(e.id)]))
     });
     playback.setSpeed(speed);
     playback.play();
@@ -1038,6 +1164,10 @@ function resultPayload() {
     };
     if (embedConfig && embedConfig.giveaway) {
         out.giveaway = embedConfig.giveaway;
+    }
+    const looks = looksForResult(rounds[0].result.players);
+    if (Object.keys(looks).length) {
+        out.cosmetics = looks;
     }
     if (requiredBadges().length) {
         out.badges = requiredBadges().map(b => b.id);

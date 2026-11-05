@@ -159,7 +159,7 @@ final class ErrorLog
 
             if (($extra['notify'] ?? true) && $level !== 'notice' && ($row['created'] || $row['was_resolved'] !== null)) {
                 try {
-                    self::tellAdmins((int) $row['id'], $level, $message, (bool) $row['created']);
+                    self::tellAdmins((int) $row['id'], $level, (bool) $row['created']);
                 } catch (Throwable $e) {
                     error_log('StreamOrg error log could not tell the administrators: ' . $e->getMessage());
                 }
@@ -313,15 +313,19 @@ final class ErrorLog
         return self::$pdo;
     }
 
-    /** A notification to every active administrator about a new (or returning) problem. */
-    private static function tellAdmins(int $id, string $level, string $message, bool $new): void
+    /**
+     * A notification to every active administrator about a new (or
+     * returning) problem, naming only its number: the message itself can
+     * hold data, and notifications show outside Administration.
+     */
+    private static function tellAdmins(int $id, string $level, bool $new): void
     {
         $admins = Database::connection()->query("SELECT id FROM users WHERE role = 'admin' AND is_active")->fetchAll(PDO::FETCH_COLUMN);
 
         Notifications::system(
             array_map('intval', $admins),
             ($new ? 'error_new_' : 'error_back_') . $level,
-            [mb_strimwidth((string) strtok($message, "\n"), 0, 160, '…')],
+            ['#' . $id],
             '/admin/errors?id=' . $id,
             'warning'
         );

@@ -84,6 +84,24 @@ final class SupportTest extends DatabaseTestCase
         self::assertSame(['New bug report #' . $id . ': Calendar crash'], $this->notices($this->admin));
     }
 
+    public function testNoticesNameTheReporterByHandleNeverByRealName(): void
+    {
+        $this->pdo->exec("UPDATE users SET display_name = 'Real Person Name', channel_handle = 'reporter_tv',
+                                 channel_platform_id = (SELECT id FROM streaming_platforms WHERE code = 'twitch') WHERE id = {$this->user}");
+
+        BugReports::create($this->user, BugReports::fromInput(['title' => 'Handle check', 'description' => 'x']));
+        Feedback::create($this->user, 'Hello', 'idea', 'Some feedback');
+
+        $texts = $this->pdo->query(
+            "SELECT t.title || ' ' || t.body FROM notification_recipients r JOIN notification_texts t ON t.notification_id = r.notification_id
+              WHERE r.user_id = {$this->admin}"
+        )->fetchAll(PDO::FETCH_COLUMN);
+
+        self::assertNotEmpty($texts);
+        self::assertStringNotContainsString('Real Person Name', implode("\n", $texts));
+        self::assertStringContainsString('@reporter_tv', implode("\n", $texts));
+    }
+
     public function testTheReporterFollowsTheFixAndCanReopenIt(): void
     {
         $id = BugReports::create($this->user, BugReports::fromInput(['title' => 'Wrong date', 'description' => 'Off by one day']));

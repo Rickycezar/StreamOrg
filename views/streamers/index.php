@@ -69,7 +69,7 @@
             </label>
             <label>
                 <span><?= e(__('ui.field.email')) ?></span>
-                <input type="email" name="email">
+                <input type="email" name="email" class="pii">
             </label>
         </div>
         <label class="inline">
@@ -78,7 +78,7 @@
         </label>
         <label>
             <span><?= e(__('ui.field.notes')) ?></span>
-            <input type="text" name="notes">
+            <input type="text" name="notes" class="pii">
         </label>
         <button type="submit" class="btn primary"><?= e(__('ui.action.save')) ?></button>
     </form>
@@ -124,7 +124,7 @@
                                     <span class="badge ok"><?= e(__('ui.label.favorite')) ?></span>
                                 <?php endif; ?>
                                 <?php if (!empty($row['notes'])): ?>
-                                    <small class="muted block"><?= e($row['notes']) ?></small>
+                                    <small class="muted block"><?= pii($row['notes']) ?></small>
                                 <?php endif; ?>
                             </span>
                         </span>
@@ -180,7 +180,7 @@
                             </label>
                             <label>
                                 <span><?= e(__('ui.field.notes')) ?></span>
-                                <input type="text" name="notes" value="<?= e($row['notes'] ?? '') ?>">
+                                <input type="text" name="notes" class="pii" value="<?= e($row['notes'] ?? '') ?>">
                             </label>
                             <div class="editrow-actions">
                                 <button type="submit" class="btn primary small"><?= e(__('ui.action.save')) ?></button>

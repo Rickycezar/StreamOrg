@@ -16,7 +16,7 @@
  */
 const DRAW_GAME = {
     name: 'boss-draw',
-    version: '1.4.1',
+    version: '1.5.0',
     contract: 1,
     options: [
         { key: 'hearts', type: 'int', min: 1, max: 5, step: 1, default: 2, group: 'battle' },
@@ -31,7 +31,15 @@ const DRAW_GAME = {
         { key: 'list_max_hearts', type: 'int', min: 1, max: 20, step: 1, default: 5, group: 'rules' },
         { key: 'boss_custom', type: 'bool', default: false, group: 'battle' },
         { key: 'boss_name', type: 'text', maxLength: 40, default: '', group: 'battle' }
-    ]
+    ],
+    /**
+     * Looks a player's StreamOrg profile can choose (cosmetic only; heroes
+     * per side come from the sprite data). The first finale is everyone's default.
+     */
+    cosmetics: {
+        effects: ['sparkles'],
+        finales: ['classic']
+    }
 };
 
 /**

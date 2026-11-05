@@ -102,6 +102,42 @@ function drawPickHero(kind, except) {
 }
 
 /**
+ * A profile's hero for a side, when it is one the game has for that side.
+ *
+ * @param {object|null} look - Profile ({melee, ranged, effect, finale}).
+ * @param {string} kind - melee or ranged.
+ * @returns {string|null}
+ */
+function drawLookHero(look, kind) {
+    const id = look && look[kind];
+    return id && (DRAW_DATA.pools[kind] || []).includes(id) ? id : null;
+}
+
+/**
+ * Added effects a profile can put on a player: id → builder of the effect
+ * element (placed over the player's sprite).
+ */
+const DRAW_EFFECTS = {
+    sparkles: () => {
+        const box = drawEl('div', 'draw-effect draw-effect-sparkles');
+        const fx = DRAW_DATA.effects.sparkle;
+        [[-34, -50, 0], [30, -66, 0.7], [-6, -88, 1.4]].forEach(([x, y, delay]) => {
+            const spark = drawEl('div', 'draw-effect-spark');
+            Object.assign(spark.style, {
+                left: `${x - fx.w}px`,
+                top: `${y - fx.h}px`,
+                width: `${fx.w * 2}px`,
+                height: `${fx.h * 2}px`,
+                animationDelay: `${delay}s`
+            });
+            box.appendChild(spark);
+            box.sparkAnimators = (box.sparkAnimators || []).concat(drawCharacter(spark, fx, 2).playAnimation('play'));
+        });
+        return box;
+    }
+};
+
+/**
  * The boss of a wave: the bosses take turns, and each round of turns after
  * the first is tinted so a returning boss looks like a stronger variant.
  *
@@ -318,6 +354,30 @@ class DrawArena {
         this.dressPlayer(state, DRAW_DATA.heroes[p.hero] ? p.hero : drawPickHero(p.kind));
         this.renderHearts(state);
         return state;
+    }
+
+    /**
+     * Puts a profile's added effect on a player (or removes it).
+     *
+     * @param {object} state - Player state.
+     * @param {string|null} id - Effect id from DRAW_EFFECTS.
+     */
+    setEffect(state, id) {
+        if (state.effectEl) {
+            for (const anim of state.effectEl.sparkAnimators || []) {
+                anim.destroy();
+                this.animators = this.animators.filter(a => a !== anim);
+            }
+            state.effectEl.remove();
+            state.effectEl = null;
+        }
+        state.effect = DRAW_EFFECTS[id] ? id : null;
+        if (!state.effect) {
+            return;
+        }
+        state.effectEl = DRAW_EFFECTS[id]();
+        this.animators.push(...(state.effectEl.sparkAnimators || []));
+        state.el.appendChild(state.effectEl);
     }
 
     /**
@@ -598,6 +658,8 @@ class DrawLobby {
         this.hitsPerPlayer = options.hitsPerPlayer || 2;
         this.sound = options.sound || null;
         this.onChange = options.onChange || null;
+        /** A player's profile from StreamOrg, when known: id → {melee, ranged, effect, finale} or null. */
+        this.lookFor = options.lookFor || (() => null);
         this.players = new Map();
         this.kicked = new Set();
         this.kickedNames = new Map();
@@ -661,8 +723,12 @@ class DrawLobby {
             const c = this.counts();
             kind = c.melee === c.ranged ? (Math.random() < 0.5 ? 'melee' : 'ranged') : (c.melee < c.ranged ? 'melee' : 'ranged');
         }
-        const state = this.arena.addPlayer({ id, name: entry.name.trim(), color: entry.color, kind, hero: entry.hero, bonus: entry.bonus },
-            this.hitsPerPlayer);
+        const look = this.lookFor(id);
+        const lookHero = drawLookHero(look, kind);
+        const state = this.arena.addPlayer({ id, name: entry.name.trim(), color: entry.color, kind,
+            hero: lookHero || (entry.fromLook ? null : entry.hero), bonus: entry.bonus }, this.hitsPerPlayer);
+        state.heroFromLook = !!lookHero;
+        this.arena.setEffect(state, look && look.effect);
         state.picked = !!side;
         state.joined = Number.isFinite(entry.joined) ? entry.joined : ++this.joinSeq;
         this.joinSeq = Math.max(this.joinSeq, state.joined);
@@ -710,7 +776,8 @@ class DrawLobby {
         for (const [kind] of DRAW_SIDES) {
             for (const p of this.order[kind]) {
                 out.push({ id: p.id, name: p.name, color: p.rawColor, kind: p.kind, picked: p.picked, hero: p.hero,
-                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList, joined: p.joined, badges: p.badges, mod: p.mod });
+                    tier: p.tier, vip: p.vip, bonus: p.bonus, extra: p.extra, fromList: p.fromList, joined: p.joined, badges: p.badges, mod: p.mod,
+                    fromLook: p.heroFromLook });
             }
         }
         return out;
@@ -758,6 +825,29 @@ class DrawLobby {
         this.kickOpen.el.classList.remove('draw-kick-armed');
         this.kickOpen = null;
         this.kickMenu = null;
+    }
+
+    /**
+     * A player's profile arrived (or changed): their hero for the current
+     * side and their added effect.
+     *
+     * @param {string} id - Player id.
+     */
+    restyle(id) {
+        const state = this.players.get(id);
+        if (!state) {
+            return;
+        }
+        const look = this.lookFor(id);
+        const hero = drawLookHero(look, state.kind) || (state.heroFromLook ? drawPickHero(state.kind, state.hero) : null);
+        if (hero && hero !== state.hero) {
+            this.arena.dressPlayer(state, hero);
+            if (state.moving) {
+                state.animator.stop().playAnimation('walk');
+            }
+        }
+        state.heroFromLook = !!drawLookHero(look, state.kind);
+        this.arena.setEffect(state, look && look.effect);
     }
 
     /**
@@ -869,7 +959,9 @@ class DrawLobby {
         const dress = () => {
             state.el.classList.remove('draw-melee', 'draw-ranged');
             state.el.classList.add(`draw-${kind}`);
-            this.arena.dressPlayer(state, drawPickHero(kind, state.hero));
+            const lookHero = drawLookHero(this.lookFor(state.id), kind);
+            this.arena.dressPlayer(state, lookHero || drawPickHero(kind, state.hero));
+            state.heroFromLook = !!lookHero;
             if (state.moving) {
                 state.animator.stop().playAnimation('walk');
             }
@@ -1003,6 +1095,20 @@ class DrawLobby {
 }
 
 /**
+ * Finales: how a winner's blow lands in the showdown and the finisher scene.
+ * Each has a small animation (a winner who speaks while others still have
+ * to) and a full one (the blow that fells the boss, with its screen wipe and
+ * sound). A player's finale comes from their StreamOrg profile; "classic" is
+ * everyone's default.
+ */
+const DRAW_FINALES = {
+    classic: {
+        small: (playback, hero) => playback._flareSmall(hero),
+        full: (playback, hero) => playback._charge(hero)
+    }
+};
+
+/**
  * Plays one draw result inside a root element.
  */
 class DrawPlayback {
@@ -1015,6 +1121,9 @@ class DrawPlayback {
      * @param {DrawSound} [options.sound] - Sound player (draw_sound.js); silent without it.
      * @param {{seconds: number}|null} [options.showdown] - Give the winners this long to speak in chat before they get the prize.
      * @param {Function} [options.onShowdown] - Called with the winners' ids when the showdown starts.
+     * @param {Object<string, {finale?: string, effect?: string}>} [options.cosmetics] - Each player's cosmetics, by id.
+     * @param {boolean} [options.hideDead] - Fade the dead off the field.
+     * @param {boolean} [options.finisher] - Play the finisher scene without a showdown (default true).
      */
     constructor(root, result, options = {}) {
         this.result = result;
@@ -1024,7 +1133,12 @@ class DrawPlayback {
         this.showdown = options.showdown || null;
         this.bossName = options.bossName || '';
         this.onShowdown = options.onShowdown || null;
-        this.inShowdown = false;
+        /** A winners' scene is on screen: the timed showdown, or the finisher scene. */
+        this.inScene = false;
+        this.sceneTimed = false;
+        this.cosmetics = options.cosmetics || {};
+        /** Play the finisher scene when there is no showdown (off when the channel turned cosmetics off). */
+        this.finisher = options.finisher !== false;
         this.clock = 0;
         this.index = 0;
         this.cued = new Set();
@@ -1046,7 +1160,19 @@ class DrawPlayback {
             counts[p.kind]++;
         }
         this.arena.setCounts(counts);
+        for (const [id, look] of Object.entries(this.cosmetics)) {
+            const state = this.players.get(id);
+            if (state) {
+                state.finale = DRAW_FINALES[look.finale] ? look.finale : null;
+                this.arena.setEffect(state, look.effect);
+            }
+        }
         this.bossBody = this.arena.bossBody;
+    }
+
+    /** Whether the timed showdown is on (winners must speak in chat). */
+    get inShowdown() {
+        return this.inScene && this.sceneTimed;
     }
 
     /** The current boss's animator (it changes when the next wave brings another boss). */
@@ -1087,7 +1213,7 @@ class DrawPlayback {
 
     /** Jumps straight to the final state and shows the winners. */
     skip() {
-        if (this.finished || this.inShowdown) {
+        if (this.finished || this.inScene) {
             return;
         }
         this._clearTimers();
@@ -1108,7 +1234,7 @@ class DrawPlayback {
         clearInterval(this._rumbleTimer);
         this.arena.root.style.transform = '';
         this.arena.el.style.transform = '';
-        this.inShowdown = false;
+        this.inScene = false;
         this.finished = true;
         cancelAnimationFrame(this._rafId);
         this._clearTimers();
@@ -1497,7 +1623,7 @@ class DrawPlayback {
      */
     _end(e, instant) {
         const next = () => {
-            if (this.finished || this.inShowdown) {
+            if (this.finished || this.inScene) {
                 return;
             }
             cancelAnimationFrame(this._rafId);
@@ -1506,6 +1632,9 @@ class DrawPlayback {
             }
             if (this.showdown && e.winners.length) {
                 this._startShowdown(e.winners);
+            }
+            else if (e.winners.length && this.finisher) {
+                this._startFinisher(e.winners);
             }
             else {
                 this._finale(e.winners, [], instant);
@@ -1573,46 +1702,11 @@ class DrawPlayback {
      * @param {string[]} ids - Winners' ids.
      */
     _startShowdown(ids) {
-        this.inShowdown = true;
-        this.showdownIds = ids.slice();
-        this.showdownLeft = new Set(ids);
-        this.confirmed = [];
         if (this.sound) {
             this.sound.playMusic(500, 'hurry');
         }
-        const scene = drawEl('div', ids.length > 3 ? 'draw-showdown draw-showdown-many' : 'draw-showdown');
-        this.countdown = drawEl('div', 'draw-countdown');
-        const names = ids.map(id => this.players.get(id).name).join(', ');
-        scene.append(this.countdown, drawEl('div', 'draw-showdown-prompt', drawT('showdown.prompt', { names })));
-        const lane = drawEl('div', 'draw-showdown-lane');
-        scene.appendChild(lane);
-        this.showdownLane = lane;
-        this.arena.el.appendChild(scene);
-        this.arena.el.classList.add('draw-in-showdown');
-        this.showdownScene = scene;
-
-        const width = lane.offsetWidth || 1280;
-        const slots = this._showdownSlots(ids.length, width);
-        this.showdownHeroes = new Map();
-        ids.forEach((id, i) => {
-            const state = this.players.get(id);
-            const slot = slots[i];
-            const { box, animator } = this._laneSprite(state.def, slot.scale, false);
-            Object.assign(box.style, { left: `${slot.x}px`, top: `${slot.y}px`, zIndex: String(slot.y ? 0 : 1) });
-            const name = drawEl('div', 'draw-lane-name', state.name);
-            name.style.color = state.color;
-            box.appendChild(name);
-            lane.appendChild(box);
-            this.showdownHeroes.set(id, { box, animator, state, scale: slot.scale, y: slot.y });
-        });
-
-        const bossDef = this.arena.bossDef;
-        const boss = this._laneSprite(bossDef, DRAW_SCALE, bossDef.faces === 'right');
-        boss.box.classList.add('draw-lane-boss');
-        boss.box.style.filter = this.bossBody.style.filter;
-        boss.box.style.left = `${Math.round(width - 160)}px`;
-        lane.appendChild(boss.box);
-        this.showdownBoss = boss;
+        const { slots } = this._buildScene(ids, true);
+        const boss = this.showdownBoss;
         const reach = Math.max(...slots.map(s => s.x)) + 150;
         const seconds = Math.max(5, Number(this.showdown.seconds) || 60);
         this._after(() => {
@@ -1643,6 +1737,87 @@ class DrawPlayback {
         if (this.onShowdown) {
             this.onShowdown(ids.slice());
         }
+    }
+
+    /**
+     * The finisher scene (when there is no showdown): the winners face the
+     * boss and the first winner's finale fells it, then the winner screen.
+     *
+     * @param {string[]} ids - Winners' ids.
+     */
+    _startFinisher(ids) {
+        if (this.sound) {
+            this.sound.stopMusic(600);
+        }
+        const { width } = this._buildScene(ids, false);
+        this.showdownLeft.clear();
+        this.confirmed = ids.slice();
+        this.showdownBoss.box.style.left = `${Math.round(width * 0.68)}px`;
+        const hero = this.showdownHeroes.get(ids[0]);
+        this._after(() => this._finaleOf(hero).full(this, hero), 900);
+    }
+
+    /**
+     * A winner's finale (from their profile; "classic" by default).
+     *
+     * @param {object} hero - Scene hero.
+     * @returns {{small: Function, full: Function}}
+     */
+    _finaleOf(hero) {
+        return DRAW_FINALES[hero.state.finale] || DRAW_FINALES.classic;
+    }
+
+    /**
+     * Builds the winners' scene over the darkened field: the winners on the
+     * left (best first), the boss on the right; with a countdown and the
+     * prompt when timed.
+     *
+     * @param {string[]} ids - Winners' ids.
+     * @param {boolean} timed - The showdown (true) or the finisher scene.
+     * @returns {{slots: Array, width: number}}
+     */
+    _buildScene(ids, timed) {
+        this.inScene = true;
+        this.sceneTimed = timed;
+        this.showdownIds = ids.slice();
+        this.showdownLeft = new Set(ids);
+        this.confirmed = [];
+        const scene = drawEl('div', ids.length > 3 ? 'draw-showdown draw-showdown-many' : 'draw-showdown');
+        this.countdown = drawEl('div', 'draw-countdown');
+        if (timed) {
+            const names = ids.map(id => this.players.get(id).name).join(', ');
+            scene.append(this.countdown, drawEl('div', 'draw-showdown-prompt', drawT('showdown.prompt', { names })));
+        }
+        const lane = drawEl('div', 'draw-showdown-lane');
+        scene.appendChild(lane);
+        this.showdownLane = lane;
+        this.arena.el.appendChild(scene);
+        this.arena.el.classList.add('draw-in-showdown');
+        this.showdownScene = scene;
+
+        const width = lane.offsetWidth || 1280;
+        const slots = this._showdownSlots(ids.length, width);
+        this.showdownHeroes = new Map();
+        ids.forEach((id, i) => {
+            const state = this.players.get(id);
+            const slot = slots[i];
+            const { box, animator } = this._laneSprite(state.def, slot.scale, false);
+            Object.assign(box.style, { left: `${slot.x}px`, top: `${slot.y}px`, zIndex: String(slot.y ? 0 : 1) });
+            const name = drawEl('div', 'draw-lane-name', state.name);
+            name.style.color = state.color;
+            box.appendChild(name);
+            lane.appendChild(box);
+            this.showdownHeroes.set(id, { box, animator, state, scale: slot.scale, y: slot.y });
+        });
+
+        const bossDef = this.arena.bossDef;
+        const boss = this._laneSprite(bossDef, DRAW_SCALE, bossDef.faces === 'right');
+        boss.box.classList.add('draw-lane-boss');
+        boss.box.style.filter = this.bossBody.style.filter;
+        boss.box.style.left = `${Math.round(width - 160)}px`;
+        lane.appendChild(boss.box);
+        this.showdownBoss = boss;
+        return { slots, width };
     }
 
     /**
@@ -1680,13 +1855,24 @@ class DrawPlayback {
         this.showdownLeft.delete(id);
         this.confirmed.push(id);
         const hero = this.showdownHeroes.get(id);
-        const last = !this.showdownLeft.size;
-        if (last) {
+        const finale = this._finaleOf(hero);
+        if (!this.showdownLeft.size) {
             clearInterval(this._showdownTick);
             this.countdown.textContent = '';
-            this._charge(hero);
+            finale.full(this, hero);
             return true;
         }
+        finale.small(this, hero);
+        return true;
+    }
+
+    /**
+     * The classic small animation: the hero flares up gold and fires a light
+     * bolt that knocks the boss back.
+     *
+     * @param {object} hero - Scene hero.
+     */
+    _flareSmall(hero) {
         hero.box.classList.add('draw-flare');
         const attacks = hero.state.def.attacks[hero.state.kind] || Object.values(hero.state.def.attacks)[0];
         hero.animator.stop().playAnimation(attacks[0]).playAnimation('idle');
@@ -1708,7 +1894,6 @@ class DrawPlayback {
         }
         this._sfx('flare', { force: true });
         this._after(() => this._bolt(hero, false), 280);
-        return true;
     }
 
     /**
@@ -1795,7 +1980,7 @@ class DrawPlayback {
      * @param {boolean} last - The last winner spoke: this bolt kills the boss.
      */
     _bolt(hero, last) {
-        if (!this.inShowdown) {
+        if (!this.inScene) {
             return;
         }
         const fx = DRAW_DATA.showdownFx;
@@ -1853,6 +2038,10 @@ class DrawPlayback {
             if (last) {
                 this._bossFalls(true);
                 this._whiteout(blast);
+                return;
+            }
+            if (!this.sceneTimed) {
+                boss.animator.stop().playAnimation('hurt').playAnimation('idle');
                 return;
             }
             boss.animator.stop().playAnimation('hurt').playAnimation('walk');
@@ -1921,7 +2110,7 @@ class DrawPlayback {
     /** Time is up: the boss strikes whoever stayed silent, who loses the prize. */
     _execute() {
         clearInterval(this._showdownTick);
-        if (!this.inShowdown || !this.showdownLeft.size) {
+        if (!this.inScene || !this.showdownLeft.size) {
             return;
         }
         const boss = this.showdownBoss;
@@ -1942,10 +2131,10 @@ class DrawPlayback {
 
     /** Ends the showdown and shows who kept the prize (and who lost it). */
     _closeShowdown() {
-        if (!this.inShowdown) {
+        if (!this.inScene) {
             return;
         }
-        this.inShowdown = false;
+        this.inScene = false;
         const kept = this.showdownIds.filter(id => !this.showdownLeft.has(id));
         const forfeited = this.showdownIds.filter(id => this.showdownLeft.has(id));
         this.showdownScene.remove();

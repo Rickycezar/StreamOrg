@@ -32,13 +32,13 @@
             <?php foreach ($sessions as $s): ?>
                 <?php $mine = (int) $s['id'] === $currentId; ?>
                 <tr class="<?= $mine ? 'current' : '' ?>">
-                    <td data-card-title title="<?= e((string) $s['user_agent']) ?>" data-label="<?= e(__('ui.field.device')) ?>">
+                    <td data-card-title data-label="<?= e(__('ui.field.device')) ?>">
                         <?= e(UserSessions::describe($s['user_agent'])) ?>
                         <?php if ($mine): ?>
                             <span class="badge ok"><?= e(__('ui.label.this_session')) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td class="nowrap" data-label="<?= e(__('ui.field.ip_address')) ?>"><?= e($s['ip'] ?? '—') ?></td>
+                    <td class="nowrap" data-label="<?= e(__('ui.field.ip_address')) ?>"><?= $s['ip'] ? pii((string) $s['ip']) : '—' ?></td>
                     <td class="dates" data-label="<?= e(__('ui.field.signed_in_at')) ?>"><?= e(fmt_datetime($s['created_at'])) ?></td>
                     <td class="dates" data-label="<?= e(__('ui.field.last_active')) ?>"><?= e(fmt_datetime($s['last_seen_at'])) ?></td>
                     <td class="rowactions">
@@ -77,8 +77,8 @@
             <tbody>
             <?php foreach ($recent as $s): ?>
                 <tr>
-                    <td data-card-title title="<?= e((string) $s['user_agent']) ?>" data-label="<?= e(__('ui.field.device')) ?>"><?= e(UserSessions::describe($s['user_agent'])) ?></td>
-                    <td class="nowrap" data-label="<?= e(__('ui.field.ip_address')) ?>"><?= e($s['ip'] ?? '—') ?></td>
+                    <td data-card-title data-label="<?= e(__('ui.field.device')) ?>"><?= e(UserSessions::describe($s['user_agent'])) ?></td>
+                    <td class="nowrap" data-label="<?= e(__('ui.field.ip_address')) ?>"><?= $s['ip'] ? pii((string) $s['ip']) : '—' ?></td>
                     <td class="dates" data-label="<?= e(__('ui.field.signed_in_at')) ?>"><?= e(fmt_datetime($s['created_at'])) ?></td>
                     <td class="dates" data-label="<?= e(__('ui.field.ended_at')) ?>"><?= e(fmt_datetime($s['ended_at'])) ?></td>
                     <td data-label="<?= e(__('ui.field.ended_how')) ?>"><?= e(code_label('session_end', $s['reason'])) ?></td>

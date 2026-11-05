@@ -249,7 +249,6 @@ final class ContentController
             'sponsors'    => $sponsors,
             'titleOrder'  => ContentDefaults::titleOrder((int) $userId),
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
-            'canAddGames' => CatalogController::canAddGames(),
             'twitchLogin' => TwitchUser::connection((int) Auth::id())['twitch_login'] ?? null,
         ], __('ui.nav.content'));
     }

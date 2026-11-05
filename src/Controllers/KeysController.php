@@ -260,7 +260,6 @@ final class KeysController
             'platforms' => $pdo->query('SELECT code, family FROM game_platforms ORDER BY sort_order')->fetchAll(),
             'sources'   => $pdo->query('SELECT code FROM key_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
             'gamePlatforms' => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
-            'canAddGames' => CatalogController::canAddGames(),
             'vaultLocked' => !Vault::isUnlocked($userId),
             'giftable'    => Giveaways::giftableKeys((int) $userId),
             'twitchReady' => Twitch::isConfigured(),
@@ -458,6 +457,153 @@ final class KeysController
             'status' => $status,
             'label'  => code_label('key_status', $status),
         ]);
+    }
+
+    /** Most games and codes one batch may carry. */
+    public const BATCH_ROWS = 50;
+
+    public const BATCH_CODES = 2000;
+
+    /**
+     * GET /keys/batch — many games at once: one row per game, each with
+     * its own codes, platform, source and the rest; a new row starts with
+     * the previous row's choices.
+     */
+    public static function batchForm(): void
+    {
+        Auth::requireLogin();
+
+        $pdo = Database::connection();
+
+        View::render('keys/batch', [
+            'platforms'   => $pdo->query('SELECT code FROM game_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
+            'sources'     => $pdo->query('SELECT code FROM key_platforms ORDER BY sort_order')->fetchAll(PDO::FETCH_COLUMN),
+            'statuses'    => array_values(array_diff(self::STATUSES, ['given_away'])),
+            'vaultLocked' => !Vault::isUnlocked((int) Auth::id()),
+        ], __('ui.batch.title'));
+    }
+
+    /**
+     * POST /keys/batch (JSON) — saves every row of the batch, or none:
+     * each row is checked first and the problems come back by row. Codes
+     * already in the vault (or repeated in the batch) are skipped, as when
+     * adding keys one game at a time.
+     */
+    public static function batchStore(): void
+    {
+        Auth::requireLogin();
+        Csrf::verify(json: true);
+        self::requireVault(json: true);
+
+        $pdo     = Database::connection();
+        $userId  = (int) Auth::id();
+        $posted  = is_array($_POST['rows'] ?? null) ? array_values($_POST['rows']) : [];
+        $lookup  = static fn (string $table): array => $pdo->query("SELECT code, id FROM {$table}")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $gamePlatforms = $lookup('game_platforms');
+        $sources = $lookup('key_platforms');
+        $rows    = [];
+        $errors  = [];
+        $total   = 0;
+
+        foreach ($posted as $i => $row) {
+            $row   = is_array($row) ? $row : [];
+            $codes = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', (string) ($row['codes'] ?? '')) ?: []), 'strlen')));
+            $game  = filter_var($row['game_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+
+            if ($game === null && $codes === []) {
+                continue;
+            }
+
+            $status  = (string) ($row['status'] ?? 'available');
+            $expires = trim((string) ($row['expires_at'] ?? ''));
+            $error   = match (true) {
+                $game === null                                                     => 'ui.batch.error_game',
+                $codes === []                                                      => 'ui.batch.error_codes',
+                !isset($gamePlatforms[$row['game_platform'] ?? ''], $sources[$row['key_platform'] ?? '']) => 'ui.message.invalid_input',
+                !in_array($row['key_type'] ?? '', ['common', 'review'], true)      => 'ui.message.invalid_input',
+                !in_array($row['content_type'] ?? '', ['game', 'dlc'], true)       => 'ui.message.invalid_input',
+                !in_array($status, self::STATUSES, true) || $status === 'given_away' => 'ui.message.invalid_input',
+                $expires !== '' && strtotime($expires) === false                   => 'ui.batch.error_date',
+                max(array_map('mb_strlen', $codes)) > 200                          => 'ui.batch.error_long_code',
+                default                                                            => null,
+            };
+
+            if ($error === null) {
+                $exists = $pdo->prepare('SELECT title FROM games WHERE id = ?');
+                $exists->execute([$game]);
+                $title = $exists->fetchColumn();
+                $error = $title === false ? 'ui.batch.error_game' : null;
+            }
+
+            if ($error !== null) {
+                $errors[] = ['row' => $i, 'error' => __($error)];
+                continue;
+            }
+
+            $total += count($codes);
+            $rows[] = [
+                'index' => $i, 'title' => (string) $title, 'game' => $game, 'codes' => $codes, 'status' => $status,
+                'platform' => (int) $gamePlatforms[$row['game_platform']], 'source' => (int) $sources[$row['key_platform']],
+                'key_type' => $row['key_type'], 'content_type' => $row['content_type'], 'expires' => $expires ?: null,
+                'region' => mb_substr(trim((string) ($row['region'] ?? '')), 0, 50) ?: null,
+                'notes' => mb_substr(trim((string) ($row['notes'] ?? '')), 0, 1000) ?: null,
+            ];
+        }
+
+        if ($errors === [] && $rows === []) {
+            json_response(['ok' => false, 'error' => __('ui.batch.error_empty')], 422);
+        }
+        if (count($rows) + count($errors) > self::BATCH_ROWS || $total > self::BATCH_CODES) {
+            json_response(['ok' => false, 'error' => sprintf(__('ui.batch.error_too_many'), self::BATCH_ROWS, self::BATCH_CODES)], 422);
+        }
+        if ($errors !== []) {
+            json_response(['ok' => false, 'error' => __('ui.batch.error_rows'), 'rows' => $errors], 422);
+        }
+
+        if (empty($_POST['confirm'])) {
+            $blocked = [];
+
+            foreach ($rows as $row) {
+                if (in_array($row['status'], self::GIVEAWAY_STATUSES, true) && ($block = self::embargoFor($pdo, $row['game'], $row['platform'])) !== null) {
+                    $blocked[] = sprintf(__('ui.message.embargo_giveaway'), $block['game'], $block['embargo']);
+                }
+            }
+
+            if ($blocked !== []) {
+                json_response(['ok' => false, 'confirm' => true, 'title' => __('ui.message.embargo_giveaway_title'), 'error' => implode("\n", array_unique($blocked))], 409);
+            }
+        }
+
+        $insert = $pdo->prepare(
+            'INSERT INTO game_keys
+                 (user_id, game_id, key_platform_id, game_platform_id, key_code, key_hash,
+                  key_type, content_type, status, notes, region, expires_at, received_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+             ON CONFLICT (user_id, game_platform_id, key_hash) WHERE key_hash IS NOT NULL DO NOTHING'
+        );
+
+        $added = Database::transaction(static function () use ($rows, $insert, $userId): int {
+            $added = 0;
+
+            foreach ($rows as $row) {
+                foreach ($row['codes'] as $code) {
+                    $insert->execute([
+                        $userId, $row['game'], $row['source'], $row['platform'],
+                        Vault::encryptCode($userId, $code), Vault::hashCode($userId, $code),
+                        $row['key_type'], $row['content_type'], $row['status'], $row['notes'], $row['region'], $row['expires'],
+                    ]);
+                    $added += $insert->rowCount();
+                }
+            }
+
+            return $added;
+        });
+
+        $skipped = $total - $added;
+
+        flash('success', sprintf(__('ui.batch.saved'), $added, count($rows))
+            . ($skipped > 0 ? ' ' . sprintf(__('ui.message.keys_skipped'), $skipped) : ''));
+        json_response(['ok' => true, 'redirect' => url('/keys')]);
     }
 
     public static function store(): void

@@ -1,7 +1,7 @@
 <?php
 /** @var array $keys @var array $counts @var array $filters @var array $statuses @var array $listStatuses
  *  @var array $platforms @var array $sources @var int $transfersWaiting
- *  @var bool $canAddGames @var bool $vaultLocked @var list<array> $giftable @var bool $twitchReady */
+ *  @var bool $vaultLocked @var list<array> $giftable @var bool $twitchReady */
 $sendable = static fn (array $key): bool => in_array($key['status'], KeyTransfers::SENDABLE, true) && !$key['prize_id'] && !$key['is_placeholder'] && !$key['transfer_item_id'];
 ?>
 <div class="page-head">
@@ -60,8 +60,11 @@ $sendable = static fn (array $key): bool => in_array($key['status'], KeyTransfer
 <section class="card">
     <div class="card-head">
         <h2><?= e(__('ui.label.keys_shown')) ?> (<?= count($keys) ?>)</h2>
-        <button type="button" class="btn primary" data-new data-modal-form="#add-key"
-                data-modal-title="<?= e(__('ui.action.add_key')) ?>"><?= e(__('ui.action.add_key')) ?></button>
+        <div class="card-actions">
+            <a class="btn" href="<?= e(url('/keys/batch')) ?>"><?= e(__('ui.batch.open')) ?></a>
+            <button type="button" class="btn primary" data-new data-modal-form="#add-key"
+                    data-modal-title="<?= e(__('ui.action.add_key')) ?>"><?= e(__('ui.action.add_key')) ?></button>
+        </div>
     </div>
 
     <form id="add-key" class="subform hidden" method="post" action="<?= e(url('/keys')) ?>" autocomplete="off">
@@ -121,22 +124,6 @@ $sendable = static fn (array $key): bool => in_array($key['status'], KeyTransfer
                 </select>
             </label>
         </div>
-
-        <?php if ($canAddGames): ?>
-        <div class="inline-actions">
-            <button type="button" class="btn small" data-toggle="#key-inline-game">+ <?= e(__('ui.action.new_game_api')) ?></button>
-        </div>
-
-        <fieldset id="key-inline-game" class="inset hidden" data-game-import="#key-game">
-            <legend><?= e(__('ui.action.new_game_api')) ?></legend>
-            <label>
-                <span><?= e(__('ui.action.search')) ?></span>
-                <input type="search" class="game-import-search" autocomplete="off"
-                       placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
-            </label>
-            <div class="results game-import-results"></div>
-        </fieldset>
-        <?php endif; ?>
 
         <div class="grid">
             <label>

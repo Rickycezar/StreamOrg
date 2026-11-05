@@ -402,11 +402,11 @@ final class BugReports
         return array_map('intval', $rows) + array_fill_keys([...self::STATUSES, 'unread'], 0);
     }
 
+    /** Who wrote, as their handle: notification texts are kept as written, so a real name could not be hidden in streamer mode later. */
     private static function name(int $userId): string
     {
-        $stmt = Database::connection()->prepare('SELECT coalesce(display_name, username) FROM users WHERE id = ?');
-        $stmt->execute([$userId]);
+        $handle = KeyTransfers::handleOf($userId);
 
-        return (string) ($stmt->fetchColumn() ?: '?');
+        return $handle === '' ? '?' : '@' . $handle;
     }
 }

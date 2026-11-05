@@ -1,14 +1,14 @@
 {
   "name": "boss-draw",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "contract": 1,
   "entry": "index.html",
   "languages": [
     "pt-BR",
     "en"
   ],
-  "built": "2026-11-02T16:44:45Z",
-  "changes": "Hearts and shields sit just above each hero's head, so they read as belonging to that player.",
+  "built": "2026-11-05T23:01:59Z",
+  "changes": "Player profiles from StreamOrg (cosmetic looks: hero per side, effect, finale) with an optional default look in the answer; finales system with Classic; finisher scene when there is no showdown (first winner's finale).",
   "options": [
     {
       "key": "hearts",
@@ -112,5 +112,66 @@
       "default": "",
       "group": "battle"
     }
-  ]
+  ],
+  "cosmetics": {
+    "melee": [
+      {
+        "id": "adventurer",
+        "name": "cosmetic.hero.adventurer",
+        "preview": "imagens/previews/hero_adventurer.png"
+      },
+      {
+        "id": "dwarf",
+        "name": "cosmetic.hero.dwarf",
+        "preview": "imagens/previews/hero_dwarf.png"
+      },
+      {
+        "id": "shadow_blade",
+        "name": "cosmetic.hero.shadow_blade",
+        "preview": "imagens/previews/hero_shadow_blade.png"
+      },
+      {
+        "id": "elven_druid",
+        "name": "cosmetic.hero.elven_druid",
+        "preview": "imagens/previews/hero_elven_druid.png"
+      }
+    ],
+    "ranged": [
+      {
+        "id": "adventurer",
+        "name": "cosmetic.hero.adventurer",
+        "preview": "imagens/previews/hero_adventurer.png"
+      },
+      {
+        "id": "archaeologist",
+        "name": "cosmetic.hero.archaeologist",
+        "preview": "imagens/previews/hero_archaeologist.png"
+      },
+      {
+        "id": "battle_mage",
+        "name": "cosmetic.hero.battle_mage",
+        "preview": "imagens/previews/hero_battle_mage.png"
+      },
+      {
+        "id": "elven_druid_of_the_raven",
+        "name": "cosmetic.hero.elven_druid_of_the_raven",
+        "preview": "imagens/previews/hero_elven_druid_of_the_raven.png"
+      }
+    ],
+    "effects": [
+      {
+        "id": "sparkles",
+        "name": "cosmetic.effect.sparkles",
+        "preview": null
+      }
+    ],
+    "finales": [
+      {
+        "id": "classic",
+        "name": "cosmetic.finale.classic",
+        "preview": null,
+        "default": true
+      }
+    ]
+  }
 }

@@ -3,7 +3,7 @@
  *  @var array $content @var array<int, array{path:string, updated_at:string}> $contentArt @var array $filters @var array $statuses @var array $platforms
  *  @var array $keys @var array $keySources @var array $gamePlatforms @var list<string> $tagSources
  *  @var list<array{code:string, uses_game_tag:bool}> $sponsors @var list<string> $titleOrder
- *  @var bool $canAddGames @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
+ *  @var ?string $twitchLogin @var array $schedule @var bool $twitchCategories
  *  @var int $contentMinutes @var list<array{id:int, prefix:string, is_default:bool}> $prefixes
  *  @var array<string, array{base:int, dates:list<array{0:int, 1:int}>}> $timeline counters and the content they number
  *  @var string $collabPrefix the word before collab guests ("ft.")
@@ -240,23 +240,8 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
             </div>
 
             <div class="inline-actions">
-                <?php if ($canAddGames): ?>
-                    <button type="button" class="btn small" data-toggle="#inline-game">+ <?= e(__('ui.action.new_game_api')) ?></button>
-                <?php endif; ?>
                 <button type="button" class="btn small" data-toggle="#inline-key" data-inline-key-open>+ <?= e(__('ui.action.new_key')) ?></button>
             </div>
-
-            <?php if ($canAddGames): ?>
-            <fieldset id="inline-game" class="inset hidden" data-game-import="#content-game">
-                <legend><?= e(__('ui.action.new_game_api')) ?></legend>
-                <label>
-                    <span><?= e(__('ui.action.search')) ?></span>
-                    <input type="search" class="game-import-search" autocomplete="off"
-                           placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
-                </label>
-                <div class="results game-import-results"></div>
-            </fieldset>
-            <?php endif; ?>
 
             <fieldset id="inline-key" class="inset hidden">
                 <legend><?= e(__('ui.action.new_key')) ?></legend>
@@ -528,20 +513,6 @@ $fcLocale = strtolower(Lang::locale()) === 'pt-br' ? 'pt-br' : 'en';
                                         <input type="datetime-local" name="embargo_until" data-content-embargo data-default="<?= e($defaultEmbargo) ?>"
                                                value="<?= e($row['embargo_until'] ? substr(str_replace(' ', 'T', $row['embargo_until']), 0, 16) : '') ?>">
                                     </label>
-                                    <?php if ($canAddGames): ?>
-                                        <div class="inline-actions">
-                                            <button type="button" class="btn small" data-toggle="#inline-game-<?= (int) $row['id'] ?>">+ <?= e(__('ui.action.new_game_api')) ?></button>
-                                        </div>
-                                        <fieldset id="inline-game-<?= (int) $row['id'] ?>" class="inset hidden" data-game-import="#content-game-<?= (int) $row['id'] ?>">
-                                            <legend><?= e(__('ui.action.new_game_api')) ?></legend>
-                                            <label>
-                                                <span><?= e(__('ui.action.search')) ?></span>
-                                                <input type="search" class="game-import-search" autocomplete="off"
-                                                       placeholder="<?= e(__(Twitch::isConfigured() ? 'ui.label.search_twitch_hint' : 'ui.label.search_hint')) ?>">
-                                            </label>
-                                            <div class="results game-import-results"></div>
-                                        </fieldset>
-                                    <?php endif; ?>
                                 </div>
                             </fieldset>
                             <fieldset class="form-section">

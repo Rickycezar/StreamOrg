@@ -5,27 +5,38 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
-## Unreleased
+## 0.12.0 — 2026-11-05
 
 This release has database migrations (060: e-mail; 061: key transfers; 062: game name limit).
 
 ### Added
+- Keys → Add in batch: many games at once, one row per game with its
+  codes, platform, source, type, status and dates; each new row starts
+  with the previous row's choices. Saved together, with any problem
+  shown on its row and nothing saved until all rows are right.
+- The game field searches the catalog, Twitch and Steam at once: new
+  games come in their own group and picking one adds it to the catalog
+  (replaces the separate "new game" search on the key and content forms).
 - Key transfers (Sponsorships → Transfers): send keys to another
   creator's vault by their Twitch channel or StreamOrg login, without
   anyone seeing the code. The code travels sealed; the sender's keys are
   locked until the receiver accepts (then the code leaves the sender's
   vault for good) or declines, cancels or lets it expire (14 days; then
   they come back). The receiver can pass a key on the same way.
-- Received keys arrive sealed: the global "reveal keys" switch never
+- Received keys arrive sealed: turning off streamer mode never
   shows them; only Reveal does, after a warning, and each reveal is
   recorded for good in the key's history (who passed it on and who has
   seen the code, by handle). Only their status can change. The vault has
   a "Received from" column (another creator, or StreamOrg later on).
-- Safe to show on stream: while keys are hidden, real names and e-mails
-  are blurred wherever they appear outside Administration (the menu, the
-  dashboard greeting, the profile, joint plans and their chat, support,
-  contacts). Transfers show people by handle only, and notifications
-  about joint plans now name people by handle too.
+- Streamer mode (the old "Keys hidden" switch in the account menu):
+  besides key codes, it now blurs real names and e-mails wherever they
+  appear outside Administration (the dashboard greeting, the profile,
+  IP addresses of your sessions, joint plans and their chat, support,
+  contacts' e-mails and notes). The menu bar shows your Twitch handle
+  (or login) and avatar initials come from it. Transfers show people by
+  handle only; notifications about joint plans, bug reports and feedback
+  name people by handle, and error notifications give only the entry's
+  number.
 - E-mail, ready to be plugged in but off (its screens stay hidden until it is live): Administration → E-mails has
   the system messages in each language (edit them, preview them as they
   would arrive, send yourself a test), the outbox, and the settings. In
@@ -54,9 +65,12 @@ This release has database migrations (060: e-mail; 061: key transfers; 062: game
   hover), pickers and fields one line, and modal titles two. Names are
   capped at 200 characters (real titles pass 130); a longer one from a
   provider is cut with "…", and typing one is refused.
-- The battle draw (boss-draw 1.4.1): extra lives show as blue shields
+- The battle draw (boss-draw 1.5.0): extra lives show as blue shields
   above the hearts, lost first, right over each hero's head; a personal
-  setting hides fallen players; the entry hint moved to the top.
+  setting hides fallen players; the entry hint moved to the top; draws
+  without a showdown end with a short finisher scene. The game is ready
+  for player looks chosen on StreamOrg (not offered yet: everyone keeps
+  the usual heroes).
 
 ## 0.11.6 — 2026-11-01
 

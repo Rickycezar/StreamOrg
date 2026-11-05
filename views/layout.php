@@ -195,40 +195,39 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
         <div class="notify-panel" id="notify-panel" hidden></div>
     </div>
 
+    <?php $menuHandle = ($user['channel_platform_code'] ?? '') === 'twitch' && !empty($user['channel_handle']) ? (string) $user['channel_handle'] : (string) $user['username']; ?>
     <div class="usermenu" id="usermenu">
         <button type="button" class="usermenu-button" id="usermenu-button"
                 aria-expanded="false" aria-controls="usermenu-panel" aria-haspopup="true"
                 aria-label="<?= e(__('ui.label.user_menu')) ?>">
             <?php $avatarUser = $user; $avatarSize = 'sm'; require dirname(__DIR__) . '/views/partials/avatar.php'; ?>
-            <span class="keys-badge" id="keys-badge" title="<?= e(__('ui.action.keys_hidden')) ?>"
-                  data-on="<?= e(__('ui.action.keys_visible')) ?>" data-off="<?= e(__('ui.action.keys_hidden')) ?>">
+            <span class="keys-badge" id="keys-badge" title="<?= e(__('ui.label.streamer_mode_on')) ?>"
+                  data-on="<?= e(__('ui.label.streamer_mode_off')) ?>" data-off="<?= e(__('ui.label.streamer_mode_on')) ?>">
                 <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM4 4l16 16"/></svg>
                 <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
             </span>
-            <span class="usermenu-name"><?= $user['display_name'] ? pii($user['display_name']) : e($user['username']) ?></span>
+            <span class="usermenu-name"><?= e($menuHandle) ?></span>
         </button>
 
         <div class="usermenu-panel" id="usermenu-panel" hidden>
             <div class="usermenu-head">
                 <?php $avatarSize = 'md'; require dirname(__DIR__) . '/views/partials/avatar.php'; ?>
                 <span>
-                    <strong><?= $user['display_name'] ? pii($user['display_name']) : e($user['username']) ?></strong>
-                    <?php if (!empty($user['channel_handle'])): ?>
-                        <small><?= e(code_label('streaming_platform', $user['channel_platform_code'] ?? '')) ?>/<?= e($user['channel_handle']) ?></small>
-                    <?php else: ?>
+                    <strong><?= e($menuHandle) ?></strong>
+                    <?php if (!empty($user['display_name'])): ?>
+                        <small><?= pii($user['display_name']) ?></small>
+                    <?php elseif ($menuHandle !== (string) $user['username']): ?>
                         <small>@<?= e($user['username']) ?></small>
                     <?php endif; ?>
                 </span>
             </div>
 
-            <button type="button" id="reveal-toggle" class="usermenu-row reveal-toggle" aria-pressed="false"
-                    data-on="<?= e(__('ui.action.keys_visible')) ?>"
-                    data-off="<?= e(__('ui.action.keys_hidden')) ?>"
+            <button type="button" id="reveal-toggle" class="usermenu-row reveal-toggle on" aria-pressed="true"
                     title="<?= e(__('ui.label.reveal_toggle_hint')) ?>">
                 <span class="usermenu-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 10a4 4 0 1 0-3.9 4H11l1.5 1.5L14 14l1.5 1.5L17 14l2 2M7.5 10.5h.01"/></svg>
                 </span>
-                <span class="txt"><?= e(__('ui.action.keys_hidden')) ?></span>
+                <span class="txt"><?= e(__('ui.action.streamer_mode')) ?></span>
                 <span class="switch-track"><span class="switch-thumb"></span></span>
             </button>
 
@@ -397,6 +396,10 @@ $globals = [
         'won_at' => __('ui.field.won_at'), 'delivered' => __('ui.field.delivered'),
         'under_embargo_until' => __('ui.label.under_embargo_until'),
         'in_catalog' => __('ui.label.in_catalog'),
+        'picker_group_catalog' => __('ui.label.picker_group_catalog'), 'picker_group_add' => __('ui.label.picker_group_add'),
+        'picker_add_from' => __('ui.label.picker_add_from'), 'picker_adding' => __('ui.label.picker_adding'), 'picker_searching' => __('ui.label.picker_searching'),
+        'picker_add_failed' => __('ui.message.picker_add_failed'),
+        'add_games' => CatalogController::canAddGames(),
     ],
 ];
 ?>

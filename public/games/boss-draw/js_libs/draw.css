@@ -616,3 +616,20 @@
 
 /* More than five hearts: one heart and "hp/max". */
 .draw-heart-count { margin-left: 3px; font: 700 12px/12px var(--font-name); color: #fff; text-shadow: var(--outline); white-space: nowrap; }
+
+/* Added effects from a player's profile (cosmetic). */
+.draw-effect { position: absolute; left: 50%; top: 96px; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.draw-effect-spark {
+    position: absolute;
+    line-height: 0;
+    text-align: left;
+    opacity: 0;
+    filter: sepia(1) saturate(7) hue-rotate(-14deg) brightness(1.3) drop-shadow(0 0 2px rgba(255, 210, 70, .9));
+    animation: draw-effect-twinkle 2.1s ease-in-out infinite;
+}
+@keyframes draw-effect-twinkle {
+    0%, 100% { opacity: 0; transform: translateY(6px) scale(.7); }
+    40% { opacity: 1; }
+    70% { opacity: .8; transform: translateY(-8px) scale(1); }
+}
+.draw-dead .draw-effect { display: none; }
