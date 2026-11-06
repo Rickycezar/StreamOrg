@@ -184,13 +184,35 @@ final class EmailTest extends DatabaseTestCase
         $this->mode('preview');
         $this->pdo->exec("UPDATE users SET email = 'newone@example.com' WHERE id = " . (int) $this->user['id']);
 
-        AccountEmails::emailChanged($this->fetchUser((int) $this->user['id']), 'phpunit_mail@example.com');
+        AccountEmails::emailChanged($this->fetchUser((int) $this->user['id']), 'phpunit_mail@example.com', true);
         $rows = $this->outbox();
 
         self::assertSame(['phpunit_mail@example.com', 'newone@example.com'], array_column($rows, 'to_address'));
         self::assertSame(['email_changed', 'verify_email'], array_column($rows, 'template'));
         self::assertStringContainsString('ne••••@example.com', $rows[0]['body_text']);
         self::assertStringNotContainsString('newone@', $rows[0]['body_text']);
+    }
+
+    public function testOnlyConfirmedAddressesGetMailButTheConfirmingMessages(): void
+    {
+        $this->mode('preview');
+        $id = (int) $this->user['id'];
+
+        self::assertNull(AccountEmails::passwordReset($this->user), 'No reset link to an unconfirmed address.');
+        self::assertNull(AccountEmails::passwordChanged($this->user));
+        self::assertNull(Mailer::queue('signup_approved', ['user' => $this->user], ['username' => 'x'], 'https://example.com/'));
+
+        $this->pdo->exec("UPDATE users SET email = 'other@example.com' WHERE id = {$id}");
+        AccountEmails::emailChanged($this->fetchUser($id), 'phpunit_mail@example.com', false);
+        self::assertSame(['verify_email'], array_column($this->outbox(), 'template'), 'An unconfirmed old address is not told; the new one is asked to confirm.');
+
+        self::assertNotNull(AccountEmails::verify($this->user), 'Confirming an address needs no confirmed address.');
+        self::assertNotNull(AccountEmails::welcome($this->user), 'Nor does the welcome, whose link confirms it.');
+
+        $this->pdo->exec("UPDATE users SET email = 'phpunit_mail@example.com', email_verified_at = now() WHERE id = {$id}");
+        $confirmed = $this->fetchUser($id);
+        self::assertNotNull(AccountEmails::passwordReset($confirmed));
+        self::assertNotNull(AccountEmails::passwordChanged($confirmed));
     }
 
     public function testDeliveryOnlyWhenLiveRetryingAndSuppressingRefusedAddresses(): void

@@ -3008,7 +3008,7 @@ return [
             'email_verified' => 'E-mail confirmed. Thank you!',
             'email_verify_sent' => 'We sent a confirmation link to your e-mail.',
             'email_not_queued' => 'The e-mail could not be prepared right now. Please try again later.',
-            'password_reset_sent' => 'If an account matches, we sent a link to its e-mail. It works for 30 minutes.',
+            'password_reset_sent' => 'If an account matches and its e-mail is confirmed, we sent it a link. It works for 30 minutes. No confirmed e-mail? Ask the StreamOrg team to reset your password.',
             'reset_private_confirm' => 'Confirm that you understand the keys in the private vault will be lost.',
             'password_first_set' => 'Password created. You can sign in now.',
             'password_reset_done' => 'Password changed. Sign in with the new one.',
@@ -3164,7 +3164,7 @@ return [
         'email_page' => [
             'forgot_link' => 'Forgot your password?',
             'forgot_title' => 'Forgot your password',
-            'forgot_intro' => 'Type your username or e-mail. If an account matches, we will send it a link to choose a new password.',
+            'forgot_intro' => 'Type your username or e-mail. If an account matches and its e-mail is confirmed, we will send it a link to choose a new password.',
             'forgot_who' => 'Username or e-mail',
             'forgot_send' => 'Send link',
             'forgot_vault_note' => 'If your key vault is private, the keys in it cannot be recovered without your current password.',

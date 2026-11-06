@@ -382,7 +382,7 @@ final class ProfileController
         if ($changed) {
             $fresh = Database::connection()->prepare('SELECT * FROM users WHERE id = ?');
             $fresh->execute([Auth::id()]);
-            AccountEmails::emailChanged($fresh->fetch(), (string) $before['email']);
+            AccountEmails::emailChanged($fresh->fetch(), (string) $before['email'], !empty($before['email_verified_at']));
         }
 
         flash('success', __('ui.message.saved') . ($changed && Mailer::ready() ? ' ' . __('ui.message.email_verify_sent') : ''));

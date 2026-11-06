@@ -3007,7 +3007,7 @@ return [
             'email_verified' => 'E-mail confirmado. Obrigado!',
             'email_verify_sent' => 'Enviamos um link de confirmação para o seu e-mail.',
             'email_not_queued' => 'Não foi possível preparar o e-mail agora. Tente de novo mais tarde.',
-            'password_reset_sent' => 'Se houver uma conta com esses dados, enviamos um link para o e-mail dela. Ele vale por 30 minutos.',
+            'password_reset_sent' => 'Se houver uma conta com esses dados e o e-mail dela estiver confirmado, enviamos um link. Ele vale por 30 minutos. E-mail não confirmado? Peça à equipe do StreamOrg para redefinir sua senha.',
             'reset_private_confirm' => 'Confirme que entende que as chaves do cofre privado serão perdidas.',
             'password_first_set' => 'Senha criada. Agora é só entrar.',
             'password_reset_done' => 'Senha alterada. Entre com a nova senha.',
@@ -3163,7 +3163,7 @@ return [
         'email_page' => [
             'forgot_link' => 'Esqueci minha senha',
             'forgot_title' => 'Esqueci minha senha',
-            'forgot_intro' => 'Informe seu nome de usuário ou e-mail. Se houver uma conta, enviaremos um link para escolher uma nova senha.',
+            'forgot_intro' => 'Informe seu nome de usuário ou e-mail. Se houver uma conta e o e-mail dela estiver confirmado, enviaremos um link para escolher uma nova senha.',
             'forgot_who' => 'Usuário ou e-mail',
             'forgot_send' => 'Enviar link',
             'forgot_vault_note' => 'Se o seu cofre de chaves é privado, as chaves guardadas nele não podem ser recuperadas sem a senha atual.',

@@ -6,7 +6,9 @@ declare(strict_types=1);
  * password), confirm your address, your address changed (to the old one),
  * reset a forgotten password, your password changed, and copies of
  * notifications. Each builds its link (EmailTokens) and queues the
- * message (Mailer), which decides whether it goes at all.
+ * message (Mailer), which decides whether it goes at all. Only confirmed
+ * addresses get anything, except the welcome and the confirmation, which
+ * are how an address becomes confirmed.
  */
 final class AccountEmails
 {
@@ -40,21 +42,27 @@ final class AccountEmails
         return Mailer::queue('verify_email', ['user' => $user], ['hours' => self::VERIFY_HOURS], self::link($user, '/email/verify?t=' . $token));
     }
 
-    /** The address changed: the old address is told (no link), the new one is asked to confirm. */
-    public static function emailChanged(array $user, string $oldAddress): void
+    /**
+     * The address changed: the old address is told (no link) when it had
+     * been confirmed, and the new one is asked to confirm.
+     */
+    public static function emailChanged(array $user, string $oldAddress, bool $oldConfirmed): void
     {
         if (!Mailer::on()) {
             return;
         }
 
-        Mailer::queue('email_changed', ['user' => $user, 'address' => $oldAddress], ['new_email' => self::masked((string) $user['email'])]);
+        if ($oldConfirmed) {
+            Mailer::queue('email_changed', ['user' => ['email_verified_at' => 'before the change'] + $user, 'address' => $oldAddress], ['new_email' => self::masked((string) $user['email'])]);
+        }
+
         self::verify($user);
     }
 
-    /** A forgotten password: a short-lived link to choose a new one. */
+    /** A forgotten password: a short-lived link to choose a new one, to a confirmed address only. */
     public static function passwordReset(array $user): ?int
     {
-        if (!Mailer::on()) {
+        if (!Mailer::on() || empty($user['email_verified_at'])) {
             return null;
         }
 

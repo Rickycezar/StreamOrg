@@ -5,6 +5,18 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.12.1 — 2026-11-06
+
+### Changed
+- E-mail goes only to confirmed addresses. The only exceptions are the
+  two messages that confirm one: "confirm your e-mail" and the welcome
+  link for accounts an administrator creates. Password resets, security
+  notices ("your password changed", and "your e-mail changed" to the old
+  address only if it was confirmed), sign-up answers and notification
+  copies wait for a confirmed address. The "forgot your password" page
+  says so. Accounts that exist when e-mail goes live confirm their
+  address from the profile.
+
 ## 0.12.0 — 2026-11-05
 
 This release has database migrations (060: e-mail; 061: key transfers; 062: game name limit).

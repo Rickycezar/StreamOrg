@@ -12,7 +12,9 @@ declare(strict_types=1);
  * a {placeholder} is refused, as in the game texts.
  *
  * Per message: the {placeholders} its texts may use, whether it has a
- * button, whether it goes only to confirmed addresses ("verified"),
+ * button, whether it goes only to confirmed addresses ("verified": every
+ * message but the two that confirm an address, the welcome link and the
+ * confirmation itself),
  * whether the person can turn it off ("optional", the notification
  * copies), and its kind (account, security, notification, test), shown
  * as a small label above the heading.
@@ -24,11 +26,11 @@ final class EmailTemplates
     public const CODES = [
         'welcome'          => ['placeholders' => ['name', 'site', 'username', 'hours'], 'button' => true, 'verified' => false, 'optional' => false, 'kind' => 'account'],
         'verify_email'     => ['placeholders' => ['name', 'site', 'hours'], 'button' => true, 'verified' => false, 'optional' => false, 'kind' => 'account'],
-        'email_changed'    => ['placeholders' => ['name', 'site', 'new_email'], 'button' => false, 'verified' => false, 'optional' => false, 'kind' => 'security'],
-        'password_reset'   => ['placeholders' => ['name', 'site', 'minutes'], 'button' => true, 'verified' => false, 'optional' => false, 'kind' => 'security'],
-        'password_changed' => ['placeholders' => ['name', 'site', 'time'], 'button' => true, 'verified' => false, 'optional' => false, 'kind' => 'security'],
-        'signup_approved'  => ['placeholders' => ['name', 'site', 'username'], 'button' => true, 'verified' => false, 'optional' => false, 'kind' => 'account'],
-        'signup_declined'  => ['placeholders' => ['name', 'site'], 'button' => false, 'verified' => false, 'optional' => false, 'kind' => 'account'],
+        'email_changed'    => ['placeholders' => ['name', 'site', 'new_email'], 'button' => false, 'verified' => true, 'optional' => false, 'kind' => 'security'],
+        'password_reset'   => ['placeholders' => ['name', 'site', 'minutes'], 'button' => true, 'verified' => true, 'optional' => false, 'kind' => 'security'],
+        'password_changed' => ['placeholders' => ['name', 'site', 'time'], 'button' => true, 'verified' => true, 'optional' => false, 'kind' => 'security'],
+        'signup_approved'  => ['placeholders' => ['name', 'site', 'username'], 'button' => true, 'verified' => true, 'optional' => false, 'kind' => 'account'],
+        'signup_declined'  => ['placeholders' => ['name', 'site'], 'button' => false, 'verified' => true, 'optional' => false, 'kind' => 'account'],
         'notification'     => ['placeholders' => ['name', 'site', 'title', 'text'], 'button' => true, 'verified' => true, 'optional' => true, 'kind' => 'notification'],
         'test'             => ['placeholders' => ['name', 'site'], 'button' => true, 'verified' => false, 'optional' => false, 'kind' => 'test'],
     ];
