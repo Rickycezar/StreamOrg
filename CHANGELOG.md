@@ -5,6 +5,15 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.12.3 — 2026-11-08
+
+### Fixed
+- The pages reached from e-mails and the sign-in pages (choose or reset a
+  password, forgot password, unsubscribe, sign in, sign up) never show
+  the app's menu, even in a browser that is signed in, and their
+  background fills the screen. Opening a password link while signed in
+  to another account says whose password it sets.
+
 ## 0.12.2 — 2026-11-08
 
 ### Changed

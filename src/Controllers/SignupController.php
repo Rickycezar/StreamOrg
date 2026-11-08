@@ -13,7 +13,7 @@ final class SignupController
     {
         self::requireOpen();
 
-        View::render('signup/form', ['old' => (array) ($_SESSION['signup_old'] ?? [])], __('ui.signup.title'));
+        View::authPage('signup/form', ['old' => (array) ($_SESSION['signup_old'] ?? [])], __('ui.signup.title'));
         unset($_SESSION['signup_old']);
     }
 
@@ -43,7 +43,7 @@ final class SignupController
         ];
 
         if (trim((string) ($_POST['website'] ?? '')) !== '') {
-            View::render('signup/sent', ['email' => $input['email']], __('ui.signup.title'));
+            View::authPage('signup/sent', ['email' => $input['email']], __('ui.signup.title'));
             return;
         }
 
@@ -61,7 +61,7 @@ final class SignupController
             redirect('/signup');
         }
 
-        View::render('signup/sent', ['email' => (string) $user['email']], __('ui.signup.title'));
+        View::authPage('signup/sent', ['email' => (string) $user['email']], __('ui.signup.title'));
     }
 
     /** Sign-up exists only while e-mail really goes out, and never for someone signed in. */

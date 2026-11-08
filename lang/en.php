@@ -3180,6 +3180,7 @@ return [
             'unsubscribe_confirm' => 'Stop the e-mails',
             'unsubscribe_done' => 'Done: you will no longer get notification copies by e-mail. You can turn them back on in your profile.',
             'unsubscribe_profile' => 'Go to my profile',
+            'other_account' => 'This browser is signed in as %1$s. This link sets the password of the account %2$s, not yours.',
         ],
 
         'email_msg' => [

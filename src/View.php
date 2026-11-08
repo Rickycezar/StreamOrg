@@ -15,6 +15,21 @@ final class View
     }
 
     /**
+     * Renders a sign-in style page (sign in, sign up, choose or reset a
+     * password, unsubscribe) in the app's look but never with its menu:
+     * these are reached from e-mails, often in a browser where someone
+     * else, or the same person, is already signed in.
+     */
+    public static function authPage(string $template, array $data = [], ?string $title = null): void
+    {
+        $content   = self::capture($template, $data);
+        $pageTitle = $title;
+        $bare      = true;
+
+        require dirname(__DIR__) . '/views/layout.php';
+    }
+
+    /**
      * Renders a page for the general public (claim links, viewers' prizes,
      * the privacy policy) in the landing page's look, without the app's menu.
      */

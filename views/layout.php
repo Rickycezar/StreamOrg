@@ -1,7 +1,9 @@
 <?php
 /** @var string $content */
 /** @var ?string $pageTitle */
-$user = Auth::user();
+/** @var bool $bare a sign-in style page (View::authPage): never the app's menu, even when signed in */
+$user   = Auth::user();
+$chrome = empty($bare) ? $user : null;
 $layoutPrefs = PreferenceController::all();
 $viewMode = PreferenceController::viewMode($layoutPrefs);
 
@@ -32,7 +34,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
     <meta name="streamorg-lang" content="<?= e(Lang::locale()) ?>">
     <link rel="stylesheet" href="<?= e($asset('/assets/vendor/tom-select.css')) ?>" data-turbo-track="reload">
     <link rel="stylesheet" href="<?= e($asset('/assets/app.css')) ?>" data-turbo-track="reload">
-    <?php if ($user === null): ?>
+    <?php if ($chrome === null): ?>
     <link rel="stylesheet" href="<?= e($asset('/assets/transitions.css')) ?>">
     <?php endif; ?>
     <script src="<?= e($asset('/assets/vendor/turbo.js')) ?>" defer data-turbo-track="reload"></script>
@@ -40,8 +42,8 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
     <script src="<?= e($asset('/assets/sound.js')) ?>" defer data-turbo-track="reload"></script>
     <script src="<?= e($asset('/assets/app.js')) ?>" defer data-turbo-track="reload"></script>
 </head>
-<body class="<?= $user !== null ? 'has-topbar' : '' ?>">
-<?php if ($user !== null): ?>
+<body class="<?= $chrome !== null ? 'has-topbar' : '' ?>">
+<?php if ($chrome !== null): ?>
 <header class="topbar">
     <a class="brand" href="<?= e(url('/dashboard')) ?>">
         <?php require dirname(__DIR__) . '/views/partials/logo.php'; ?>
@@ -317,7 +319,7 @@ $asset = static fn (string $path): string => url($path) . '?v=' . (@filemtime(di
 <div class="nav-backdrop" id="nav-backdrop" hidden></div>
 <?php endif; ?>
 
-<main class="<?= $user === null ? 'centered' : '' ?>">
+<main class="<?= $chrome === null ? 'centered' : '' ?>">
     <?php foreach (take_flashes() as $flash): ?>
         <div class="flash flash-<?= e($flash['type']) ?>"><?= e($flash['message']) ?></div>
     <?php endforeach; ?>

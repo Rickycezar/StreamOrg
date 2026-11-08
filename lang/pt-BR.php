@@ -3179,6 +3179,7 @@ return [
             'unsubscribe_confirm' => 'Parar os e-mails',
             'unsubscribe_done' => 'Pronto: você não vai mais receber cópias das notificações por e-mail. Dá para ligar de novo no seu perfil.',
             'unsubscribe_profile' => 'Ir para o perfil',
+            'other_account' => 'Este navegador está conectado como %1$s. Este link define a senha da conta %2$s, não a sua.',
         ],
 
         'email_msg' => [

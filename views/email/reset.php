@@ -4,7 +4,10 @@
  * one from the welcome e-mail). Over a private vault, the keys in it are
  * lost and the person must say they understand.
  *
- * @var string $token @var bool $welcome @var bool $private @var array $user
+ * When the browser is signed in to another account, a note says whose
+ * password this is.
+ *
+ * @var string $token @var bool $welcome @var bool $private @var array $user @var ?string $other
  */
 ?>
 <div class="login-shell">
@@ -15,6 +18,9 @@
             <?= Csrf::field() ?>
             <input type="hidden" name="t" value="<?= e($token) ?>">
             <p class="muted login-intro"><?= e(sprintf(__($welcome ? 'ui.email_page.welcome_intro' : 'ui.email_page.reset_intro'), $user['username'])) ?></p>
+            <?php if ($other !== null): ?>
+                <p class="notice small"><?= e(sprintf(__('ui.email_page.other_account'), '@' . $other, '@' . $user['username'])) ?></p>
+            <?php endif; ?>
             <label>
                 <span><?= e(__('ui.field.new_password')) ?></span>
                 <input type="password" name="new_password" autocomplete="new-password" minlength="10" required autofocus>

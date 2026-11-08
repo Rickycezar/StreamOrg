@@ -9,7 +9,7 @@ final class AuthController
             redirect('/dashboard');
         }
 
-        View::render('login', [
+        View::authPage('login', [
             'username' => (string) ($_SESSION['login_username'] ?? ''),
             'as'       => ($_GET['as'] ?? '') === 'viewer' ? 'viewer' : 'creator',
             'viewer'   => Viewers::current(),

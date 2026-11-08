@@ -78,11 +78,11 @@ final class EmailController
                 exit;
             }
 
-            View::render('email/unsubscribe', ['done' => true, 'user' => $userId, 'sig' => $sig], __('ui.email_page.unsubscribe_title'));
+            View::authPage('email/unsubscribe', ['done' => true, 'user' => $userId, 'sig' => $sig], __('ui.email_page.unsubscribe_title'));
             return;
         }
 
-        View::render('email/unsubscribe', ['done' => false, 'user' => $userId, 'sig' => $sig], __('ui.email_page.unsubscribe_title'));
+        View::authPage('email/unsubscribe', ['done' => false, 'user' => $userId, 'sig' => $sig], __('ui.email_page.unsubscribe_title'));
     }
 
     /** GET /password/forgot */
@@ -90,7 +90,7 @@ final class EmailController
     {
         self::requireReady();
 
-        View::render('email/forgot', [], __('ui.email_page.forgot_title'));
+        View::authPage('email/forgot', [], __('ui.email_page.forgot_title'));
     }
 
     /** POST /password/forgot — the same answer whether or not an account matches. */
@@ -137,11 +137,12 @@ final class EmailController
             redirect('/login');
         }
 
-        View::render('email/reset', [
+        View::authPage('email/reset', [
             'token'   => $token,
             'welcome' => $row['purpose'] === 'welcome',
             'private' => $row['vault_mode'] === 'private',
             'user'    => $row,
+            'other'   => Auth::check() && (int) Auth::id() !== (int) $row['id'] ? KeyTransfers::handleOf((int) Auth::id()) : null,
         ], __($row['purpose'] === 'welcome' ? 'ui.email_page.welcome_title' : 'ui.email_page.reset_title'));
     }
 

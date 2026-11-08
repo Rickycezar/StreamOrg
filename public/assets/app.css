@@ -2166,6 +2166,7 @@ form.card .lang-switch { margin-top: 1.25rem; }
 .login-shell { width: min(390px, 100%); }
 main:has(.login-shell) { animation: none; }
 body:has(.login-shell) {
+    min-height: 100vh;
     background:
         radial-gradient(ellipse 60% 50% at 15% 10%, rgba(var(--accent-rgb), .13), transparent 70%),
         radial-gradient(ellipse 50% 45% at 90% 95%, rgba(var(--accent-rgb), .10), transparent 70%),
