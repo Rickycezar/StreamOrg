@@ -421,7 +421,7 @@ variables, which is how the container is configured:
 | `php bin/encrypt_keys.php [--status]` | Encrypt key codes stored before the vault existed |
 | `php bin/check_lang.php` | Check that the locales agree with each other and with the database |
 | `php bin/lang_overrides.php apply <edits.json>` | Write the texts edited in Administration → Languages into `lang/` |
-| `php bin/mail_worker.php` | Send the queued e-mails (only in "live" mode; run it every minute once e-mail is plugged in) |
+| `php bin/mail_worker.php` | Send the queued e-mails (only in "live" mode). The Docker image runs it every minute by itself (`docker/entrypoint.sh`); elsewhere, run it every minute from cron or a systemd timer |
 | `php bin/update_game.php <dist folder>` | Check a game package against the integration contract and copy it into `public/games/` |
 | `composer test` | Run the PHPUnit suite (`--testsuite unit` skips the database) |
 | `npm install` / `npm run vendor` | Fetch / re-copy the browser libraries into `public/assets/vendor/` |

@@ -5,6 +5,13 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.12.2 — 2026-11-08
+
+### Changed
+- The Docker image starts the e-mail worker by itself (every minute, as
+  the web server's user): nothing to schedule in production. It sends
+  nothing until e-mail is set to Live.
+
 ## 0.12.1 — 2026-11-06
 
 ### Changed

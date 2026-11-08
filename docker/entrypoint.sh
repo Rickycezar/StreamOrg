@@ -2,7 +2,8 @@
 # Runs before Apache on every container start (so on every deploy):
 # checks the essential settings, prepares the data folders, applies any
 # pending database migrations and, in the background, looks up the Twitch
-# category of games that do not have one yet.
+# category of games that do not have one yet and starts the e-mail
+# worker (every minute; it sends nothing unless e-mail is set to live).
 set -eu
 
 cd /var/www/html
@@ -37,5 +38,20 @@ until php bin/migrate.php; do
 done
 
 php bin/twitch_categories.php || true &
+
+# The e-mail worker runs as the web server's user, never as root.
+if command -v runuser >/dev/null 2>&1; then
+    as_web="runuser -u www-data --"
+else
+    as_web=""
+fi
+
+(
+    echo "StreamOrg: e-mail worker started (every 60s)." >&2
+    while true; do
+        $as_web php bin/mail_worker.php || echo "StreamOrg: e-mail worker run failed." >&2
+        sleep 60
+    done
+) &
 
 exec "$@"
