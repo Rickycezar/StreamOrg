@@ -28,6 +28,7 @@ $counterRow = static function (string $key, ?array $counter) use ($remove): stri
         . ($counter !== null ? '<input type="hidden" name="counter[' . e($key) . '][id]" value="' . (int) $counter['id'] . '">' : '')
         . '<span class="counter-name"><span>{</span><input type="text" name="counter[' . e($key) . '][name]" value="' . e($counter['name'] ?? '') . '" maxlength="20" pattern="[a-z][a-z0-9_]{0,19}" placeholder="stream" autocomplete="off" aria-label="' . e(__('ui.field.counter_name')) . '"><span>}</span></span>'
         . '<label class="counter-value"><span>' . e(__('ui.field.counter_value')) . '</span><input type="number" name="counter[' . e($key) . '][value]" value="' . (int) ($counter['value'] ?? 0) . '" min="0" max="' . TitleCounters::VALUE_MAX . '"></label>'
+        . '<label class="counter-per-day" title="' . e(__('ui.label.counter_per_day_hint')) . '"><input type="checkbox" name="counter[' . e($key) . '][per_day]" value="1"' . (($counter['per_day'] ?? true) ? ' checked' : '') . '> ' . e(__('ui.label.counter_per_day')) . '</label>'
         . $remove
         . '</div>';
 };

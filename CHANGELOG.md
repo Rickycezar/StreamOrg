@@ -5,6 +5,25 @@ Every release of StreamOrg, newest first. Versions follow
 version is in the `VERSION` file, shown in the account menu and in
 Administration, and each release is tagged in git as `v<version>`.
 
+## 0.12.4 — 2026-11-18
+
+This release has a database migration (063: counters that count days).
+
+### Added
+- Keys → Add in batch → "Paste a list": paste lines of "Game name
+  CODE", with "origin:" headers (and "OBS:" notes) for the lines below
+  them. The page builds one row per game: names already in the catalog
+  are picked, names found on Twitch or Steam are suggested (added to the
+  catalog only when you save), and the rest are flagged to choose. You
+  review every row before saving; codes stay in the browser until then.
+
+### Changed
+- Title counters count days by default: every content on the same day
+  (in your time zone) gets the same number, and the next day with
+  content gets the next one. A "One per day" switch on each counter, in
+  Profile → Defaults, turns it off to number each content separately.
+  Existing counters switch to counting days.
+
 ## 0.12.3 — 2026-11-08
 
 ### Fixed

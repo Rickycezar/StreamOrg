@@ -4,7 +4,9 @@
  * codes (one per line) and its own platform, source, type, status and
  * dates; a new row starts with the previous row's choices, so a batch
  * from one source only needs the games and the codes. The game field
- * finds games in the catalog, on Twitch and on Steam at once.
+ * finds games in the catalog, on Twitch and on Steam at once. A whole
+ * list can be pasted ("Game name CODE" lines, under "origin:" headers)
+ * and becomes rows, read in the browser.
  * Saved together (KeysController::batchStore), with the problems shown
  * on their rows.
  *
@@ -31,12 +33,24 @@ $select = static function (string $name, array $options, string $selected, strin
     <?php $back = '/keys'; require dirname(__DIR__) . '/partials/vault_unlock.php'; ?>
 <?php else: ?>
 <form class="batch-form" autocomplete="off" data-key-batch data-endpoint="/keys/batch">
+    <details class="card batch-paste" data-batch-paste>
+        <summary><?= e(__('ui.batch.paste_title')) ?></summary>
+        <p class="muted small"><?= e(__('ui.batch.paste_intro')) ?></p>
+        <pre class="batch-paste-example"><?= e(__('ui.batch.paste_example')) ?></pre>
+        <textarea rows="8" class="key-area masked" spellcheck="false" placeholder="<?= e(__('ui.batch.paste_placeholder')) ?>" data-batch-paste-text></textarea>
+        <div class="card-actions">
+            <button type="button" class="btn primary" data-batch-paste-go><?= e(__('ui.batch.paste_go')) ?></button>
+            <span class="muted small" data-batch-paste-result
+                  data-done="<?= e(__('ui.batch.paste_done')) ?>" data-skipped="<?= e(__('ui.batch.paste_skipped')) ?>" data-none="<?= e(__('ui.batch.paste_none')) ?>"></span>
+        </div>
+    </details>
+
     <ol class="batch-rows" data-batch-rows></ol>
 
     <div class="batch-foot card">
         <button type="button" class="btn" data-batch-add>+ <?= e(__('ui.batch.add_row')) ?></button>
         <span class="muted batch-total" data-batch-total data-template="<?= e(__('ui.batch.total')) ?>"></span>
-        <span class="batch-result muted small" data-batch-result></span>
+        <span class="batch-result muted small" data-batch-result data-adding="<?= e(__('ui.batch.adding_games')) ?>"></span>
         <button type="submit" class="btn primary"><?= e(__('ui.batch.save')) ?></button>
     </div>
 
@@ -76,6 +90,7 @@ $select = static function (string $name, array $options, string $selected, strin
                     <span><?= e(__('ui.field.notes')) ?> <small class="muted"><?= e(__('ui.label.optional')) ?></small></span>
                     <input type="text" name="rows[__I__][notes]" data-batch-field="notes">
                 </label>
+                <p class="batch-hint" data-batch-hint hidden data-template="<?= e(__('ui.batch.hint_missing')) ?>" data-new-template="<?= e(__('ui.batch.hint_new')) ?>"></p>
                 <p class="batch-error" data-batch-error hidden></p>
             </div>
         </li>

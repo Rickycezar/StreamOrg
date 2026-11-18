@@ -51,6 +51,32 @@ final class TitleCountersTest extends DatabaseTestCase
         self::assertSame('[DAY 1 · #155] Control', $this->title($both));
     }
 
+    public function testAPerDayCounterGivesEveryContentOfADayTheSameNumber(): void
+    {
+        $this->pdo->exec("UPDATE users SET timezone = 'America/Sao_Paulo' WHERE id = {$this->user}");
+        $this->pdo->exec("UPDATE user_counters SET per_day = true WHERE user_id = {$this->user} AND name = 'stream'");
+
+        $morning = $this->stream('2030-01-05 13:00+00', ['[STREAM #{stream}]']);
+        $evening = $this->stream('2030-01-05 22:00+00', ['[STREAM #{stream}]']);
+        $late    = $this->stream('2030-01-06 02:30+00', ['[STREAM #{stream}]']);
+        $next    = $this->stream('2030-01-06 15:00+00', ['[STREAM #{stream}]']);
+
+        self::assertSame('[STREAM #153] Playing', $this->title($morning));
+        self::assertSame('[STREAM #153] Playing', $this->title($evening), 'Same day, same number.');
+        self::assertSame('[STREAM #153] Playing', $this->title($late), 'Still the 5th in São Paulo (23:30), though the 6th in UTC.');
+        self::assertSame('[STREAM #154] Playing', $this->title($next));
+
+        $timeline = TitleCounters::timeline($this->user)['stream'];
+        self::assertTrue($timeline['per_day']);
+        $days = array_column($timeline['dates'], 2);
+        sort($days);
+        self::assertSame(['2030-01-05', '2030-01-05', '2030-01-05', '2030-01-06'], $days, 'The preview gets each content\'s local day.');
+
+        $this->pdo->exec("UPDATE user_counters SET per_day = false WHERE user_id = {$this->user} AND name = 'stream'");
+        self::assertSame('[STREAM #155] Playing', $this->title($late), 'Turned off, each content counts again.');
+        self::assertSame('[STREAM #156] Playing', $this->title($next));
+    }
+
     public function testMovingCancellingAndDeletingRenumber(): void
     {
         $a = $this->stream('2030-01-05 20:00+00', ['[STREAM #{stream}]']);

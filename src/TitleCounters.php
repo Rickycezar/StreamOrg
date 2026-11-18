@@ -9,9 +9,11 @@ declare(strict_types=1);
  * A title that uses a counter is kept as a template (streams.title_template,
  * see 038_title_templates.sql), and its number is its place in time: a counter's value is where numbering starts after, and each dated,
  * not cancelled content using it counts up from there, earliest first.
- * Undated content shows "?". The database works the titles out again
- * whenever content or counters change (streamorg_renumber_titles), so the
- * order stays chronological however a date moved.
+ * Undated content shows "?". A counter set to count days (per_day, see
+ * 063_counter_per_day.sql) gives every content on the same day, in the
+ * creator's time zone, the same number. The database works the titles out
+ * again whenever content or counters change (streamorg_renumber_titles),
+ * so the order stays chronological however a date moved.
  */
 final class TitleCounters
 {
@@ -19,14 +21,14 @@ final class TitleCounters
     public const VALUE_MAX = 999999;
     public const NAME = '[a-z][a-z0-9_]{0,19}';
 
-    /** @return list<array{id:int, name:string, value:int}> */
+    /** @return list<array{id:int, name:string, value:int, per_day:bool}> */
     public static function forUser(int $userId): array
     {
-        $stmt = Database::connection()->prepare('SELECT id, name, value FROM user_counters WHERE user_id = ? ORDER BY name');
+        $stmt = Database::connection()->prepare('SELECT id, name, value, per_day FROM user_counters WHERE user_id = ? ORDER BY name');
         $stmt->execute([$userId]);
 
         return array_map(
-            static fn (array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['name'], 'value' => (int) $row['value']],
+            static fn (array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['name'], 'value' => (int) $row['value'], 'per_day' => (bool) $row['per_day']],
             $stmt->fetchAll()
         );
     }
@@ -50,10 +52,10 @@ final class TitleCounters
     }
 
     /**
-     * Reads the counter rows of the defaults form: counter[n][id|name|value].
-     * Blank names are dropped.
+     * Reads the counter rows of the defaults form:
+     * counter[n][id|name|value|per_day]. Blank names are dropped.
      *
-     * @return list<array{id:?int, name:string, value:int}>
+     * @return list<array{id:?int, name:string, value:int, per_day:bool}>
      * @throws UserError naming what is wrong
      */
     public static function fromInput(array $rows): array
@@ -87,7 +89,7 @@ final class TitleCounters
 
             $seen[$name] = true;
             $id          = filter_var($row['id'] ?? null, FILTER_VALIDATE_INT);
-            $counters[]  = ['id' => $id ?: null, 'name' => $name, 'value' => (int) $value];
+            $counters[]  = ['id' => $id ?: null, 'name' => $name, 'value' => (int) $value, 'per_day' => !empty($row['per_day'])];
         }
 
         if (count($counters) > self::MAX) {
@@ -137,7 +139,7 @@ final class TitleCounters
      * temporary name first, so two counters can swap names. Renamed
      * counters are renamed in the content that uses them too.
      *
-     * @param list<array{id:?int, name:string, value:int}> $counters
+     * @param list<array{id:?int, name:string, value:int, per_day:bool}> $counters
      * @param array<string, string> $renames old name => new
      * @throws UserError when a counter to delete is still used by content
      */
@@ -173,20 +175,20 @@ final class TitleCounters
             }
         }
 
-        $update = $pdo->prepare('UPDATE user_counters SET name = ?, value = ?, updated_at = now() WHERE id = ? AND user_id = ?');
-        $insert = $pdo->prepare('INSERT INTO user_counters (user_id, name, value) VALUES (?, ?, ?)');
+        $update = $pdo->prepare('UPDATE user_counters SET name = ?, value = ?, per_day = ?, updated_at = now() WHERE id = ? AND user_id = ?');
+        $insert = $pdo->prepare('INSERT INTO user_counters (user_id, name, value, per_day) VALUES (?, ?, ?, ?)');
 
         foreach ($counters as $i => $counter) {
             if ($counter['id'] !== null) {
-                $update->execute(['zzrenaming' . $i, $counter['value'], $counter['id'], $userId]);
+                $update->execute(['zzrenaming' . $i, $counter['value'], $counter['per_day'] ? 'true' : 'false', $counter['id'], $userId]);
             }
         }
 
         foreach ($counters as $counter) {
             if ($counter['id'] !== null) {
-                $update->execute([$counter['name'], $counter['value'], $counter['id'], $userId]);
+                $update->execute([$counter['name'], $counter['value'], $counter['per_day'] ? 'true' : 'false', $counter['id'], $userId]);
             } else {
-                $insert->execute([$userId, $counter['name'], $counter['value']]);
+                $insert->execute([$userId, $counter['name'], $counter['value'], $counter['per_day'] ? 'true' : 'false']);
             }
         }
     }
@@ -204,16 +206,17 @@ final class TitleCounters
 
     /**
      * What the content form needs to preview numbers: per counter, where
-     * numbering starts and when each dated content using it happens.
+     * numbering starts, whether it counts days, and when each dated
+     * content using it happens (with its day in the creator's time zone).
      *
-     * @return array<string, array{base:int, dates: list<array{0:int, 1:int}>}> name => base and [epoch ms, content id]
+     * @return array<string, array{base:int, per_day:bool, dates: list<array{0:int, 1:int, 2:string}>}> name => base, per_day and [epoch ms, content id, Y-m-d]
      */
     public static function timeline(int $userId): array
     {
         $timeline = [];
 
         foreach (self::forUser($userId) as $counter) {
-            $timeline[$counter['name']] = ['base' => $counter['value'], 'dates' => []];
+            $timeline[$counter['name']] = ['base' => $counter['value'], 'per_day' => $counter['per_day'], 'dates' => []];
         }
 
         if ($timeline === []) {
@@ -221,16 +224,17 @@ final class TitleCounters
         }
 
         $stmt = Database::connection()->prepare(
-            "SELECT id, title_template AS prefixes, (extract(epoch FROM scheduled_start) * 1000)::bigint AS at
-               FROM streams
-              WHERE user_id = ? AND title_template IS NOT NULL AND scheduled_start IS NOT NULL AND status <> 'cancelled'"
+            "SELECT s.id, s.title_template AS prefixes, (extract(epoch FROM s.scheduled_start) * 1000)::bigint AS at,
+                    to_char(s.scheduled_start AT TIME ZONE coalesce((SELECT name FROM pg_timezone_names WHERE name = u.timezone LIMIT 1), 'UTC'), 'YYYY-MM-DD') AS day
+               FROM streams s JOIN users u ON u.id = s.user_id
+              WHERE s.user_id = ? AND s.title_template IS NOT NULL AND s.scheduled_start IS NOT NULL AND s.status <> 'cancelled'"
         );
         $stmt->execute([$userId]);
 
         foreach ($stmt->fetchAll() as $row) {
             foreach (self::variables((string) $row['prefixes']) as $name) {
                 if (isset($timeline[$name])) {
-                    $timeline[$name]['dates'][] = [(int) $row['at'], (int) $row['id']];
+                    $timeline[$name]['dates'][] = [(int) $row['at'], (int) $row['id'], (string) $row['day']];
                 }
             }
         }

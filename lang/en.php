@@ -2542,6 +2542,8 @@ return [
             'picker_searching' => 'Searching Twitch and Steam…',
             'streamer_mode_on' => 'Streamer mode on: keys, names and e-mails hidden',
             'streamer_mode_off' => 'Streamer mode off: everything visible',
+            'counter_per_day' => 'One per day',
+            'counter_per_day_hint' => 'On: every content on the same day gets the same number, and the next day with content gets the next one. Off: each content gets its own number.',
         ],
 
         'message' => [
@@ -2641,7 +2643,7 @@ return [
             'collab_prefix_hint' => 'The word before your guests\' names when a collab adds them to a title, like "ft.", "feat.", "with" or "x". Leave it empty for just the mentions.',
             'collab_prefix_invalid' => 'The collab credit has up to %d characters, without @ or #.',
             'counter_in_use' => 'The counter {%s} is used by some of your content, so it cannot be removed. Rename it instead.',
-            'counters_hint' => 'A counter numbers your content in calendar order: write {name} in a prefix, like [STREAM #{stream}]. The earliest dated plan using it gets the number after the one below, the next one the following number, and so on; plans without a date show "?". Moving, cancelling or deleting content renumbers the rest by itself.',
+            'counters_hint' => 'A counter numbers your content in calendar order: write {name} in a prefix, like [STREAM #{stream}]. The earliest dated plan using it gets the number after the one below, the next day the following number, and so on; plans without a date show "?". With "One per day" (the default), contents on the same day share a number; turn it off to number each content. Moving, cancelling or deleting content renumbers the rest by itself.',
             'counter_name_invalid' => '"%s": a counter name starts with a letter and has only lowercase letters, numbers and _ (up to 20).',
             'counter_value_invalid' => '{%s}: the last number goes from 0 to %d.',
             'counter_name_taken' => 'There are two counters named {%s}.',
@@ -3481,6 +3483,22 @@ You\'re welcome to try again later, or reply to this e-mail if you have question
             'error_rows' => 'Some rows need a fix; nothing was saved.',
             'saved' => '%1$d key(s) added from %2$d game(s).',
             'open' => 'Add in batch',
+            'paste_title' => 'Paste a list',
+            'paste_intro' => 'One key per line: the game\'s name, then the code. A line with "origin:" sets the source for the lines below it (and "OBS:" their notes). Each game is looked up in the catalog, then on Twitch and Steam; you review the rows before saving.',
+            'paste_example' => 'origin: DareDrop
+Mech Havoc AAAAA-BBBBB-CCCCC
+Meadgard DDDDD-EEEEE-FFFFF
+
+origin: publisher. OBS: nuuvem
+Sonic Lost World GGGGG-HHHHH-IIIII',
+            'paste_placeholder' => 'Paste the list here',
+            'paste_go' => 'Read the list',
+            'paste_done' => '%1$d game(s): %2$d in the catalog, %3$d found on Twitch/Steam (added when you save), %4$d to choose.',
+            'paste_skipped' => '%d line(s) without a code were left out.',
+            'paste_none' => 'No "game CODE" lines found.',
+            'hint_missing' => '"%s" wasn\'t found by that exact name: click the game field to choose it.',
+            'hint_new' => 'New game, from %s: it is added to the catalog when you save.',
+            'adding_games' => 'Adding new games to the catalog (%1$d of %2$d)…',
         ],
 
     ],

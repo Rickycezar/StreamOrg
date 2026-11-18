@@ -3223,8 +3223,10 @@ a.note.unread:hover { background: var(--accent-soft); filter: brightness(.98); }
 .ha .ha-danger-ring { fill: none; stroke: var(--danger); stroke-width: 2; }
 
 .prefix-row { grid-template-columns: auto 1fr auto auto auto; }
-.counter-rows { display: grid; gap: .4rem; margin-bottom: .5rem; max-width: 520px; }
-.counter-row { display: grid; grid-template-columns: 1fr auto auto; gap: .6rem; align-items: center; }
+.counter-rows { display: grid; gap: .4rem; margin-bottom: .5rem; max-width: 660px; }
+.counter-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: .6rem; align-items: center; }
+.counter-per-day { display: flex; align-items: center; gap: .35rem; margin: 0; font-size: .82rem; color: var(--muted); white-space: nowrap; }
+.counter-per-day input { width: auto; margin: 0; }
 .counter-name { display: flex; align-items: center; gap: .15rem; font-family: ui-monospace, monospace; color: var(--muted); }
 .counter-name input { font-family: ui-monospace, monospace; }
 .counter-value { display: flex; flex-direction: row; align-items: center; gap: .4rem; margin: 0; }
@@ -4013,3 +4015,14 @@ td .game-name { max-width: 20rem; }
 .picker-option.picker-searching { align-items: center; }
 .ts-dropdown .spinner.small { width: 16px; height: 16px; margin: 0 .55rem 0 .2rem; }
 .ts-dropdown .spinner.small::after { width: 12px; height: 12px; margin: 0; border-width: 2px; }
+@media (max-width: 600px) { .counter-row { grid-template-columns: 1fr auto auto; } .counter-name { grid-column: 1 / -1; } .counter-value { flex-wrap: wrap; gap: .25rem .4rem; } .counter-value input { width: 6rem; } }
+.batch-paste { margin-bottom: 1rem; }
+.batch-paste > summary { cursor: pointer; font-weight: 600; }
+.batch-paste[open] > summary { margin-bottom: .6rem; }
+.batch-paste-example { margin: 0 0 .6rem; padding: .5rem .7rem; border-radius: var(--radius); background: var(--surface-2); color: var(--muted); font-size: .8rem; white-space: pre-wrap; }
+.batch-paste textarea { font-family: "Cascadia Mono", ui-monospace, Consolas, monospace; font-size: .85rem; }
+.batch-hint { margin: 0; font-size: .85rem; color: var(--muted); }
+.batch-hint[hidden] { display: none; }
+.batch-row.needs-game { border-color: var(--warn-border); }
+.batch-row.needs-game .batch-hint { color: var(--warn); }
+.batch-row.new-game .batch-hint { color: var(--accent); }

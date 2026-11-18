@@ -163,14 +163,14 @@
                 if (kind === 'games') data.items.forEach(rememberGame);
                 if (external) {
                     data.items.forEach(function (item) { item.group = 'catalog'; });
-                    searchingExternal(this, query);
+                    searchingExternal(this, query || select.dataset.query || '');
                 }
                 callback(data.items);
 
-                if (external) loadExternalGames(this, query, data.items);
+                if (external) loadExternalGames(this, query, data.items, select.dataset.query || '');
             },
             onItemAdd: function (value) {
-                if (external && String(value).indexOf('ext:') === 0) addExternalGame(this, value);
+                if (external && String(value).indexOf('ext:') === 0 && !(this.options[value] || {}).deferred) addExternalGame(this, value);
             },
             render: {
                 option: function (item, escape) { return pickerOption(kind, item, escape); },
@@ -198,8 +198,8 @@
      * games): those results arrive a moment after the catalog's, in their
      * own group, leaving out the ones the catalog already listed.
      */
-    async function loadExternalGames(picker, query, local) {
-        const term = (query || '').trim();
+    async function loadExternalGames(picker, query, local, preset) {
+        const term = (query || preset || '').trim();
         if (term.length < 2) return;
 
         const mine = picker.externalSearch;
@@ -255,7 +255,10 @@
     /**
      * Picking a Twitch or Steam result adds the game to the catalog right
      * away and puts the catalog's game in its place, so the form only ever
-     * sends real game ids.
+     * sends real game ids. A suggestion put in place silently (a pasted
+     * list) is added the same way when the form is saved.
+     *
+     * @return {Promise<boolean>} whether the game is now a catalog game
      */
     async function addExternalGame(picker, value) {
         const L = window.STREAMORG_L || {};
@@ -272,7 +275,7 @@
 
         if (!result.ok) {
             alert(result.error || L.picker_add_failed || 'Error');
-            return;
+            return false;
         }
 
         const game = {
@@ -288,6 +291,7 @@
         picker.addOption(game);
         picker.addItem(String(result.id));
         completePickerValue(picker.input);
+        return true;
     }
 
     /**
@@ -1992,8 +1996,9 @@
      * The content title field: prefix and suffix buttons around the
      * creator's own text, and a coloured preview of the finished
      * title. A counter's number is the content's place on the calendar:
-     * how many dated, not cancelled plans using it come first, plus where
-     * the counter starts; undated content shows "?".
+     * how many dated, not cancelled plans using it come first (or, for a
+     * counter that counts days, how many earlier days have one), plus
+     * where the counter starts; undated content shows "?".
      */
     const COUNTER = /\{([a-z][a-z0-9_]{0,19})\}/g;
 
@@ -2008,6 +2013,17 @@
 
         const at = new Date(when.value).getTime();
         const self = parseInt(field.dataset.streamId || '0', 10);
+
+        if (timeline.per_day) {
+            const day = when.value.slice(0, 10);
+            const days = {};
+            timeline.dates.forEach(function (d) {
+                if (d[1] !== self && d[2] < day) days[d[2]] = true;
+            });
+
+            return String(timeline.base + Object.keys(days).length + 1);
+        }
+
         const before = timeline.dates.filter(function (d) {
             return d[1] !== self && (d[0] < at || (d[0] === at && self && d[1] < self));
         }).length;
@@ -3019,9 +3035,26 @@
                 if (game.tomselect) game.tomselect.focus();
                 row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
+
+            return row;
         }
 
         form.querySelector('[data-batch-add]').addEventListener('click', function () { addRow(true); });
+
+        list.addEventListener('change', function (event) {
+            if (!event.target.matches('[data-batch-game]') || !event.target.value) return;
+            const row = event.target.closest('[data-batch-row]');
+            if (event.target.value.indexOf('ext:') === 0) return;
+            row.classList.remove('needs-game', 'new-game');
+            row.querySelector('[data-batch-hint]').hidden = true;
+        });
+
+        const paste = form.querySelector('[data-batch-paste]');
+        if (paste) {
+            paste.querySelector('[data-batch-paste-go]').addEventListener('click', function () {
+                fromList(paste);
+            });
+        }
 
         list.addEventListener('click', function (event) {
             const remove = event.target.closest('[data-batch-remove]');
@@ -3043,6 +3076,24 @@
             }
 
             const submit = form.querySelector('button[type="submit"]');
+            const pending = Array.prototype.slice.call(list.querySelectorAll('[data-batch-game]')).filter(function (s) { return s.value.indexOf('ext:') === 0; });
+
+            if (pending.length) {
+                submit.disabled = true;
+
+                for (let i = 0; i < pending.length; i++) {
+                    result.textContent = result.dataset.adding.replace('%1$d', i + 1).replace('%2$d', pending.length);
+                    if (!await addExternalGame(pending[i].tomselect, pending[i].value)) {
+                        submit.disabled = false;
+                        result.textContent = '';
+                        pending[i].closest('[data-batch-row]').scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        return;
+                    }
+                }
+
+                submit.disabled = false;
+            }
+
             const rows = Array.prototype.slice.call(list.querySelectorAll('[data-batch-row]'));
             const payload = new FormData(form);
 
@@ -3085,6 +3136,160 @@
             const first = list.querySelector('.has-error');
             if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
         });
+
+        /** Lowercase letters and digits only, for comparing names: "Goblin Cleanup™ - Deluxe" -> "goblincleanupdeluxe". */
+        function plain(text) {
+            return String(text || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
+        }
+
+        /** A key code: groups like "J3FT8-DFW7Z-HNEPM", or one long run of letters and digits with a digit in it. */
+        function isCode(word) {
+            return /^[A-Z0-9]{3,}(?:-[A-Z0-9]{3,})+$/i.test(word) || (/^[A-Z0-9]{10,}$/i.test(word) && /\d/.test(word));
+        }
+
+        /** The source (origem) a header names, matched against the list's codes and labels; null when none fits. */
+        function sourceFor(name, select) {
+            const wanted = plain(name);
+            if (!wanted) return null;
+            const options = Array.prototype.slice.call(select.options);
+            const exact = options.find(function (o) { return plain(o.value) === wanted || plain(o.textContent) === wanted; });
+            const loose = options.find(function (o) {
+                const v = plain(o.value), t = plain(o.textContent);
+                return v.indexOf(wanted) === 0 || t.indexOf(wanted) === 0 || wanted.indexOf(v) === 0;
+            });
+            return (exact || loose || {}).value || null;
+        }
+
+        /**
+         * Reads a pasted list: "origin:" headers set the source (and "OBS:"
+         * the notes) for the lines under them; every other line is "Game
+         * name CODE". Codes of the same game, source and notes become one row.
+         */
+        function readList(text, select) {
+            const groups = [];
+            const skipped = [];
+            let source = null;
+            let notes = '';
+
+            text.split(/\r?\n/).forEach(function (raw) {
+                const line = raw.trim();
+                if (!line) return;
+
+                const origin = line.match(/\b(?:origin|origem)\s*:\s*(.+?)(?=\s*(?:[.;|,]|\bobs\s*:|$))/i);
+                const obs = line.match(/\b(?:obs|notes?|notas?)\s*:\s*(.+)$/i);
+
+                if (origin || obs || /^(?:from here|a partir daqui)\b/i.test(line)) {
+                    if (origin) {
+                        const found = sourceFor(origin[1], select);
+                        source = found || 'other';
+                        notes = found ? '' : origin[1].trim();
+                    }
+                    if (obs) notes = (notes ? notes + ' · ' : '') + obs[1].trim();
+                    return;
+                }
+
+                const parts = line.match(/^(.*\S)\s+(\S+)$/);
+                if (!parts || !isCode(parts[2])) {
+                    skipped.push(line);
+                    return;
+                }
+
+                const title = parts[1].replace(/[\s:|–—-]+$/, '');
+                const key = plain(title);
+                const group = groups.find(function (g) { return g.key === key && g.source === source && g.notes === notes; });
+
+                if (group) group.codes.push(parts[2]);
+                else groups.push({ key: key, title: title, source: source, notes: notes, codes: [parts[2]] });
+            });
+
+            return { groups: groups, skipped: skipped };
+        }
+
+        /** Picks the catalog game with exactly this name; otherwise leaves the name for the picker and says so on the row. */
+        async function findGame(row, title) {
+            const select = row.querySelector('[data-batch-game]');
+            const hint = row.querySelector('[data-batch-hint]');
+            let item = null;
+
+            try {
+                const response = await fetch(url('/pickers/games') + '?' + new URLSearchParams({ q: title }), { headers: { 'Accept': 'application/json' } });
+                const data = await response.json();
+                item = data.ok ? data.items.find(function (g) { return plain(g.title) === plain(title); }) : null;
+            } catch (e) {
+                item = null;
+            }
+
+            if (item && select.tomselect) {
+                rememberGame(item);
+                select.tomselect.addOption(Object.assign({ group: 'catalog' }, item));
+                select.tomselect.setValue(String(item.id));
+                return 'catalog';
+            }
+
+            let found = null;
+            try {
+                const response = await fetch(url('/catalog/search') + '?' + new URLSearchParams({ q: title }), { headers: { 'Accept': 'application/json' } });
+                const data = await response.json();
+                found = data.ok ? data.results.find(function (r) { return plain(r.title) === plain(title); }) : null;
+            } catch (e) {
+                found = null;
+            }
+
+            if (found && select.tomselect) {
+                const option = { id: 'ext:' + found.ref, ref: found.ref, title: found.title, cover: found.image || null, source: found.source || '', group: 'external', deferred: true };
+                select.tomselect.addOption(option);
+                select.tomselect.addItem(option.id, true);
+                row.classList.add('new-game');
+                hint.textContent = hint.dataset.newTemplate.replace('%s', found.source || '');
+                hint.hidden = false;
+                return 'new';
+            }
+
+            select.dataset.query = title;
+            row.classList.add('needs-game');
+            hint.textContent = hint.dataset.template.replace('%s', title);
+            hint.hidden = false;
+            return 'missing';
+        }
+
+        async function fromList(box) {
+            const area = box.querySelector('[data-batch-paste-text]');
+            const out = box.querySelector('[data-batch-paste-result]');
+            const sample = list.querySelector('[data-batch-field="key_platform"]');
+            const parsed = readList(area.value, sample);
+
+            if (!parsed.groups.length) {
+                out.textContent = out.dataset.none;
+                return;
+            }
+
+            list.querySelectorAll('[data-batch-row]').forEach(function (row) {
+                if (!codesOf(row) && !row.querySelector('[data-batch-game]').value) row.remove();
+            });
+
+            const rows = parsed.groups.map(function (group) {
+                const row = addRow(false);
+                if (group.source) row.querySelector('[data-batch-field="key_platform"]').value = group.source;
+                row.querySelector('[data-batch-field="notes"]').value = group.notes;
+                row.querySelector('textarea').value = group.codes.join('\n');
+                return row;
+            });
+
+            refresh();
+            area.value = '';
+            out.textContent = '…';
+
+            const found = await Promise.all(parsed.groups.map(function (group, i) { return findGame(rows[i], group.title); }));
+            const count = function (kind) { return found.filter(function (k) { return k === kind; }).length; };
+
+            out.textContent = out.dataset.done.replace('%1$d', parsed.groups.length).replace('%2$d', count('catalog'))
+                .replace('%3$d', count('new')).replace('%4$d', count('missing'))
+                + (parsed.skipped.length ? ' ' + out.dataset.skipped.replace('%d', parsed.skipped.length) : '');
+            box.open = false;
+
+            const first = list.querySelector('.needs-game');
+            if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
 
         addRow(false);
     });

@@ -2541,6 +2541,8 @@ return [
             'picker_searching' => 'Buscando na Twitch e na Steam…',
             'streamer_mode_on' => 'Modo streamer ligado: chaves, nomes e e-mails ocultos',
             'streamer_mode_off' => 'Modo streamer desligado: tudo visível',
+            'counter_per_day' => 'Um por dia',
+            'counter_per_day_hint' => 'Ligado: todos os conteúdos do mesmo dia recebem o mesmo número, e o próximo dia com conteúdo recebe o seguinte. Desligado: cada conteúdo recebe o seu próprio número.',
         ],
 
         'message' => [
@@ -2640,7 +2642,7 @@ return [
             'collab_prefix_hint' => 'A palavra antes do nome dos convidados quando uma collab os adiciona ao título, como "ft.", "feat.", "com" ou "x". Deixe vazio para só as menções.',
             'collab_prefix_invalid' => 'O crédito de collab tem até %d caracteres, sem @ nem #.',
             'counter_in_use' => 'O contador {%s} é usado por conteúdos seus, então não pode ser removido. Renomeie em vez disso.',
-            'counters_hint' => 'Um contador numera os seus conteúdos na ordem do calendário: escreva {nome} num prefixo, como [LIVE #{live}]. O plano com data mais antiga que o usa pega o número seguinte ao de baixo, o próximo pega o seguinte, e assim por diante; planos sem data mostram "?". Mover, cancelar ou excluir um conteúdo renumera o resto sozinho.',
+            'counters_hint' => 'Um contador numera os seus conteúdos na ordem do calendário: escreva {nome} num prefixo, como [LIVE #{live}]. O plano com data mais antiga que o usa pega o número seguinte ao de baixo, o próximo dia pega o seguinte, e assim por diante; planos sem data mostram "?". Com "Um por dia" (o padrão), conteúdos do mesmo dia dividem o número; desligue para numerar cada conteúdo. Mover, cancelar ou excluir um conteúdo renumera o resto sozinho.',
             'counter_name_invalid' => '"%s": o nome de um contador começa com uma letra e só tem letras minúsculas, números e _ (até 20).',
             'counter_value_invalid' => '{%s}: o último número vai de 0 a %d.',
             'counter_name_taken' => 'Há dois contadores chamados {%s}.',
@@ -3480,6 +3482,22 @@ Você pode tentar de novo mais tarde, ou responder este e-mail se tiver dúvidas
             'error_rows' => 'Algumas linhas precisam de ajuste; nada foi salvo.',
             'saved' => '%1$d chave(s) adicionada(s) de %2$d jogo(s).',
             'open' => 'Adicionar em lote',
+            'paste_title' => 'Colar uma lista',
+            'paste_intro' => 'Uma chave por linha: o nome do jogo e depois o código. Uma linha com "origin:" (ou "origem:") define a origem das linhas abaixo dela (e "OBS:" as observações). Cada jogo é procurado no catálogo e depois na Twitch e na Steam; você revisa as linhas antes de salvar.',
+            'paste_example' => 'origem: DareDrop
+Mech Havoc AAAAA-BBBBB-CCCCC
+Meadgard DDDDD-EEEEE-FFFFF
+
+origem: publisher. OBS: nuuvem
+Sonic Lost World GGGGG-HHHHH-IIIII',
+            'paste_placeholder' => 'Cole a lista aqui',
+            'paste_go' => 'Ler a lista',
+            'paste_done' => '%1$d jogo(s): %2$d no catálogo, %3$d encontrado(s) na Twitch/Steam (adicionados ao salvar), %4$d para escolher.',
+            'paste_skipped' => '%d linha(s) sem código ficaram de fora.',
+            'paste_none' => 'Nenhuma linha "jogo CÓDIGO" encontrada.',
+            'hint_missing' => '"%s" não foi encontrado com esse nome exato: clique no campo do jogo para escolher.',
+            'hint_new' => 'Jogo novo, do %s: ele entra no catálogo quando você salvar.',
+            'adding_games' => 'Adicionando jogos novos ao catálogo (%1$d de %2$d)…',
         ],
 
     ],
